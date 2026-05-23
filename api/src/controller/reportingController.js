@@ -1,0 +1,91 @@
+import prisma from "../../prisma/prismaClient.js";
+import { convertToCSV, sendError } from "../services/exportService.js";
+
+function parseCountyParam(county) {
+  if (!county) return [];
+  const raw = Array.isArray(county) ? county : [county];
+  const split = raw
+    .flatMap((v) => String(v).split(","))
+    .map((v) => v.trim())
+    .filter(Boolean);
+  // de-dupe case-insensitively but keep original casing from first occurrence
+  const seen = new Set();
+  const out = [];
+  for (const c of split) {
+    const k = c.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(c);
+  }
+  return out;
+}
+
+function includesAllToken(counties) {
+  return (counties || []).some((c) => String(c).trim().toLowerCase() === "all");
+}
+
+export const getReportCounties = async (_req, res) => {
+  try {
+    const rows = await prisma.property.findMany({
+      where: {
+        isArchived: false,
+        cadCounty: { not: null },
+        NOT: { cadCounty: "" },
+      },
+      distinct: ["cadCounty"],
+      select: { cadCounty: true },
+    });
+
+    const counties = rows
+      .map((r) => String(r.cadCounty || "").trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    res.status(200).json({ counties: ["All", ...counties] });
+  } catch (error) {
+    const status = error?.statusCode || 500;
+    sendError(res, status, "Error fetching counties", error);
+  }
+};
+
+export const downloadReportPropertiesCSV = async (req, res) => {
+  try {
+    const counties = parseCountyParam(req.query.county);
+    const unfiltered = counties.length === 0 || includesAllToken(counties);
+
+    const where = {
+      isArchived: false,
+      ...(!unfiltered ? { cadCounty: { in: counties, mode: "insensitive" } } : {}),
+    };
+
+    // Optimized: only fetch fields needed for this report
+    const properties = await prisma.property.findMany({
+      where,
+      select: {
+        nameOnCad: true,
+        propertyAddress: true,
+        cadCounty: true,
+        accountNumber: true,
+      },
+      orderBy: [{ cadCounty: "asc" }, { accountNumber: "asc" }],
+    });
+
+    const fields = [
+      { label: "NAME ON CAD", value: "nameOnCad" },
+      { label: "PROPERTY ADDRESS", value: "propertyAddress" },
+      { label: "COUNTY", value: "cadCounty" },
+      { label: "Account", value: "accountNumber" },
+    ];
+
+    const csv = convertToCSV(properties, fields);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    const suffix =
+      !unfiltered && counties.length ? `-${counties.join("-")}`.replace(/[^a-z0-9\-]+/gi, "_") : "";
+    res.setHeader("Content-Disposition", `attachment; filename=report-properties${suffix}.csv`);
+    res.status(200).send(csv);
+  } catch (error) {
+    const status = error?.statusCode || 500;
+    sendError(res, status, "Error downloading reporting CSV", error);
+  }
+};
+

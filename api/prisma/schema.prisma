@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ClientType {
+  PROSPECT
+  CLIENT
+}
+
+enum ClientProspectStatus {
+  NOT_CONTACTED
+  CONTACTED
+  FORM_SENT
+}
+
+enum ContractType {
+  CLIENT_CONTRACT
+  AOA
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  COMPLETED
+  DECLINED
+  VOIDED
+}
+
+enum HearingStatus {
+  SCHEDULED
+  ATTENDED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String   @default("Client Name")
+  email     String   @unique
+  password  String
+  type      String   @default("client")
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id                     Int            @id @default(autoincrement())
+  type                   ClientType
+  prospectStatus         ClientProspectStatus?
+  typeOfAcct             String?        // old: TypeOfAcct
+
+  clientNumber           String?        @unique // old: CLIENTNumber (nullable until type=CLIENT if you want)
+  clientName             String?       
+  email                  String?        
+  billingEmail           String?       
+  phoneNumber            String?       
+
+  nameOnCad              String?        // old: NAMEONCAD (if you still want it at client-level)
+  mailingAddress         String?        // old: MAILINGADDRESS
+  mailingAddressCityTxZip String?        // old: MAILINGADDRESSCITYTXZIP
+  billingAddress         String?        // old: BillingAddress
+  contingencyFee         Decimal?       @db.Decimal(10, 2) // contingency % numeric only (e.g. 25); format in app/PDF
+  flatFee                Decimal?       @db.Decimal(15, 2) // flat fee amount numeric only; format in app/PDF
+
+  envelopeId             String?        // old: envelopeId
+  isArchived             Boolean        @default(false) // old: IsArchived
+
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  properties             Property[]
+  contracts              Contract[]
+
+  @@index([clientName])
+  @@index([email])
+  @@index([phoneNumber])
+  @@index([type])
+}
+
+model Property {
+  id                     Int       @id @default(autoincrement())
+  clientId               Int
+
+  // keep business identifiers available
+  accountNumber          String?   // old: AccountNumber (not globally unique)
+  clientNumber           String?   // old: CLIENTNumber (optional compat / import convenience)
+
+  statusNotes            String?   // old: StatusNotes
+  otherNotes             String?   // old: OtherNotes
+  nameOnCad              String?   // old: NAMEONCAD
+  mailingAddress         String?   // old: MAILINGADDRESS
+  mailingAddressCityTxZip String?  // old: MAILINGADDRESSCITYTXZIP
+
+  propertyAddress        String?  // full address string for property
+
+  cadMailingAddress      String?   // old: CADMailingADDRESS
+  cadCity                String?   // old: CADCITY
+  cadZipCode             String?   // old: CADZIPCODE
+  cadCounty              String?   // old: CADCOUNTY
+
+  contactOwner           String?   // old: CONTACTOWNER
+  subcontractOwner       String?   // old: SUBCONTRACTOWNER
+
+  bppFee                 String?   // old: BPPFEE
+  contingencyFee         String?   // old: CONTINGENCYFee
+  flatFee                String?   // old: FlatFee
+
+  aoaSigned              String    @default("") // old: AOASigned
+  hearingDate            String    @default("") // old: HearingDate
+  isArchived             Boolean   @default(false) // old: IsArchived
+
+  /// Current roadmap phase (`phaseId` string); allowed values defined in `lifecycleConstants.js`
+  lifecyclePhase         String?
+  /// Sub-step id within the phase; see canonical ids in `propertyLifecycle.js`
+  lifecycleStep          String?
+  /// Append-only log of phase/step/notes changes: `{ at, from: { phase, step }, to: { phase, step }, notes }`
+  lifecycleHistory       Json      @default("[]")
+  /// Last time lifecycle phase, step, or notes was updated
+  lifecycleCompletedAt   DateTime?
+  /// User notes for the current lifecycle position (also copied into each history entry when changed)
+  lifecycleNotes         String?   @db.Text
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  client                 Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  invoices               Invoice[]
+  contracts              Contract[]
+  hearings               Hearing[]
+
+  @@index([clientId])
+  @@index([isArchived, clientNumber])
+}
+
+/// One scheduled hearing per row; a property may have many hearings.
+model Hearing {
+  id         Int           @id @default(autoincrement())
+  propertyId Int
+  date       DateTime
+  status     HearingStatus @default(SCHEDULED)
+  notes      String?       @db.Text
+  /// Set when soft-deleted; row stays in DB but is hidden from list/stats/API
+  deletedAt  DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([date])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("hearings")
+}
+
+model Invoice {
+  id                     Int      @id @default(autoincrement())
+  propertyId              Int
+
+  // Optional: keep these if you want them directly on invoice too (otherwise derive via Property)
+  accountNumber          String?
+  clientNumber           String?
+
+  protestDate            String?
+  bppRendered            String?
+  bppInvoice             String?
+  bppPaid                String?
+
+  noticeLandValue        Decimal  @default(0) @db.Decimal(15, 2)
+  noticeImprovementValue Decimal  @default(0) @db.Decimal(15, 2)
+  noticeMarketValue      Decimal  @default(0) @db.Decimal(15, 2)
+  noticeAppraisedValue   Decimal  @default(0) @db.Decimal(15, 2)
+
+  finalLandValue         Decimal  @default(0) @db.Decimal(15, 2)
+  finalImprovementValue  Decimal  @default(0) @db.Decimal(15, 2)
+  finalMarketValue       Decimal  @default(0) @db.Decimal(15, 2)
+  finalAppraisedValue    Decimal  @default(0) @db.Decimal(15, 2)
+
+  marketReduction        Decimal  @default(0) @db.Decimal(15, 2)
+  appraisedReduction     Decimal  @default(0) @db.Decimal(15, 2)
+
+  hearingDate            String?
+  invoiceDate            String?
+  underLitigation        Boolean  @default(false)
+  underArbitration       Boolean  @default(false)
+
+  taxRate                Decimal  @default(0) @db.Decimal(5, 2)
+  taxableSavings         Decimal  @default(0) @db.Decimal(15, 2)
+  contingencyFee         Decimal  @default(0) @db.Decimal(15, 2)
+  invoiceAmount          Decimal  @default(0) @db.Decimal(15, 2)
+
+  paidDate               String?
+  paymentNotes           String?
+
+  beginningMarket        Decimal  @default(0) @db.Decimal(15, 2)
+  endingMarket           Decimal  @default(0) @db.Decimal(15, 2)
+  beginningAppraised     Decimal  @default(0) @db.Decimal(15, 2)
+  endingAppraised        Decimal  @default(0) @db.Decimal(15, 2)
+
+  isArchived             Boolean  @default(false)
+  year                   Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  property               Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, year])
+  @@index([propertyId])
+  @@index([year])
+  @@index([isArchived])
+}
+
+model Contract {
+  id             Int            @id @default(autoincrement())
+  type           ContractType
+  status         ContractStatus @default(DRAFT)
+  clientId       Int
+  propertyId     Int?           // null for CLIENT_CONTRACT, set for AOA
+  fileUrl        String?       // optional: unsigned filled PDF in Supabase
+  signedFileUrl  String?       // signed PDF from DocuSign stored in Supabase
+  envelopeId     String?
+  signedAt       DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  property       Property?     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([propertyId])
+  @@index([envelopeId])
+  @@index([status])
+}

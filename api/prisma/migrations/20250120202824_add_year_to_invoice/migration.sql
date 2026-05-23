@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN     "year" INTEGER NOT NULL DEFAULT 0;

@@ -1,0 +1,1078 @@
+{
+  "info": {
+    "name": "LSP Tax Backend API",
+    "description": "API collection for LSP Tax backend - import into Postman",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "jwt",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user. Requires: name, email, password (min 6 chars)."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login and get JWT token. Use the token in Authorization header for protected routes."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.token) {",
+                  "    pm.collectionVariables.set('jwt', json.token);",
+                  "  }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout (pass Bearer token in Authorization header)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data (API)",
+      "item": [
+        {
+          "name": "Get Clients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/clients?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "clients"],
+              "query": [
+                { "key": "limit", "value": "50", "description": "Page size (default 10, max 100)" },
+                { "key": "offset", "value": "0", "description": "Records to skip (pagination)" },
+                { "key": "search", "value": "", "description": "Filter by name, number, email, phone" },
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            },
+            "description": "Paginated list. Use search for client name, number, email, or phone (partial, case-insensitive)."
+          }
+        },
+        {
+          "name": "Get Archive Clients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/archive_clients?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "archive_clients"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "" },
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Client Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/client?clientId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "client"],
+              "query": [
+                { "key": "clientId", "value": "1", "description": "Client ID" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Prospects",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/prospects?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "prospects"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Prospect Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/prospect?prospectId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "prospect"],
+              "query": [
+                { "key": "prospectId", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Archive Prospects",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/archive-prospects?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "archive-prospects"],
+              "query": [
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Prospect Property Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/prospect-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "prospect-property"],
+              "query": [
+                { "key": "id", "value": "1", "description": "Property ID" }
+              ]
+            },
+            "description": "Prospect property details. Requires id (property ID) query param."
+          }
+        },
+        {
+          "name": "Get Properties",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/properties?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "", "description": "Property id, account number, or client name" },
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Properties (REAL)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/real?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "real"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "", "description": "Property id, account number, or client name" }
+              ]
+            },
+            "description": "Convenience route (equivalent to /api/properties?accountType=real)."
+          }
+        },
+        {
+          "name": "Get Properties (BPP)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/bpp?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "bpp"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "", "description": "Property id, account number, or client name" }
+              ]
+            },
+            "description": "Convenience route (equivalent to /api/properties?accountType=bpp)."
+          }
+        },
+        {
+          "name": "Get Archive Properties",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/archive_properties?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "archive_properties"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "" },
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Property Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/property?propertyId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "property"],
+              "query": [
+                { "key": "propertyId", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Invoice by Client",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoice/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoice", "1"],
+              "variable": [
+                { "key": "clientId", "value": "1" }
+              ]
+            },
+            "description": "Replace 1 in path with clientId."
+          }
+        },
+        {
+          "name": "Get All Invoices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "", "description": "Client number or account number" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Archive Invoices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/archive-invoices?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "archive-invoices"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Stats (Counts)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Download Clients XLSX (Excel)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-clients-xlsx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-clients-xlsx"],
+              "query": [
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download Prospects XLSX (Excel)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-prospects-xlsx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-prospects-xlsx"]
+            }
+          }
+        },
+        {
+          "name": "Download Properties XLSX (Excel)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-properties-xlsx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-properties-xlsx"],
+              "query": [
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download Properties CSV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-properties-csv",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-properties-csv"],
+              "query": [
+                { "key": "accountType", "value": "", "description": "Optional filter. Allowed: real, bpp" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download Properties REAL CSV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-properties-real-csv",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-properties-real-csv"]
+            },
+            "description": "Convenience route (equivalent to /api/download-properties-csv?accountType=real)."
+          }
+        },
+        {
+          "name": "Download Properties BPP CSV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-properties-bpp-csv",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-properties-bpp-csv"]
+            },
+            "description": "Convenience route (equivalent to /api/download-properties-csv?accountType=bpp)."
+          }
+        },
+        {
+          "name": "Download Invoices XLSX (Excel)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download-invoices-xlsx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download-invoices-xlsx"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Actions",
+      "item": [
+        {
+          "name": "Add Prospect",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"\",\n  \"email\": \"\",\n  \"phoneNumber\": \"\",\n  \"mailingAddress\": \"\",\n  \"mailingAddressCityTxZip\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/add-prospect",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "add-prospect"]
+            }
+          }
+        },
+        {
+          "name": "Add Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"Client Name\",\n  \"clientNumber\": \"100\",\n  \"email\": \"client@example.com\",\n  \"phoneNumber\": \"\",\n  \"mailingAddressCityTxZip\": \"\",\n  \"typeOfAcct\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/add-client",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "add-client"]
+            },
+            "description": "clientName, clientNumber (user-entered), and email required (camelCase, matches DB)."
+          }
+        },
+        {
+          "name": "Edit Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 1,\n  \"clientDetails\": {\n    \"clientName\": \"Updated Name\",\n    \"email\": \"updated@example.com\",\n    \"phoneNumber\": \"\",\n    \"mailingAddressCityTxZip\": \"\",\n    \"typeOfAcct\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/edit-client",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "edit-client"]
+            }
+          }
+        },
+        {
+          "name": "Delete Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/delete-client",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "delete-client"]
+            }
+          }
+        },
+        {
+          "name": "Add Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 1,\n  \"propertyData\": {\n    \"accountNumber\": \"\",\n    \"nameOnCad\": \"\",\n    \"mailingAddress\": \"\",\n    \"mailingAddressCityTxZip\": \"\",\n    \"propertyAddress\": \"\",\n    \"statusNotes\": \"\",\n    \"otherNotes\": \"\",\n    \"cadMailingAddress\": \"\",\n    \"cadCity\": \"\",\n    \"cadZipCode\": \"\",\n    \"cadCounty\": \"\",\n    \"contactOwner\": \"\",\n    \"subcontractOwner\": \"\",\n    \"bppFee\": \"\",\n    \"contingencyFee\": \"\",\n    \"flatFee\": \"\",\n    \"aoaSigned\": \"\",\n    \"hearingDate\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/add-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "add-property"]
+            }
+          }
+        },
+        {
+          "name": "Delete Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/delete-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "delete-property"]
+            }
+          }
+        },
+        {
+          "name": "Add Prospect Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"propertyData\": {\n    \"accountNumber\": \"\",\n    \"nameOnCad\": \"\",\n    \"mailingAddress\": \"\",\n    \"mailingAddressCityTxZip\": \"\",\n    \"propertyAddress\": \"\",\n    \"statusNotes\": \"\",\n    \"otherNotes\": \"\",\n    \"cadMailingAddress\": \"\",\n    \"cadCity\": \"\",\n    \"cadZipCode\": \"\",\n    \"cadCounty\": \"\",\n    \"contactOwner\": \"\",\n    \"subcontractOwner\": \"\",\n    \"bppFee\": \"\",\n    \"contingencyFee\": \"\",\n    \"flatFee\": \"\",\n    \"aoaSigned\": \"\",\n    \"hearingDate\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/add-prospect-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "add-prospect-property"]
+            }
+          }
+        },
+        {
+          "name": "Delete Prospect Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/delete-prospect-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "delete-prospect-property"]
+            }
+          }
+        },
+        {
+          "name": "Convert Prospect to Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"clientNumber\": \"100\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/move-to-client",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "move-to-client"]
+            },
+            "description": "id = prospect id, clientNumber = user-entered client number (both required)."
+          }
+        },
+        {
+          "name": "Delete Prospect",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/delete-prospect",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "delete-prospect"]
+            }
+          }
+        },
+        {
+          "name": "Edit Prospect",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prospectId\": 1,\n  \"prospectDetails\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/edit-prospect",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "edit-prospect"]
+            }
+          }
+        },
+        {
+          "name": "Edit Property",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": 1,\n  \"propertyDetails\": {\n    \"propertyAddress\": \"\"\n  },\n  \"yearlyData\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/edit-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "edit-property"]
+            }
+          }
+        },
+        {
+          "name": "Edit Prospect Property",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": 1,\n  \"propertyDetails\": {\n    \"propertyAddress\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/edit-prospect-property",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "edit-prospect-property"]
+            }
+          }
+        },
+        {
+          "name": "Change Prospect Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prospectId\": 1,\n  \"newStatus\": \"CONTACTED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/change-prospect-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "change-prospect-status"]
+            }
+          }
+        },
+        {
+          "name": "Sign AOA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prospectId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/sign-aoa",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "sign-aoa"]
+            }
+          }
+        },
+        {
+          "name": "Preview Signed PDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prospectId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/preview-signed-pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "preview-signed-pdf"]
+            }
+          }
+        },
+        {
+          "name": "Download Signed PDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prospectId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/download-signed-pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "download-signed-pdf"]
+            }
+          }
+        },
+        {
+          "name": "Archive Entity",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableName\": \"client\",\n  \"id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/archive-entity",
+              "host": ["{{baseUrl}}"],
+              "path": ["action", "archive-entity"]
+            },
+            "description": "Toggle archive. tableName: client, prospect, property, invoice, etc."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contracts",
+      "item": [
+        {
+          "name": "Preview Client Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/preview-contract",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "preview-contract"]
+            },
+            "description": "Preview filled client contract PDF. Returns { contractPdf: base64 }. Requires clientId."
+          }
+        },
+        {
+          "name": "Preview AOA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 1,\n  \"propertyId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/preview-aoa",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "preview-aoa"]
+            },
+            "description": "Preview filled AOA for one property. Returns { aoaPdf: base64 }."
+          }
+        },
+        {
+          "name": "Send Docs (Unified)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 1,\n  \"type\": \"all_docs\",\n  \"propertyId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/send-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "send-docs"]
+            },
+            "description": "Unified send endpoint. type: contract | aoa | aoa_all | all_docs. propertyId required only for type=aoa."
+          }
+        },
+        {
+          "name": "Get Contracts by Client",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/client/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "client", "1"],
+              "variable": [
+                { "key": "clientId", "value": "1" }
+              ]
+            },
+            "description": "List all contracts (client contract + AOAs) for a client or prospect. Replace 1 with Client.id (works for both clients and prospects; prospects use the same Client table). Also: GET /api/contracts/client?clientId=..."
+          }
+        },
+        {
+          "name": "Sync Client Contract Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": 434\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/sync-client-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "sync-client-status"]
+            },
+            "description": "Poll DocuSign for all SENT contracts of this client and update status (and fetch signed PDF when completed). Use when webhook is not available (e.g. localhost). Returns updated contract list."
+          }
+        },
+        {
+          "name": "Poll Contract Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"envelopeId\": \"your-envelope-id-from-docusign\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/poll-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "poll-status"]
+            },
+            "description": "Poll DocuSign envelope status. Updates contract and stores signed PDF when completed."
+          }
+        },
+        {
+          "name": "Get Signed Document Download URL",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/contracts/1/download-url?expiresIn=3600",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contracts", "1", "download-url"],
+              "query": [
+                { "key": "expiresIn", "value": "3600", "description": "Seconds (max 86400)" }
+              ],
+              "variable": [
+                { "key": "contractId", "value": "1" }
+              ]
+            },
+            "description": "Get short-lived signed URL for signed PDF. Replace 1 with contractId. Only works when status is COMPLETED."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoice",
+      "item": [
+        {
+          "name": "Generate Invoices",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientIds\": [1, 2],\n  \"propertyAccountNumbers\": null,\n  \"years\": [2025],\n  \"invoiceDefaults\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/invoice/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoice", "generate"]
+            },
+            "description": "clientIds required (array of Client.id). years defaults to current year if omitted."
+          }
+        },
+        {
+          "name": "Get Invoice Properties",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/invoice/properties",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoice", "properties"]
+            },
+            "description": "Available properties for invoice generation."
+          }
+        },
+        {
+          "name": "Get Invoice Clients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/invoice/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoice", "clients"]
+            },
+            "description": "Clients for invoice generation selection."
+          }
+        },
+        {
+          "name": "Get Invoice Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/invoice/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoice", "stats"]
+            },
+            "description": "Invoice generation statistics."
+          }
+        }
+      ]
+    },
+    {
+      "name": "CSV",
+      "item": [
+        {
+          "name": "Preview Clients & Properties",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "csv",
+                  "type": "file",
+                  "src": "",
+                  "description": "CSV with client + property columns (CLIENT #, CLIENT Name, Email, Account Number, etc.)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csv/preview-clients-properties",
+              "host": ["{{baseUrl}}"],
+              "path": ["csv", "preview-clients-properties"]
+            },
+            "description": "Preview what would be new vs updated. Touches only Client and Property. Response: newClients, updatedClients, newProperties, updatedProperties."
+          }
+        },
+        {
+          "name": "Upload Clients & Properties",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "csv",
+                  "type": "file",
+                  "src": "",
+                  "description": "CSV with client + property data"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csv/upload-clients-properties",
+              "host": ["{{baseUrl}}"],
+              "path": ["csv", "upload-clients-properties"]
+            },
+            "description": "Import CSV into Client and Property tables only. Same format as preview."
+          }
+        },
+        {
+          "name": "Preview Invoices",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "csv",
+                  "type": "file",
+                  "src": "",
+                  "description": "CSV with year, accountNumber, and invoice fields"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csv/preview-invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["csv", "preview-invoices"]
+            },
+            "description": "Preview what would be new vs updated. Touches only Invoice. Response: newInvoices, updatedInvoices, skipped."
+          }
+        },
+        {
+          "name": "Upload Invoices",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "csv",
+                  "type": "file",
+                  "src": "",
+                  "description": "CSV with year, accountNumber, and invoice fields"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csv/upload-invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["csv", "upload-invoices"]
+            },
+            "description": "Import CSV into Invoice table only. Upsert by propertyId + year."
+          }
+        }
+      ]
+    }
+  ]
+}

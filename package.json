@@ -1,0 +1,14 @@
+{
+  "name": "lsptax-dash",
+  "private": true,
+  "description": "LSPTax monorepo — web + api",
+  "scripts": {
+    "local": "VITE_BACKEND_URL=http://localhost:3000 npm run dev --prefix web",
+    "prod": "VITE_BACKEND_URL=https://lsptax-server.fly.dev npm run dev --prefix web",
+    "setup:env": "node scripts/setup-env.js",
+    "install:web": "npm install --prefix web",
+    "install:api": "npm install --prefix api",
+    "install:all": "npm run setup:env && npm run install:api && npm run install:web",
+    "api:dev": "npm run dev --prefix api"
+  }
+}

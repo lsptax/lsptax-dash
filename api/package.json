@@ -1,0 +1,44 @@
+{
+  "type": "module",
+  "name": "api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:prod": "NODE_ENV=production node src/index.js",
+    "reset-clients": "node scripts/resetClients.js",
+    "reset-clients:dry-run": "node scripts/resetClients.js --dry-run",
+    "audit-client-property-csv": "node scripts/auditClientPropertyCsv.js",
+    "dev": "NODE_ENV=development nodemon src/index.js",
+    "postinstall": "prisma generate"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.12.2",
+    "archiver": "^7.0.1",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.6.0",
+    "docusign-esign": "^8.0.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "fast-csv": "^5.0.2",
+    "json2csv": "^6.0.0-alpha.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "p-limit": "^6.2.0",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.13.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prisma": "^7.4.2"
+  }
+}
