@@ -53,7 +53,7 @@ const sampleCsv: Record<
   },
   invoices: {
     headersLine:
-      "year,Account Number,protestDate,bppRendered,bppInvoice,bppPaid,noticeLandValue,noticeImprovementValue,noticeMarketValue,noticeAppraisedValue,finalLandValue,finalImprovementValue,finalMarketValue,finalAppraisedValue,marketReduction,appraisedReduction,taxRate,taxableSavings,contingencyFee,invoiceAmount,hearingDate,invoiceDate,paidDate,paymentNotes",
+      "year,Account Number,protestDate,bppRendered,bppInvoice,bppPaid,noticeLandValue,noticeImprovementValue,noticeMarketValue,noticeAppraisedValue,finalLandValue,finalImprovementValue,finalMarketValue,finalAppraisedValue,marketReduction,appraisedReduction,taxRate,taxableSavings,contingencyFee,invoiceAmount,hearingDate,generatedDate,dueDate,invoiceDate,paidDate,paymentNotes",
     sampleLine:
       "2024,R226434,,,,,63206,428714,491920,418817,63206,441741,504947,460699,11233,41882,2.45,1850,555,2405,,,,",
   },

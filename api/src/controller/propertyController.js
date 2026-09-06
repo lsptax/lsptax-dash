@@ -7,6 +7,15 @@ import {
   convertToXLSX,
   EXPORT_FIELDS,
 } from "../services/exportService.js";
+import {
+  buildInvoicePatchFromYearlyData,
+  normalizeYearlyRow,
+  normalizeYearlyDataInput,
+} from "../utils/invoiceYearlyData.js";
+
+function logEditPropertyDebug(label, data) {
+  console.log(`[edit-property] ${label}:`, JSON.stringify(data, null, 2));
+}
 
 // --- Mutations (action routes) ---
 export const addPropertyToClient = async (req, res) => {
@@ -17,7 +26,7 @@ export const addPropertyToClient = async (req, res) => {
     const newProperty = await propertyService.addPropertyToClient(clientId, propertyData);
     if (!newProperty) return sendError(res, 404, "Client not found");
     res.status(201).json({
-      message: "Property added successfully with 5 invoices",
+      message: "Property added successfully with invoice rows",
       property: newProperty,
     });
   } catch (error) {
@@ -28,8 +37,28 @@ export const addPropertyToClient = async (req, res) => {
 
 export const editProperty = async (req, res) => {
   try {
-    const { propertyId, propertyDetails, yearlyData } = req.body;
+    const { propertyId, propertyDetails, yearlyData, year, invoices } = req.body;
     if (!propertyId) return sendError(res, 400, "Property ID is required");
+
+    logEditPropertyDebug("raw payload", {
+      propertyId,
+      year: year ?? null,
+      topLevelKeys: Object.keys(req.body ?? {}),
+      propertyDetails,
+      yearlyData,
+      invoices: invoices ?? null,
+    });
+
+    const existingProperty = await prisma.property.findUnique({
+      where: { id: parseInt(propertyId, 10) },
+      include: { client: { select: { contingencyFee: true } } },
+    });
+    if (!existingProperty) return sendError(res, 404, "Property not found");
+
+    const clientContingencyFee =
+      existingProperty.client?.contingencyFee != null
+        ? Number(existingProperty.client.contingencyFee)
+        : 25;
 
     const updatedProperty = await propertyService.updateProperty(
       propertyId,
@@ -37,48 +66,59 @@ export const editProperty = async (req, res) => {
       PROPERTY_UPDATE_FIELDS
     );
 
-    if (yearlyData) {
-      const cleanAndParseDecimal = (value) => {
-        if (!value) return 0;
-        const cleanValue = value.toString().replace(/,/g, "");
-        return parseFloat(cleanValue) || 0;
-      };
+    const fallbackYear =
+      year ??
+      propertyDetails?.year ??
+      propertyDetails?.selectedYear ??
+      new Date().getFullYear();
+    const yearlyByYear =
+      normalizeYearlyDataInput(yearlyData, { fallbackYear }) ??
+      normalizeYearlyDataInput(propertyDetails?.yearlyData, { fallbackYear }) ??
+      normalizeYearlyDataInput(invoices, { fallbackYear }) ??
+      normalizeYearlyDataInput(propertyDetails, { fallbackYear });
 
-      const invoiceOperations = Object.entries(yearlyData).map(async ([year, data]) => {
-        const yearInt = parseInt(year, 10);
-        if (!Number.isFinite(yearInt)) return null;
-        const invoiceData = {
-          protestDate: data["Protest Date"] || "",
-          bppRendered: data["BPP Rendered"] || "",
-          bppInvoice: data["BPP Invoice"] || "",
-          bppPaid: data["BPP Paid"] || "",
-          noticeLandValue: cleanAndParseDecimal(data["Notice Land Value"]),
-          noticeImprovementValue: cleanAndParseDecimal(data["Notice Improvement Value"]),
-          noticeMarketValue: cleanAndParseDecimal(data["Notice Market Value"]),
-          noticeAppraisedValue: cleanAndParseDecimal(data["Notice Appraised Value"]),
-          finalLandValue: cleanAndParseDecimal(data["Final Land Value"]),
-          finalImprovementValue: cleanAndParseDecimal(data["Final Improvement Value"]),
-          finalMarketValue: cleanAndParseDecimal(data["Final Market Value"]),
-          finalAppraisedValue: cleanAndParseDecimal(data["Final Appraised Value"]),
-          marketReduction: cleanAndParseDecimal(data["Market Reduction"]),
-          appraisedReduction: cleanAndParseDecimal(data["Appraised Reduction"]),
-          hearingDate: data["Hearing Date"] || "",
-          invoiceDate: data["Invoice Date"] || "",
-          underLitigation: data["Under Litigation"] || false,
-          underArbitration: data["Under Arbitration"] || false,
-          taxRate: cleanAndParseDecimal(data["Tax Rate"]),
-          taxableSavings: cleanAndParseDecimal(data["Taxable Savings"]),
-          contingencyFee: cleanAndParseDecimal(data["Contingency Fee"]),
-          invoiceAmount: cleanAndParseDecimal(data["Invoice Amount"]),
-          paidDate: data["Paid Date"] || "",
-          paymentNotes: data["Payment Notes"] || "",
-          beginningMarket: cleanAndParseDecimal(data["Beginning Market"]),
-          endingMarket: cleanAndParseDecimal(data["Ending Market"]),
-          beginningAppraised: cleanAndParseDecimal(data["Beginning Appraised"]),
-          endingAppraised: cleanAndParseDecimal(data["Ending Appraised"]),
-        };
+    logEditPropertyDebug("resolved yearlyByYear", yearlyByYear);
 
-        // Use upsert on (propertyId, year) unique index to avoid an extra read per year.
+    if (yearlyByYear && Object.keys(yearlyByYear).length > 0) {
+      const yearEntries = Object.entries(yearlyByYear);
+      const years = yearEntries.map(([y]) => parseInt(y, 10));
+
+      const existingInvoices = years.length
+        ? await prisma.invoice.findMany({
+            where: {
+              propertyId: updatedProperty.id,
+              year: { in: years },
+            },
+          })
+        : [];
+      const invoiceByYear = new Map(existingInvoices.map((inv) => [inv.year, inv]));
+
+      const invoiceOperations = yearEntries.map(async ([y, row]) => {
+        const yearInt = parseInt(y, 10);
+        const existing = invoiceByYear.get(yearInt) ?? null;
+        const normalizedRow = normalizeYearlyRow(row);
+        const patch = buildInvoicePatchFromYearlyData(
+          normalizedRow,
+          existing,
+          clientContingencyFee
+        );
+
+        logEditPropertyDebug(`year ${yearInt}`, {
+          rawRow: row,
+          normalizedRow,
+          existingInvoice: existing
+            ? {
+                noticeLandValue: existing.noticeLandValue,
+                noticeImprovementValue: existing.noticeImprovementValue,
+                noticeMarketValue: existing.noticeMarketValue,
+                finalLandValue: existing.finalLandValue,
+                finalImprovementValue: existing.finalImprovementValue,
+                finalMarketValue: existing.finalMarketValue,
+              }
+            : null,
+          patch,
+        });
+
         return prisma.invoice.upsert({
           where: {
             propertyId_year: {
@@ -86,22 +126,38 @@ export const editProperty = async (req, res) => {
               year: yearInt,
             },
           },
-          update: invoiceData,
+          update: patch,
           create: {
-            ...invoiceData,
             propertyId: updatedProperty.id,
             accountNumber: updatedProperty.accountNumber,
             clientNumber: updatedProperty.clientNumber,
             year: yearInt,
+            contingencyFee: clientContingencyFee,
+            ...patch,
           },
         });
       });
+
       await Promise.all(invoiceOperations);
+    } else {
+      logEditPropertyDebug(
+        "no invoice years to save",
+        "yearlyData/invoices/propertyDetails had no recognizable invoice fields or year keys"
+      );
     }
+
+    const invoiceYearsSaved = yearlyByYear ? Object.keys(yearlyByYear) : [];
+    const invoiceSaveSkipped = invoiceYearsSaved.length === 0;
 
     res.status(200).json({
       message: "Property updated successfully",
       property: updatedProperty,
+      invoiceYearsSaved,
+      ...(invoiceSaveSkipped && {
+        warning:
+          "Invoice data was not saved: yearlyData was empty or had no invoice fields. " +
+          "Send yearlyData like { \"2026\": { \"noticeLandValue\": 100000, \"noticeImprovementValue\": 50000, ... } }.",
+      }),
     });
   } catch (error) {
     console.error("Error updating property:", error);

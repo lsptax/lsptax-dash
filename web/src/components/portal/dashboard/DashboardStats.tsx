@@ -33,9 +33,11 @@ const DashboardStats = ({
 }) => {
   const hearingStats = stats.hearings;
   const weekRange =
-    hearingStats?.weekStart && hearingStats?.weekEnd
-      ? `${new Date(hearingStats.weekStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${new Date(hearingStats.weekEnd).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-      : undefined;
+    hearingStats?.weekStartDate && hearingStats?.weekEndDate
+      ? `${new Date(`${hearingStats.weekStartDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${new Date(`${hearingStats.weekEndDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+      : hearingStats?.weekStart && hearingStats?.weekEnd
+        ? `${new Date(hearingStats.weekStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${new Date(hearingStats.weekEnd).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+        : undefined;
 
   const items: StatsCardConfig[] = [
     {
@@ -55,7 +57,7 @@ const DashboardStats = ({
       icon: <CalendarDays className="h-10 w-10 text-indigo-600" strokeWidth={1.5} />,
       number: loading ? null : (hearingStats?.meetingsThisWeek ?? 0),
       link: routes.hearings.list(),
-      sublabel: weekRange ? `Week of ${weekRange}` : "Upcoming hearings",
+      sublabel: weekRange ? `${weekRange}` : "Upcoming hearings",
     },
     {
       label: "Meetings today",

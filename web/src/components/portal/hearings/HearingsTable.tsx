@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,40 +14,50 @@ import { useHearingsQuery } from "@/hooks/queries";
 import { TableSkeleton } from "../TableSkeleton";
 import { HEARING_STATUS_OPTIONS } from "@/constants/hearings";
 import { Calendar, Search } from "lucide-react";
+import {
+  mergeHearingListParams,
+  parseHearingListParams,
+} from "@/utils/listParams/hearings";
+import { useListSearchParams } from "@/hooks/useListSearchParams";
 
 const HearingsTable = () => {
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [appliedFrom, setAppliedFrom] = useState("");
-  const [appliedTo, setAppliedTo] = useState("");
-  const [appliedStatus, setAppliedStatus] = useState<string>("");
+  const { params, updateParams } = useListSearchParams(
+    parseHearingListParams,
+    mergeHearingListParams
+  );
+  const { from, to, status, offset, limit } = params;
+  const [fromDate, setFromDate] = useState(from);
+  const [toDate, setToDate] = useState(to);
+  const [statusFilter, setStatusFilter] = useState(status || "all");
+
+  useEffect(() => {
+    setFromDate(from);
+    setToDate(to);
+    setStatusFilter(status || "all");
+  }, [from, status, to]);
 
   const applyFilters = () => {
-    setAppliedFrom(fromDate.trim());
-    setAppliedTo(toDate.trim());
-    setAppliedStatus(statusFilter === "all" ? "" : statusFilter);
-    setOffset(0);
+    updateParams({
+      from: fromDate.trim(),
+      to: toDate.trim(),
+      status: statusFilter === "all" ? "" : statusFilter,
+      offset: 0,
+    });
   };
 
   const clearFilters = () => {
     setFromDate("");
     setToDate("");
     setStatusFilter("all");
-    setAppliedFrom("");
-    setAppliedTo("");
-    setAppliedStatus("");
-    setOffset(0);
+    updateParams({ from: "", to: "", status: "", offset: 0 });
   };
 
   const { data, isLoading, isError, refetch } = useHearingsQuery({
     limit,
     offset,
-    from: appliedFrom || undefined,
-    to: appliedTo || undefined,
-    status: appliedStatus || undefined,
+    from: from || undefined,
+    to: to || undefined,
+    status: status || undefined,
   });
 
   const hearings = data?.data ?? [];
@@ -78,7 +88,7 @@ const HearingsTable = () => {
     );
   }
 
-  const hasFilters = appliedFrom || appliedTo || appliedStatus;
+  const hasFilters = from || to || status;
 
   return (
     <div>
@@ -151,11 +161,10 @@ const HearingsTable = () => {
           limit,
           offset,
           hasMore,
-          onPrev: () => setOffset((o) => Math.max(0, o - limit)),
-          onNext: () => setOffset((o) => o + limit),
+          onPrev: () => updateParams({ offset: Math.max(0, offset - limit) }),
+          onNext: () => updateParams({ offset: offset + limit }),
           onPageSizeChange: (size) => {
-            setLimit(size);
-            setOffset(0);
+            updateParams({ limit: size, offset: 0 });
           },
         }}
         emptyState={{

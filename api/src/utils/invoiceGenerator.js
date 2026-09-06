@@ -1,19 +1,79 @@
 import prisma from "../../prisma/prismaClient.js";
+import {
+  DERIVED_INVOICE_FIELDS,
+  derivedInvoicePatch,
+  normalizeContingencyPercent,
+  INVOICE_DATE_STRING_FIELDS,
+  normalizeInvoiceDateString,
+  todayInvoiceDateString,
+} from "./invoiceYearlyData.js";
+
+/** Fields safe to set on bulk generate without wiping user-entered invoice data. */
+const GENERATE_METADATA_FIELDS = new Set([
+  "invoiceDate",
+  "dueDate",
+  "generatedDate",
+  "protestDate",
+  "hearingDate",
+  "bppRendered",
+  "bppInvoice",
+  "bppPaid",
+  "paidDate",
+  "isPaid",
+  "paymentNotes",
+  "underLitigation",
+  "underArbitration",
+]);
+
+function pickGenerateDefaults(invoiceDefaults) {
+  if (!invoiceDefaults || typeof invoiceDefaults !== "object") return {};
+  const picked = Object.fromEntries(
+    Object.entries(invoiceDefaults)
+      .filter(([k]) => GENERATE_METADATA_FIELDS.has(k))
+      .map(([k, v]) => [
+        k,
+        INVOICE_DATE_STRING_FIELDS.has(k) ? normalizeInvoiceDateString(v) : v,
+      ])
+  );
+
+  // Keep bulk-send paymentStatus (isPaid) in sync with generate metadata.
+  if (Object.prototype.hasOwnProperty.call(picked, "isPaid")) {
+    picked.isPaid = picked.isPaid === true || String(picked.isPaid).toLowerCase() === "true";
+    if (!picked.isPaid) picked.paidDate = "";
+    else if (!String(picked.paidDate || "").trim()) {
+      picked.paidDate = todayInvoiceDateString();
+    }
+  } else if (Object.prototype.hasOwnProperty.call(picked, "paidDate")) {
+    picked.isPaid = Boolean(String(picked.paidDate || "").trim());
+  }
+
+  return picked;
+}
+
+function hasStoredDerivedValue(value) {
+  if (value == null) return false;
+  const n = Number(value);
+  return Number.isFinite(n) && n !== 0;
+}
+
+function getStoredDerivedFields(existingInvoice) {
+  return new Set(
+    [...DERIVED_INVOICE_FIELDS].filter((field) =>
+      hasStoredDerivedValue(existingInvoice?.[field])
+    )
+  );
+}
 
 /**
  * Generate invoices for selected clients and properties (by clientId).
- * @param {Object} options - Generation options
- * @param {number[]} options.clientIds - Array of client IDs to generate invoices for
- * @param {string[]} options.propertyAccountNumbers - Optional filter by account numbers
- * @param {number[]} options.years - Years to generate for
- * @param {Object} options.invoiceDefaults - Default values for invoice fields
+ * Preserves existing financial fields on update; new rows start at zero.
  */
 export async function generateInvoices(options) {
   const {
     clientIds,
     propertyAccountNumbers = null,
     years = [new Date().getFullYear()],
-    invoiceDefaults = {}
+    invoiceDefaults = {},
   } = options;
 
   try {
@@ -30,111 +90,112 @@ export async function generateInvoices(options) {
         where: {
           accountNumber: { in: propertyAccountNumbers },
           clientId: { in: clientIds },
-          isArchived: false
-        }
+          isArchived: false,
+        },
+        include: { client: { select: { contingencyFee: true } } },
       });
     } else {
       properties = await prisma.property.findMany({
         where: {
           clientId: { in: clientIds },
-          isArchived: false
-        }
+          isArchived: false,
+        },
+        include: { client: { select: { contingencyFee: true } } },
       });
     }
 
     const existingInvoices = await prisma.invoice.findMany({
       where: {
-        propertyId: { in: properties.map(p => p.id) },
-        year: { in: years }
+        propertyId: { in: properties.map((p) => p.id) },
+        year: { in: years },
       },
-      select: {
-        id: true,
-        propertyId: true,
-        accountNumber: true,
-        year: true
-      }
     });
 
-    const existingInvoiceKeys = new Set(
-      existingInvoices.map(inv => `${inv.propertyId}-${inv.year}`)
+    const existingByKey = new Map(
+      existingInvoices.map((inv) => [`${inv.propertyId}-${inv.year}`, inv])
     );
 
-    // Prepare invoice data for creation and update
+    const metadataDefaults = pickGenerateDefaults(invoiceDefaults);
+    const today = todayInvoiceDateString();
+
     const invoiceData = [];
     const updateData = [];
     const createdInvoices = [];
     const updatedInvoices = [];
 
     for (const property of properties) {
+      const clientPct = normalizeContingencyPercent(
+        null,
+        property.client?.contingencyFee != null
+          ? Number(property.client.contingencyFee)
+          : 25
+      );
+
       for (const year of years) {
         const invoiceKey = `${property.id}-${year}`;
-        let invoiceAmount = 0;
+        const existing = existingByKey.get(invoiceKey);
 
-        const invoiceDataItem = {
-          propertyId: property.id,
-          accountNumber: property.accountNumber,
-          clientNumber: property.clientNumber,
-          year,
-          invoiceAmount,
-          invoiceDate: new Date().toISOString().split('T')[0],
-          ...invoiceDefaults
-        };
+        if (existing) {
+          const merged = {
+            ...existing,
+            ...metadataDefaults,
+            invoiceDate: metadataDefaults.invoiceDate ?? today,
+          };
+          const derived = derivedInvoicePatch(merged, clientPct, {
+            preserveDerivedFields: getStoredDerivedFields(existing),
+          });
 
-        if (existingInvoiceKeys.has(invoiceKey)) {
-          const existingInvoice = existingInvoices.find(inv =>
-            inv.propertyId === property.id && inv.year === year
-          );
-
-          if (existingInvoice) {
-            updateData.push({
-              id: existingInvoice.id,
-              data: invoiceDataItem
-            });
-            updatedInvoices.push({
-              accountNumber: property.accountNumber,
-              clientNumber: property.clientNumber,
-              year,
-              reason: "Updated existing invoice"
-            });
-          } else {
-            invoiceData.push(invoiceDataItem);
-            createdInvoices.push({
-              accountNumber: property.accountNumber,
-              clientNumber: property.clientNumber,
-              year,
-              reason: "Created new invoice (not found in existing)"
-            });
-          }
+          updateData.push({
+            id: existing.id,
+            data: {
+              ...metadataDefaults,
+              invoiceDate: metadataDefaults.invoiceDate ?? today,
+              ...derived,
+            },
+          });
+          updatedInvoices.push({
+            accountNumber: property.accountNumber,
+            clientNumber: property.clientNumber,
+            year,
+            reason: "Updated invoice metadata and recalculated amounts from stored values",
+          });
         } else {
-          invoiceData.push(invoiceDataItem);
+          const shell = {
+            propertyId: property.id,
+            accountNumber: property.accountNumber,
+            clientNumber: property.clientNumber,
+            year,
+            invoiceDate: metadataDefaults.invoiceDate ?? today,
+            contingencyFee: clientPct,
+            ...metadataDefaults,
+          };
+          invoiceData.push(shell);
           createdInvoices.push({
             accountNumber: property.accountNumber,
             clientNumber: property.clientNumber,
             year,
-            reason: "Created new invoice"
+            reason: "Created new invoice",
           });
         }
       }
     }
 
-    // Create new invoices in batches
     if (invoiceData.length > 0) {
       const batchSize = 100;
       for (let i = 0; i < invoiceData.length; i += batchSize) {
         const batch = invoiceData.slice(i, i + batchSize);
         await prisma.invoice.createMany({
           data: batch,
-          skipDuplicates: true
+          skipDuplicates: true,
         });
       }
     }
 
-    // Update existing invoices
     if (updateData.length > 0) {
       for (const updateItem of updateData) {
         await prisma.invoice.update({
           where: { id: updateItem.id },
-          data: updateItem.data
+          data: updateItem.data,
         });
       }
     }
@@ -147,10 +208,9 @@ export async function generateInvoices(options) {
       totalYears: years.length,
       details: {
         created: createdInvoices,
-        updated: updatedInvoices
-      }
+        updated: updatedInvoices,
+      },
     };
-
   } catch (error) {
     console.error("Error generating invoices:", error);
     throw error;
@@ -167,25 +227,24 @@ export async function getExistingInvoices(propertyAccountNumbers, years = null) 
   try {
     const whereClause = {
       accountNumber: {
-        in: propertyAccountNumbers
-      }
+        in: propertyAccountNumbers,
+      },
     };
 
     if (years && years.length > 0) {
       whereClause.year = {
-        in: years
+        in: years,
       };
     }
 
     const invoices = await prisma.invoice.findMany({
       where: whereClause,
-      orderBy: [{ propertyId: "asc" }, { year: "desc" }]
+      orderBy: [{ propertyId: "asc" }, { year: "desc" }],
     });
 
     return invoices;
-
   } catch (error) {
     console.error("Error getting existing invoices:", error);
     throw error;
   }
-} 
+}

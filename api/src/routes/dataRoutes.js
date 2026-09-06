@@ -20,7 +20,8 @@ import {
   downloadPropertiesXLSX,
 } from "../controller/propertyController.js";
 import {
-  getInvoice,
+  getInvoicesByClient,
+  getInvoiceByProperty,
   getAllInvoices,
   getArchiveInvoices,
   getCounts,
@@ -80,7 +81,8 @@ router.get(
 router.get("/archive_properties", getArchiveProperties);
 router.get("/property", getPropertyDetails);
 
-router.get("/invoice/:clientId", getInvoice);
+router.get("/invoice/clientid=:id", getInvoicesByClient);
+router.get("/invoice/:id", getInvoiceByProperty);
 router.get("/invoices", getAllInvoices);
 router.get("/archive-invoices", getArchiveInvoices);
 

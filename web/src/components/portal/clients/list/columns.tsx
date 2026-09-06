@@ -1,9 +1,9 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { NavLink } from "react-router-dom";
 import { routes } from "@/routes/ROUTES";
 import { ClientActionsCell } from "./ClientActionsCell";
+import { ListDetailLink } from "../../ListDetailLink";
 
 export type Clients = {
   isArchived: boolean;
@@ -24,9 +24,9 @@ export const clientsColumn: ColumnDef<Clients>[] = [
       const clientNumber = row.original.clientNumber ?? clientId;
 
       return (
-        <NavLink to={routes.client.detail(clientId)}>
+        <ListDetailLink to={routes.client.detail(clientId)}>
           <div className="text-blue-400 font-bold">#{clientNumber}</div>
-        </NavLink>
+        </ListDetailLink>
       );
     },
   },

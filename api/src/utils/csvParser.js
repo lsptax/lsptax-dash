@@ -7,6 +7,7 @@ import {
   getClientNumberFromRow,
   getClientDataFromRow,
   getPropertyDataFromRow,
+  getPropertyUpdateDataFromCsv,
 } from "../config/csvColumnMapping.js";
 import { propertyImportIdentityKey } from "./propertyImportKey.js";
 
@@ -66,6 +67,7 @@ export async function importCSV(filePath) {
 
     const existingProperties = await prisma.property.findMany({
       select: {
+        id: true,
         accountNumber: true,
         clientNumber: true,
       },
@@ -73,9 +75,20 @@ export async function importCSV(filePath) {
     const existingImportKeys = new Set(
       existingProperties.map((p) => propertyImportIdentityKey(p.clientNumber, p))
     );
+    const existingPropertyByImportKey = new Map(
+      existingProperties.map((p) => [
+        propertyImportIdentityKey(p.clientNumber, p),
+        p,
+      ])
+    );
 
     const tasks = [];
-    const stats = { clientsCreated: 0, clientsSkipped: 0, propertiesCreated: 0 };
+    const stats = {
+      clientsCreated: 0,
+      clientsSkipped: 0,
+      propertiesCreated: 0,
+      propertiesUpdated: 0,
+    };
 
     for (const clientData of clientsMap.values()) {
       const { properties, ...clientInfo } = clientData;
@@ -110,12 +123,24 @@ export async function importCSV(filePath) {
             stats.clientsSkipped++;
           }
 
-          const newProperties = properties.filter(
-            (p) =>
-              !existingImportKeys.has(
-                propertyImportIdentityKey(client.clientNumber, p)
-              )
-          );
+          const newProperties = [];
+          const propertyUpdatesById = new Map();
+
+          for (const p of properties) {
+            const importKey = propertyImportIdentityKey(
+              client.clientNumber,
+              p
+            );
+            if (!existingImportKeys.has(importKey)) {
+              newProperties.push(p);
+              continue;
+            }
+            const existing = existingPropertyByImportKey.get(importKey);
+            const updateData = getPropertyUpdateDataFromCsv(p);
+            if (existing && Object.keys(updateData).length > 0) {
+              propertyUpdatesById.set(existing.id, updateData);
+            }
+          }
 
           if (newProperties.length > 0 && client) {
             const propertyData = newProperties.map((p) => ({
@@ -129,12 +154,19 @@ export async function importCSV(filePath) {
             });
             stats.propertiesCreated += propertyData.length;
           }
+
+          for (const [id, data] of propertyUpdatesById) {
+            await prisma.property.update({ where: { id }, data });
+            stats.propertiesUpdated += 1;
+          }
         })
       );
     }
 
     await Promise.all(tasks);
+    return stats;
   } catch (error) {
     console.error("CSV import error:", error);
+    throw error;
   }
 }

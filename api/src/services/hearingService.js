@@ -8,7 +8,10 @@ import {
   parseHearingStatusInput,
 } from "../config/hearingConstants.js";
 import { paginate } from "../utils/pagination.js";
-import { getDayRange, getWeekRange } from "../utils/weekRange.js";
+import {
+  getDayRange,
+  getMeetingsThisWeekRange,
+} from "../utils/weekRange.js";
 
 /** Active hearings only (not soft-deleted). */
 const notDeleted = { deletedAt: null };
@@ -61,9 +64,20 @@ const hearingListSelect = {
   property: propertyWithClientSelect,
 };
 
-function parseHearingDate(raw) {
+function parseHearingDate(raw, { endOfDay = false } = {}) {
   if (raw == null || raw === "") return null;
-  const d = raw instanceof Date ? raw : new Date(raw);
+  if (raw instanceof Date) {
+    return Number.isNaN(raw.getTime()) ? null : raw;
+  }
+  const s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map(Number);
+    if (endOfDay) {
+      return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+    }
+    return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  }
+  const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -260,7 +274,7 @@ function buildListWhere({ from, to, status }) {
   };
   const dateFilter = {};
   const fromDate = from ? parseHearingDate(from) : null;
-  const toDate = to ? parseHearingDate(to) : null;
+  const toDate = to ? parseHearingDate(to, { endOfDay: true }) : null;
   if (fromDate) dateFilter.gte = fromDate;
   if (toDate) dateFilter.lte = toDate;
   if (Object.keys(dateFilter).length) where.date = dateFilter;
@@ -286,10 +300,21 @@ export async function listHearings({ limit, offset, from, to, status }) {
   });
 }
 
+const weekListWhere = (rangeStart, rangeEnd) => ({
+  ...notDeleted,
+  property: { isArchived: false },
+  date: { gte: rangeStart, lte: rangeEnd },
+});
+
 /** Dashboard hearing stats (non-archived properties only). */
 export async function getHearingStats() {
   const now = new Date();
-  const { start: weekStart, end: weekEnd } = getWeekRange(now);
+  const {
+    start: weekStart,
+    end: weekEnd,
+    startDate,
+    endDate,
+  } = getMeetingsThisWeekRange(now);
   const { start: dayStart, end: dayEnd } = getDayRange(now);
 
   const baseWhere = {
@@ -297,26 +322,29 @@ export async function getHearingStats() {
     property: { isArchived: false },
   };
 
-  const [meetingsThisWeek, meetingsToday, totalScheduled] = await Promise.all([
-    prisma.hearing.count({
-      where: {
-        ...baseWhere,
-        date: { gte: weekStart, lte: weekEnd },
-      },
-    }),
-    prisma.hearing.count({
-      where: {
-        ...baseWhere,
-        date: { gte: dayStart, lte: dayEnd },
-      },
-    }),
-    prisma.hearing.count({
-      where: {
-        ...baseWhere,
-        status: "SCHEDULED",
-      },
-    }),
-  ]);
+  const weekWhere = weekListWhere(weekStart, weekEnd);
+
+  const [meetingsThisWeek, meetingsToday, totalScheduled, weekRows] =
+    await Promise.all([
+      prisma.hearing.count({ where: weekWhere }),
+      prisma.hearing.count({
+        where: {
+          ...baseWhere,
+          date: { gte: dayStart, lte: dayEnd },
+        },
+      }),
+      prisma.hearing.count({
+        where: {
+          ...baseWhere,
+          status: "SCHEDULED",
+        },
+      }),
+      prisma.hearing.findMany({
+        where: weekWhere,
+        orderBy: { date: "asc" },
+        select: hearingListSelect,
+      }),
+    ]);
 
   return {
     meetingsThisWeek,
@@ -324,6 +352,9 @@ export async function getHearingStats() {
     totalScheduled,
     weekStart: weekStart.toISOString(),
     weekEnd: weekEnd.toISOString(),
+    weekStartDate: startDate,
+    weekEndDate: endDate,
+    meetingsThisWeekList: weekRows.map(hearingListItemDto),
   };
 }
 

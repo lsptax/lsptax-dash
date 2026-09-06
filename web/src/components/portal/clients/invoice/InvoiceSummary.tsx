@@ -88,7 +88,7 @@ const InvoiceSummary: React.FC<{
             <p className="text-sm">16107 KENSINGTON DRIVE, STE. 194</p>
             <p className="text-sm">SUGARLAND, TX 77479</p>
             <p className="text-sm">info@lsptax.com</p>
-            <p className="text-sm">713-505-6806</p>
+            <p className="text-sm">832-847-3911</p>
           </div>
           <div>
             <p className="font-bold">

@@ -1,4 +1,4 @@
-import { Link, NavLink, useSearchParams } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { getSingleProspect } from "@/store/data";
 import {
@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Property, Prospect } from "@/types/types";
 import { useToast } from "@/hooks/use-toast";
 import { routes } from "@/routes/ROUTES";
+import { BackToListLink } from "../BackToListLink";
 
 interface ProspectData {
   prospect: Prospect;
@@ -151,9 +152,7 @@ const ProspectPage = () => {
           Open a prospect from the list so the URL includes{" "}
           <code className="text-sm bg-muted px-1 rounded">?id=…</code>.
         </p>
-        <Button asChild variant="outline">
-          <Link to={routes.prospects.list()}>Back to prospects</Link>
-        </Button>
+        <BackToListLink fallback={routes.prospects.list()} label="Back to prospects" />
       </div>
     );
   }
@@ -240,6 +239,9 @@ const ProspectPage = () => {
 
   return (
     <div className="m-2 rounded-lg bg-white p-4">
+      <div className="mb-4">
+        <BackToListLink fallback={routes.prospects.list()} label="Back to prospects" />
+      </div>
       <div className="flex justify-between">
         <div className="flex justify-center items-center gap-4 mb-6">
           <h1 className="text-4xl font-bold text-center">Prospect Details</h1>

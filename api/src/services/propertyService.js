@@ -8,38 +8,34 @@ import {
 import { getHearingsByPropertyId } from "./hearingService.js";
 import { paginate } from "../utils/pagination.js";
 import { sanitizeSearchTerm } from "../utils/search.js";
+import { propertySearchWhere } from "../utils/propertySearch.js";
+import { buildCadMailingAddressDisplay } from "../utils/propertyAddress.js";
+import { invoiceToApiDto } from "../utils/invoiceYearlyData.js";
 
-const propertyToDto = (p) => ({
-  clientId: p.clientId,
-  clientNumber: p.clientNumber,
-  propertyId: p.id,
-  propertyAccount: p.accountNumber,
-  propertyDetails: {
-    assessor: p.cadCounty,
-    address: [p.mailingAddress, p.mailingAddressCityTxZip],
-  },
-  cadOwner: {
-    name: p.nameOnCad,
-    address: p.cadMailingAddress,
-    county: p.cadCounty,
-  },
-  addedOn: p.createdAt,
-  status: p.isArchived,
-});
-
-/** Build OR filter for property search: property id, accountNumber, client name (case-insensitive). */
-function propertySearchWhere(searchTerm) {
-  const q = sanitizeSearchTerm(searchTerm);
-  if (!q) return {};
-  const contains = { contains: q, mode: "insensitive" };
-  const orConditions = [
-    { accountNumber: contains },
-    { client: { clientName: contains } },
-  ];
-  const idNum = parseInt(q, 10);
-  if (Number.isFinite(idNum)) orConditions.push({ id: idNum });
-  return { OR: orConditions };
-}
+const propertyToDto = (p) => {
+  const cadMailing = buildCadMailingAddressDisplay(p);
+  return {
+    clientId: p.clientId,
+    clientNumber: p.clientNumber,
+    propertyId: p.id,
+    propertyAccount: p.accountNumber,
+    propertyDetails: {
+      assessor: p.cadCounty,
+      address: [p.mailingAddress, p.mailingAddressCityTxZip],
+      propertyAddress: p.propertyAddress,
+    },
+    cadOwner: {
+      name: p.nameOnCad,
+      address: cadMailing.full,
+      line1: cadMailing.line1,
+      line2: cadMailing.line2,
+      county: p.cadCounty,
+    },
+    cadMailingAddressDisplay: cadMailing,
+    addedOn: p.createdAt,
+    status: p.isArchived,
+  };
+};
 
 function normalizeAccountType(accountType) {
   const raw = sanitizeSearchTerm(accountType);
@@ -159,11 +155,27 @@ export async function getPropertyDetails(propertyId) {
     ...propertyDetails
   } = propertyOnly;
   const hearings = await getHearingsByPropertyId(propertyId);
+  const cadMailing = buildCadMailingAddressDisplay(propertyOnly);
 
   return {
-    propertyDetails,
-    client,
-    invoices,
+    propertyDetails: {
+      ...propertyDetails,
+      cadMailingAddressDisplay: cadMailing,
+    },
+    client: client
+      ? {
+          ...client,
+          contingencyFee:
+            client.contingencyFee != null ? Number(client.contingencyFee) : null,
+          flatFee: client.flatFee != null ? Number(client.flatFee) : null,
+        }
+      : client,
+    invoices: invoices.map((inv) =>
+      invoiceToApiDto(
+        inv,
+        client?.contingencyFee != null ? Number(client.contingencyFee) : 25
+      )
+    ),
     lifecycle,
     hearings,
   };
@@ -190,11 +202,10 @@ export async function getPropertiesByClientId(clientId) {
   });
   return properties.map((p) => ({
     ...propertyToDto(p),
-    propertyDetails: { assessor: p.contactOwner, address: [p.mailingAddress, p.mailingAddressCityTxZip] },
-    cadOwner: {
-      name: p.nameOnCad,
-      address: `${p.cadMailingAddress || ""} ${p.cadCity || ""}`.trim(),
-      county: p.cadCounty,
+    propertyDetails: {
+      assessor: p.contactOwner,
+      address: [p.mailingAddress, p.mailingAddressCityTxZip],
+      propertyAddress: p.propertyAddress,
     },
   }));
 }
@@ -290,7 +301,7 @@ export async function addPropertyToClient(clientId, propertyData) {
 
   const currentYear = new Date().getFullYear();
   const startYear = currentYear - 4;
-  for (let year = startYear; year <= currentYear; year++) {
+  for (let year = startYear; year <= currentYear + 1; year++) {
     await prisma.invoice.create({
       data: {
         propertyId: newProperty.id,

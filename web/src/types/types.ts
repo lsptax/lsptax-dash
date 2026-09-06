@@ -3,6 +3,12 @@
 import type { PropertyLifecyclePayload } from "@/types/clientLifecycle";
 import type { Hearing } from "@/types/hearings";
 
+export interface CadMailingAddressDisplay {
+  line1?: string;
+  line2?: string;
+  full?: string;
+}
+
 export interface ClientData {
   id: number;
   TypeOfAcct?: string;
@@ -26,6 +32,7 @@ export interface ClientData {
   MAILINGADDRESSCITYTXZIP?: string;
   mailingAddressCityTxZip?: string;
   contingencyFee?: string;
+  flatFee?: string | number | null;
   IsArchived?: boolean;
   isArchived?: boolean;
   createdAt?: Date;
@@ -52,6 +59,7 @@ export interface Property {
   cadZipCode?: string;
   CADCOUNTY?: string;
   cadCounty?: string;
+  cadMailingAddressDisplay?: CadMailingAddressDisplay;
   AccountNumber?: string;
   accountNumber?: string;
   CLIENTNumber?: string;
@@ -78,8 +86,14 @@ export interface Invoice {
   protestDate?: string;
   hearingDate?: string;
   invoiceDate?: string;
+  /** Invoice generated date shown on PDF (prefer over invoiceDate). */
+  generatedDate?: string;
+  /** Payment due date shown on PDF. */
+  dueDate?: string;
   bppRendered?: string;
   bppInvoice?: string;
+  /** Server-parsed BPP dollars from `bppInvoice`. */
+  bppInvoiceAmount?: number;
   bppPaid?: string;
   noticeLandValue?: number;
   noticeImprovementValue?: number;
@@ -94,8 +108,12 @@ export interface Invoice {
   taxRate?: number;
   taxableSavings?: number;
   contingencyFee?: number;
+  contingencyFeePercent?: number;
+  /** Per-year flat fee in dollars (added to total due). */
+  flatFee?: number;
   invoiceAmount?: number;
   paidDate?: string;
+  isPaid?: boolean;
   paymentNotes?: string;
   beginningMarket?: number;
   endingMarket?: number;
@@ -109,14 +127,35 @@ export interface Invoice {
   updatedAt: string;
 }
 
+export type PaidInvoiceDetail = {
+  id: number;
+  year: number;
+  paidDate?: string | null;
+  invoiceAmount: number;
+  paymentNotes?: string | null;
+};
+
 export interface InvoiceSummary {
   id: string | number;
   isArchived: boolean;
   clientId: string;
+  propertyId?: string | number;
+  clientName?: string;
   clientNumber?: string;
-  propertyNumbers: string[]; 
+  propertyNumber?: string;
+  propertyNumbers?: string[];
+  invoiceIds?: Array<string | number>;
+  invoiceCount?: number;
+  paidCount?: number;
+  /** True when every year-invoice in this property group is paid. */
+  isPaid?: boolean;
+  /** Paid year-invoices only — used for payment detail popover in the list table. */
+  paidInvoices?: PaidInvoiceDetail[];
   totalInvoiceAmount: number;
-  createdAt: string; 
+  isSent?: boolean;
+  lastDelivery?: import("@/utils/invoiceEmailStatus").InvoiceEmailTracking | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface InvoiceProperty {
@@ -127,6 +166,7 @@ export interface InvoiceProperty {
 export interface InvoiceData {
   client: ClientData;
   properties: InvoiceProperty[];
+  lastDelivery?: import("@/utils/invoiceEmailStatus").InvoiceEmailTracking | null;
 }
 
 export interface PropertyData {
@@ -149,6 +189,7 @@ export interface Prospect {
   mailingAddress?: string;
   mailingAddressCityTxZip?: string;
   contingencyFee?: string;
+  flatFee?: string | number | null;
   billingAddress?: string;
   billingEmail?: string;
   envelopeId?: string;

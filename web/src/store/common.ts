@@ -1,6 +1,9 @@
 /** Default number of items per page for paginated API responses. */
 export const DEFAULT_PAGE_SIZE = 10;
 
+/** Max `limit` the API accepts on list endpoints (see api_v2.md). */
+export const MAX_API_PAGE_SIZE = 100;
+
 export const getFormattedDate = () => {
   const date = new Date();
   const day = date.getDate();

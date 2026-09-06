@@ -39,6 +39,10 @@ const formSchema = z.object({
     .string()
     .regex(/^\d*$/, "Contingency fee must be numbers only (e.g. 25 for 25%)")
     .optional(),
+  flatFee: z
+    .string()
+    .regex(/^\d*\.?\d*$/, "Flat fee must be a valid number")
+    .optional(),
   IsArchived: z.boolean().optional(),
   useSameAsMailing: z.boolean().default(false),
   useSameAsEmail: z.boolean().default(false),
@@ -63,6 +67,7 @@ export default function EditProspectDetails() {
       MAILINGADDRESSCITYTXZIP: "",
       BillingAddress: "",
       contingencyFee: "",
+      flatFee: "",
       useSameAsMailing: false,
       useSameAsEmail: false,
     },
@@ -84,6 +89,7 @@ export default function EditProspectDetails() {
               data.prospect.mailingAddressCityTxZip || "",
             BillingAddress: data.prospect.billingAddress || "",
             contingencyFee: data.prospect.contingencyFee ?? "",
+            flatFee: data.prospect.flatFee != null ? String(data.prospect.flatFee) : "",
             useSameAsMailing: false,
             useSameAsEmail: false,
           });
@@ -125,6 +131,7 @@ export default function EditProspectDetails() {
         billingAddress: rest.BillingAddress,
         typeOfAcct: rest.TypeOfAcct,
         contingencyFee: rest.contingencyFee?.trim() || undefined,
+        flatFee: rest.flatFee?.trim() || undefined,
       };
       await editProspect(prospectId, prospectDetails);
       toast({
@@ -241,6 +248,24 @@ export default function EditProspectDetails() {
                   onChange={(e) => {
                     field.onChange(e.target.value.replace(/\D/g, ""));
                   }}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="flatFee"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Flat Fee ($, optional)</FormLabel>
+                <Input
+                  {...field}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="e.g. 2500"
                 />
                 <FormMessage />
               </FormItem>

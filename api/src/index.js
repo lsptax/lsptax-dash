@@ -7,6 +7,7 @@ import csvRoutes from "./routes/csvRoutes.js";
 import contractRoutes from "./routes/contractRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import { docusignWebhook } from "./controller/contractController.js";
+import { brevoWebhook } from "./controller/invoiceController.js";
 import { addProspect } from "./controller/prospectController.js";
 import cors from "cors";
 import { protect } from "./middleware/auth.js";
@@ -72,7 +73,11 @@ app.post(
   docusignWebhook
 );
 
-app.use(express.json());
+// Brevo transactional email tracking webhook (JSON body)
+app.post("/webhooks/brevo", express.json(), brevoWebhook);
+
+// Invoice send posts base64 PDFs (up to 10 MB per file). Default 100kb limit rejects those payloads.
+app.use(express.json({ limit: "50mb" }));
 
 // Log every API request
 app.use((req, res, next) => {

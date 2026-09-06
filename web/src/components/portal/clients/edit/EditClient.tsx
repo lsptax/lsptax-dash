@@ -49,6 +49,10 @@ export default function EditClient() {
       .string()
       .regex(/^\d*$/, "Contingency fee must be numbers only (e.g. 25 for 25%)")
       .optional(),
+    flatFee: z
+      .string()
+      .regex(/^\d*\.?\d*$/, "Flat fee must be a valid number")
+      .optional(),
     IsArchived: z.boolean().optional(),
     useSameAsEmail: z.boolean().default(false),
     useSameAsMailing: z.boolean().default(false),
@@ -58,6 +62,7 @@ export default function EditClient() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       contingencyFee: "",
+      flatFee: "",
       IsArchived: false,
       useSameAsEmail: false,
       useSameAsMailing: false,
@@ -93,6 +98,7 @@ export default function EditClient() {
           MAILINGADDRESSCITYTXZIP: data?.client.mailingAddressCityTxZip || "",
           BillingAddress: data?.client.billingAddress || "",
           contingencyFee: data?.client.contingencyFee ?? "",
+          flatFee: data?.client.flatFee != null ? String(data.client.flatFee) : "",
           IsArchived: data?.client.isArchived || false,
           useSameAsEmail: false,
           useSameAsMailing: false,
@@ -145,6 +151,7 @@ export default function EditClient() {
         billingEmail: values.BillingEmail ?? "",
         billingAddress: values.BillingAddress ?? "",
         contingencyFee: values.contingencyFee?.trim() || undefined,
+        flatFee: values.flatFee?.trim() || undefined,
       };
 
       await editClient(clientId, clientDetails);
@@ -252,6 +259,25 @@ export default function EditClient() {
                       const v = e.target.value.replace(/\D/g, "");
                       field.onChange(v);
                     }}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="flatFee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Flat Fee ($, optional)</FormLabel>
+                  <Input
+                    {...field}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder="e.g. 2500"
+                    className="border-gray-300 rounded-lg"
                   />
                   <FormMessage />
                 </FormItem>

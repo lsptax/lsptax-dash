@@ -30,6 +30,10 @@ const formSchema = z.object({
     .string()
     .regex(/^\d*$/, "Contingency fee must be numbers only (e.g. 25 for 25%)")
     .optional(),
+  flatFee: z
+    .string()
+    .regex(/^\d*\.?\d*$/, "Flat fee must be a valid number")
+    .optional(),
   IsArchived: z.boolean().optional(),
   useSameAsMailing: z.boolean().default(false),
   useSameAsEmail: z.boolean().default(false),
@@ -48,6 +52,7 @@ export default function AddProspectForm() {
       PHONENUMBER: "",
       MAILINGADDRESSCITYTXZIP: "",
       contingencyFee: "",
+      flatFee: "",
       useSameAsMailing: false,
       useSameAsEmail: false,
     },
@@ -63,6 +68,7 @@ export default function AddProspectForm() {
         mailingAddress: values.MAILINGADDRESS || "",
         mailingAddressCityTxZip: values.MAILINGADDRESSCITYTXZIP || "",
         contingencyFee: values.contingencyFee?.trim() || undefined,
+        flatFee: values.flatFee?.trim() || undefined,
       });
 
       toast({
@@ -174,6 +180,25 @@ export default function AddProspectForm() {
                   onChange={(e) => {
                     field.onChange(e.target.value.replace(/\D/g, ""));
                   }}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="flatFee"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-700">Flat Fee ($, optional)</FormLabel>
+                <Input
+                  {...field}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="e.g. 2500"
+                  className="border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <FormMessage />
               </FormItem>

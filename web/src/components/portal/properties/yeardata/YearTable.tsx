@@ -1,14 +1,15 @@
 import React from "react";
 import { formatUSD } from "@/utils/formatCurrency";
+import { getBppInvoiceAmount } from "@/utils/bppInvoice";
 import { Invoice } from "@/types/types";
+import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
 
-// test
 // Define the type for table row data
 type TableRow = {
   year: number;
   "Protest Date"?: string;
   "BPP Rendered"?: string;
-  "BPP Invoice": string;
+  "BPP Invoice": string | number;
   "BPP Paid": string;
   "Notice Land Value": string | number;
   "Notice Improvement Value": string | number;
@@ -21,6 +22,8 @@ type TableRow = {
   "Market Reduction": string | number;
   "Appraised Reduction": string | number;
   "Hearing Date"?: string;
+  "Generated Date"?: string;
+  "Due Date"?: string;
   "Invoice Date"?: string;
   "Under Litigation": boolean;
   "Under Arbitration": boolean;
@@ -41,7 +44,7 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
   showBpp = true,
 }) => {
   // Extract data for the table: creating rows and columns
-  const years = [2021, 2022, 2023, 2024, 2025];
+  const years = PROPERTY_INVOICE_YEARS;
   const rowData: TableRow[] = years.map((year) => {
     const yearData = invoices.find((invoice) => invoice.year === year);
 
@@ -49,7 +52,7 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
       year,
       "Protest Date": yearData?.protestDate,
       "BPP Rendered": yearData?.bppRendered,
-      "BPP Invoice": yearData?.bppInvoice || "-",
+      "BPP Invoice": yearData ? getBppInvoiceAmount(yearData) : "-",
       "BPP Paid": yearData?.bppPaid || "-",
       "Notice Land Value": yearData?.noticeLandValue || "-",
       "Notice Improvement Value": yearData?.noticeImprovementValue || "-",
@@ -62,6 +65,8 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
       "Market Reduction": yearData?.marketReduction || "-",
       "Appraised Reduction": yearData?.appraisedReduction || "-",
       "Hearing Date": yearData?.hearingDate || "-",
+      "Generated Date": yearData?.generatedDate || "-",
+      "Due Date": yearData?.dueDate || "-",
       "Invoice Date": yearData?.invoiceDate || "-",
       "Under Litigation": yearData?.underLitigation || false,
       "Under Arbitration": yearData?.underArbitration || false,
@@ -145,9 +150,14 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
                               const currencyFields = [
                                 "Notice Land Value", "Notice Improvement Value", "Notice Market Value", "Notice Appraised Value",
                                 "Final Land Value", "Final Improvement Value", "Final Market Value", "Final Appraised Value",
-                                "Market Reduction", "Appraised Reduction", "Taxable Savings", "Invoice Amount",
+                                "Market Reduction", "Appraised Reduction", "Taxable Savings", "BPP Invoice", "Invoice Amount",
                                 "Beginning Market", "Ending Market", "Beginning Appraised", "Ending Appraised"
                               ];
+                              
+                              if (key === "BPP Invoice") {
+                                const amount = typeof value === "number" ? value : 0;
+                                return amount > 0 ? formatUSD(amount) : "-";
+                              }
                               
                               if (currencyFields.includes(key) && value !== "-" && value !== "N/A") {
                                 return formatUSD(String(value));

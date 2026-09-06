@@ -1,8 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { NavLink } from "react-router-dom";
 import { routes } from "@/routes/ROUTES";
+import { ListDetailLink } from "../ListDetailLink";
 import type { Hearing } from "@/types/hearings";
 import { HearingStatusCell } from "./HearingStatusCell";
 import { HearingDeleteButton } from "./HearingDeleteButton";
@@ -39,9 +39,9 @@ export function createHearingsColumns(onUpdated: () => void): ColumnDef<Hearing>
         if (!clientId) return <span>{label}</span>;
         return (
           <div>
-            <NavLink to={routes.client.detail(clientId)} className="text-blue-600 font-semibold hover:underline">
+            <ListDetailLink to={routes.client.detail(clientId)} className="text-blue-600 font-semibold hover:underline">
               {label}
-            </NavLink>
+            </ListDetailLink>
             {number ? <div className="text-xs text-muted-foreground">#{number}</div> : null}
           </div>
         );
@@ -55,12 +55,12 @@ export function createHearingsColumns(onUpdated: () => void): ColumnDef<Hearing>
         const address = row.original.propertyAddress;
         return (
           <div>
-            <NavLink
+            <ListDetailLink
               to={routes.properties.view(row.original.propertyId)}
               className="text-emerald-700 font-semibold hover:underline"
             >
               #{account}
-            </NavLink>
+            </ListDetailLink>
             {address ? <div className="text-xs text-muted-foreground mt-0.5">{address}</div> : null}
           </div>
         );

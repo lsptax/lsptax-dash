@@ -18,6 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  mergePropertyListParams,
+  parsePropertyListParams,
+  type AccountTypeFilter,
+} from "@/utils/listParams/properties";
+import { useDraftSearch, useListSearchParams } from "@/hooks/useListSearchParams";
 
 interface PropertiesTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -26,24 +32,22 @@ interface PropertiesTableProps<TData, TValue> {
 const PropertiesTable = <TData extends Properties, TValue>({
   columns,
 }: PropertiesTableProps<TData, TValue>) => {
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
-  const [archived, setArchived] = useState(false);
+  const { params, updateParams } = useListSearchParams(
+    parsePropertyListParams,
+    mergePropertyListParams
+  );
+  const { search, accountType, offset, limit, archived } = params;
+  const { searchTerm, setSearchTerm, commitSearch } = useDraftSearch(
+    search,
+    (value) => updateParams({ search: value, offset: 0 })
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [accountType, setAccountType] = useState<"all" | "real" | "bpp">("all");
-
-  const commitSearch = () => {
-    setAppliedSearch(searchTerm.trim());
-    setOffset(0);
-  };
 
   const { data, isLoading, isError, refetch } = usePropertiesQuery({
     limit,
     offset,
-    search: appliedSearch,
+    search,
     archived,
     accountType: accountType === "all" ? undefined : accountType,
   });
@@ -66,8 +70,7 @@ const PropertiesTable = <TData extends Properties, TValue>({
   };
 
   const switchArchived = () => {
-    setArchived((a) => !a);
-    setOffset(0);
+    updateParams({ archived: !archived, offset: 0 });
   };
 
   if (isLoading) {
@@ -140,10 +143,12 @@ const PropertiesTable = <TData extends Properties, TValue>({
           <h1 className="text-lg font-semibold">Account Type</h1>
           <Select
             value={accountType}
-            onValueChange={(v) => {
-              setAccountType(v as "all" | "real" | "bpp");
-              setOffset(0);
-            }}
+            onValueChange={(value) =>
+              updateParams({
+                accountType: value as AccountTypeFilter,
+                offset: 0,
+              })
+            }
           >
             <SelectTrigger aria-label="Filter by account type">
               <SelectValue placeholder="All" />
@@ -189,11 +194,10 @@ const PropertiesTable = <TData extends Properties, TValue>({
           limit,
           offset,
           hasMore,
-          onPrev: () => setOffset((o) => Math.max(0, o - limit)),
-          onNext: () => setOffset((o) => o + limit),
+          onPrev: () => updateParams({ offset: Math.max(0, offset - limit) }),
+          onNext: () => updateParams({ offset: offset + limit }),
           onPageSizeChange: (size) => {
-            setLimit(size);
-            setOffset(0);
+            updateParams({ limit: size, offset: 0 });
           },
         }}
       />

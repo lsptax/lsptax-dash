@@ -73,6 +73,7 @@ model Client {
 
   properties             Property[]
   contracts              Contract[]
+  invoiceDeliveries      InvoiceDelivery[]
 
   @@index([clientName])
   @@index([email])
@@ -184,15 +185,19 @@ model Invoice {
 
   hearingDate            String?
   invoiceDate            String?
+  dueDate                String?
+  generatedDate          String?
   underLitigation        Boolean  @default(false)
   underArbitration       Boolean  @default(false)
 
-  taxRate                Decimal  @default(0) @db.Decimal(5, 2)
+  taxRate                Decimal  @default(0) @db.Decimal(9, 4)
   taxableSavings         Decimal  @default(0) @db.Decimal(15, 2)
   contingencyFee         Decimal  @default(0) @db.Decimal(15, 2)
+  flatFee                Decimal  @default(0) @db.Decimal(15, 2) // per-year flat fee in dollars
   invoiceAmount          Decimal  @default(0) @db.Decimal(15, 2)
 
   paidDate               String?
+  isPaid                 Boolean  @default(false)
   paymentNotes           String?
 
   beginningMarket        Decimal  @default(0) @db.Decimal(15, 2)
@@ -211,6 +216,7 @@ model Invoice {
   @@index([propertyId])
   @@index([year])
   @@index([isArchived])
+  @@index([isPaid])
 }
 
 model Contract {
@@ -233,4 +239,40 @@ model Contract {
   @@index([propertyId])
   @@index([envelopeId])
   @@index([status])
+}
+
+/// Audit log when invoice PDFs are emailed (and optionally SMS-notified) to a client.
+model InvoiceDelivery {
+  id                  Int       @id @default(autoincrement())
+  clientId            Int
+  year                Int?
+  recipientEmail      String
+  recipientPhone      String?
+  emailStatus         String
+  smsStatus           String?
+  emailSentAt         DateTime?
+  smsSentAt           DateTime?
+  brevoEmailMessageId String?
+  /// Latest Brevo tracking event: SENT, DELIVERED, OPENED, BOUNCED, BLOCKED, etc.
+  emailLastEvent      String?
+  emailDeliveredAt    DateTime?
+  emailOpenedAt       DateTime?
+  emailBounceReason   String?
+  /// Last time Brevo tracking was synced (webhook or manual sync)
+  syncedAt            DateTime?
+  attachmentNames     String[]  @default([])
+  /// Invoice rows included in this send (empty = legacy client-wide send).
+  invoiceIds          Int[]     @default([])
+  /// Property rows included in this send (empty = legacy client-wide send).
+  propertyIds         Int[]     @default([])
+  /// Supabase storage paths for sent PDFs: [{ filename, storagePath }]
+  storedFiles         Json      @default("[]")
+  errorMessage        String?
+  createdAt           DateTime  @default(now())
+
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([createdAt])
+  @@index([brevoEmailMessageId])
 }

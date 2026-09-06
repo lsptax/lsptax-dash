@@ -145,7 +145,7 @@ function TableBuilder<TData>({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                {pageSize} <ChevronDown />
+                {displayPageSize} <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

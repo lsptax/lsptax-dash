@@ -1,8 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { NavLink } from "react-router-dom";
 import { routes } from "@/routes/ROUTES";
+import { ListDetailLink } from "../../ListDetailLink";
 import { Prospect } from "@/types/types";
 import { ProspectStatusCell } from "./ProspectStatusCell";
 import { ProspectActionsCell } from "./ProspectActionsCell";
@@ -25,9 +25,9 @@ export function getProspectColumns(refetch: () => void | Promise<void>): ColumnD
       cell: ({ row }) => {
         const prospectId = row.original.id;
         return (
-          <NavLink to={routes.prospect.detail(prospectId)}>
+          <ListDetailLink to={routes.prospect.detail(prospectId)}>
             <div className="text-blue-400 font-bold">#{prospectId}</div>
-          </NavLink>
+          </ListDetailLink>
         );
       },
     },

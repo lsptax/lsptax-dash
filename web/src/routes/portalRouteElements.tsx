@@ -62,7 +62,7 @@ export function PortalRouteElements() {
         path="invoices"
         element={
           <FeatureErrorBoundary label="Invoices list">
-            <InvoicesTable columns={invoicesColumn as ColumnDef<unknown, unknown>[]} />
+            <InvoicesTable columns={invoicesColumn} />
           </FeatureErrorBoundary>
         }
       />

@@ -56,8 +56,7 @@ interface PropertyLifecyclePanelProps {
 
 export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], onUpdated }: PropertyLifecyclePanelProps) {
   const { toast } = useToast();
-  /** Collapsible like before; open by default so rail + steps are one click away. */
-  const [lifecycleOpen, setLifecycleOpen] = useState(true);
+  const [lifecycleOpen, setLifecycleOpen] = useState(false);
   const [focusedPhaseId, setFocusedPhaseId] = useState<LifecyclePhaseId | null>(
     (lifecycle?.phaseId as LifecyclePhaseId) ?? CLIENT_LIFECYCLE_PHASES[0].id,
   );

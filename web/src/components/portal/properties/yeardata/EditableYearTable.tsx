@@ -1,5 +1,7 @@
 import { Invoice } from "@/types/types";
 import React, { useState } from "react";
+import { getBppInvoiceEditValue } from "@/utils/bppInvoice";
+import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
 
 // Define the type for table row data
 type TableRow = {
@@ -19,6 +21,8 @@ type TableRow = {
   "Market Reduction": string | number;
   "Appraised Reduction": string | number;
   "Hearing Date"?: string;
+  "Generated Date"?: string;
+  "Due Date"?: string;
   "Invoice Date"?: string;
   "Under Litigation": boolean;
   "Under Arbitration": boolean;
@@ -37,7 +41,7 @@ type TableRow = {
 const EditableYearTable: React.FC<{ invoices?: Invoice[] }> = ({
   invoices,
 }) => {
-  const years = [2021, 2022, 2023, 2024, 2025];
+  const years = PROPERTY_INVOICE_YEARS;
   // Prepare initial table data from invoices
   const initialTableData: TableRow[] = years.map((year) => {
     const yearData = invoices?.find((invoice) => invoice.year === year);
@@ -46,7 +50,7 @@ const EditableYearTable: React.FC<{ invoices?: Invoice[] }> = ({
       year: year,
       "Protested Date": "-",
       "BPP Rendered": "",
-      "BPP Invoice": yearData?.bppInvoice || "-",
+      "BPP Invoice": getBppInvoiceEditValue(yearData) || "-",
       "BPP Paid": yearData?.bppPaid || "-",
       "Notice Land Value": yearData?.noticeLandValue || "-",
       "Notice Improvement Value": yearData?.noticeImprovementValue || "-",
@@ -59,6 +63,8 @@ const EditableYearTable: React.FC<{ invoices?: Invoice[] }> = ({
       "Market Reduction": yearData?.marketReduction || "-",
       "Appraised Reduction": yearData?.appraisedReduction || "-",
       "Hearing Date": yearData?.hearingDate || "-",
+      "Generated Date": yearData?.generatedDate || "-",
+      "Due Date": yearData?.dueDate || "-",
       "Invoice Date": yearData?.invoiceDate || "-",
       "Under Litigation": yearData?.underLitigation || false,
       "Under Arbitration": yearData?.underArbitration || false,

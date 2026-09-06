@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getApiBaseUrl } from "@/api/client";
 
 interface Client {
+  id: number;
   clientNumber: string;
   clientName: string;
   email: string;
@@ -33,7 +34,7 @@ interface ClientWithProperties {
 
 const InvoiceGenerator = () => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [selectedClients, setSelectedClients] = useState<number[]>([]);
   const [propertiesByClient, setPropertiesByClient] = useState<ClientWithProperties[]>([]);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [selectedYears, setSelectedYears] = useState<number[]>([new Date().getFullYear()]);
@@ -95,9 +96,9 @@ const InvoiceGenerator = () => {
 
     try {
       setLoading(true);
-      const clientNumbersParam = selectedClients.join(',');
+      const clientIdsParam = selectedClients.join(",");
       const response = await fetch(
-        `${getApiBaseUrl()}/invoice/properties?clientNumbers=${clientNumbersParam}`,
+        `${getApiBaseUrl()}/invoice/properties?clientIds=${clientIdsParam}`,
         {
           headers: {
             ...getAuthHeaders(),
@@ -129,10 +130,10 @@ const InvoiceGenerator = () => {
     }
 
     try {
-      const clientNumbersParam = selectedClients.join(',');
-      const yearsParam = selectedYears.join(',');
+      const clientIdsParam = selectedClients.join(",");
+      const yearsParam = selectedYears.join(",");
       const response = await fetch(
-        `${getApiBaseUrl()}/invoice/stats?clientNumbers=${clientNumbersParam}&years=${yearsParam}`,
+        `${getApiBaseUrl()}/invoice/stats?clientIds=${clientIdsParam}&years=${yearsParam}`,
         {
           headers: {
             ...getAuthHeaders(),
@@ -178,7 +179,7 @@ const InvoiceGenerator = () => {
           ...getAuthHeaders(),
         },
         body: JSON.stringify({
-          clientNumbers: selectedClients,
+          clientIds: selectedClients,
           propertyAccountNumbers: selectedProperties.length > 0 ? selectedProperties : null,
           years: selectedYears,
         }),
@@ -212,16 +213,16 @@ const InvoiceGenerator = () => {
   };
 
   // Handle client selection
-  const handleClientSelection = (clientNumber: string, checked: boolean) => {
+  const handleClientSelection = (clientId: number, checked: boolean) => {
     if (checked) {
-      setSelectedClients(prev => [...prev, clientNumber]);
+      setSelectedClients((prev) => [...prev, clientId]);
     } else {
-      setSelectedClients(prev => prev.filter(cn => cn !== clientNumber));
+      setSelectedClients((prev) => prev.filter((id) => id !== clientId));
       // Remove properties for this client from selection
       const clientProperties = propertiesByClient
-        .find(c => c.client.clientNumber === clientNumber)
-        ?.properties.map(p => p.accountNumber) || [];
-      setSelectedProperties(prev => prev.filter(p => !clientProperties.includes(p)));
+        .find((c) => c.client.id === clientId)
+        ?.properties.map((p) => p.accountNumber) || [];
+      setSelectedProperties((prev) => prev.filter((p) => !clientProperties.includes(p)));
     }
   };
 
@@ -346,16 +347,16 @@ const InvoiceGenerator = () => {
             ) : (
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {clients.map((client) => (
-                  <div key={client.clientNumber} className="flex items-center space-x-3">
+                  <div key={client.id} className="flex items-center space-x-3">
                     <Checkbox
-                      id={client.clientNumber}
-                      checked={selectedClients.includes(client.clientNumber)}
+                      id={`client-${client.id}`}
+                      checked={selectedClients.includes(client.id)}
                       onCheckedChange={(checked) => 
-                        handleClientSelection(client.clientNumber, checked as boolean)
+                        handleClientSelection(client.id, checked as boolean)
                       }
                     />
                     <label
-                      htmlFor={client.clientNumber}
+                      htmlFor={`client-${client.id}`}
                       className="flex-1 cursor-pointer"
                     >
                       <div className="font-medium">{client.clientName}</div>
@@ -443,7 +444,7 @@ const InvoiceGenerator = () => {
             ) : (
               <div className="space-y-4">
                 {propertiesByClient.map((clientData) => (
-                  <div key={clientData.client.clientNumber} className="space-y-2">
+                  <div key={clientData.client.id} className="space-y-2">
                     <h3 className="font-semibold text-lg">
                       {clientData.client.clientName} ({clientData.client.clientNumber})
                     </h3>
@@ -466,9 +467,9 @@ const InvoiceGenerator = () => {
                               {property.cadMailingAddress}, {property.cadCity}, {property.cadCounty}
                             </div>
                             <div className="text-sm">
-                              {property.contingencyFee && (
+                              {property.contingencyFee != null && property.contingencyFee !== "" && (
                                 <Badge variant="secondary" className="mr-1">
-                                  Contingency: ${property.contingencyFee}
+                                  Contingency: {property.contingencyFee}%
                                 </Badge>
                               )}
                               {property.flatFee && (

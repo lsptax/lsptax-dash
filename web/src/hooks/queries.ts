@@ -89,18 +89,34 @@ export function useInvoicesQuery({
   offset = 0,
   search = "",
   archived = false,
+  sendStatus = "all",
+  paymentStatus = "any",
 }: {
   limit?: number;
   offset?: number;
   search?: string;
   archived?: boolean;
+  sendStatus?: import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
+  paymentStatus?: import("@/store/invoices").InvoicePaymentStatusFilter;
 }) {
   return useQuery({
-    queryKey: ["invoices", limit, offset, search, archived],
+    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus],
     queryFn: () =>
       archived
-        ? getArchiveInvoices(limit, offset, search || undefined)
-        : getAllInvoices(limit, offset, search || undefined),
+        ? getArchiveInvoices(
+            limit,
+            offset,
+            search || undefined,
+            sendStatus,
+            paymentStatus
+          )
+        : getAllInvoices(
+            limit,
+            offset,
+            search || undefined,
+            sendStatus,
+            paymentStatus
+          ),
     ...queryClientDefaults,
   });
 }

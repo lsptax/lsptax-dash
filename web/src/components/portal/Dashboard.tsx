@@ -56,6 +56,7 @@ const Dashboard = () => {
           prospectData={(prospectData ?? []) as Prospect[]}
           propData={(propData ?? []) as Properties[]}
           clientData={(clientData ?? []) as Clients[]}
+          hearingsThisWeek={stats.hearings?.meetingsThisWeekList ?? []}
         />
       </FeatureErrorBoundary>
     </div>

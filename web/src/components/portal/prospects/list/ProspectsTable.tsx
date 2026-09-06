@@ -1,14 +1,5 @@
-import { useMemo, useState } from "react";
-import {
-  SortingState,
-  getCoreRowModel,
-  useReactTable,
-  getSortedRowModel,
-  getPaginationRowModel,
-  ColumnFiltersState,
-  getFilteredRowModel,
-  VisibilityState,
-} from "@tanstack/react-table";
+import { useEffect, useMemo, useState } from "react";
+import { ColumnFiltersState } from "@tanstack/react-table";
 import { downloadProspectsCSV } from "@/store/data";
 import TableBuilder from "../../TableBuilder";
 import { routes } from "@/routes/ROUTES";
@@ -26,16 +17,27 @@ import { getProspectColumns } from "./columns";
 import { Prospect } from "@/types/types";
 import { useProspectsQuery } from "@/hooks/queries";
 import { TableSkeleton } from "../../TableSkeleton";
+import {
+  mergeProspectListParams,
+  parseProspectListParams,
+} from "@/utils/listParams/prospects";
+import { useListSearchParams } from "@/hooks/useListSearchParams";
 
 const ProspectTable = () => {
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const { params, updateParams } = useListSearchParams(
+    parseProspectListParams,
+    mergeProspectListParams
+  );
+  const { search, status, offset, limit, archived } = params;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
-  const [archived, setArchived] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
+
+  useEffect(() => {
+    const nextFilters: ColumnFiltersState = [];
+    if (search) nextFilters.push({ id: "prospectName", value: search });
+    if (status) nextFilters.push({ id: "status", value: status });
+    setColumnFilters(nextFilters);
+  }, [search, status]);
 
   const { data, isLoading, isError, refetch } = useProspectsQuery({
     limit,
@@ -64,31 +66,11 @@ const ProspectTable = () => {
   };
 
   const switchArchived = () => {
-    setArchived((a) => !a);
-    setOffset(0);
+    updateParams({ archived: !archived, offset: 0 });
   };
 
-  const table = useReactTable({
-    data: prospects,
-    columns,
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
-
-  const handleFilterByStatus = (status: string) => {
-    table.getColumn("status")?.setFilterValue(status || undefined);
+  const handleFilterByStatus = (nextStatus: string) => {
+    updateParams({ status: nextStatus, offset: 0 });
   };
 
   if (isLoading) {
@@ -132,9 +114,9 @@ const ProspectTable = () => {
           <h1>Quick search a Prospect</h1>
           <Input
             placeholder="Search Prospect Name..."
-            value={(table.getColumn("prospectName")?.getFilterValue() as string) ?? ""}
+            value={search}
             onChange={(event) =>
-              table.getColumn("prospectName")?.setFilterValue(event.target.value)
+              updateParams({ search: event.target.value, offset: 0 })
             }
             className="max-w-sm"
             aria-label="Search prospects by name"
@@ -217,11 +199,10 @@ const ProspectTable = () => {
           limit,
           offset,
           hasMore,
-          onPrev: () => setOffset((o) => Math.max(0, o - limit)),
-          onNext: () => setOffset((o) => o + limit),
+          onPrev: () => updateParams({ offset: Math.max(0, offset - limit) }),
+          onNext: () => updateParams({ offset: offset + limit }),
           onPageSizeChange: (size) => {
-            setLimit(size);
-            setOffset(0);
+            updateParams({ limit: size, offset: 0 });
           },
         }}
       />

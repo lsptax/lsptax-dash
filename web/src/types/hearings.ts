@@ -24,4 +24,7 @@ export interface HearingStats {
   totalScheduled: number;
   weekStart: string;
   weekEnd: string;
+  weekStartDate?: string;
+  weekEndDate?: string;
+  meetingsThisWeekList?: Hearing[];
 }

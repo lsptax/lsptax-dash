@@ -7,10 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PropertyData } from "@/types/types";
 import { deleteProperty } from "@/api/api";
 import YearTable from "../yeardata/YearTable";
+import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
 import { PropertyLifecyclePanel } from "@/components/portal/properties/lifecycle/PropertyLifecyclePanel";
 import { useToast } from "@/hooks/use-toast";
 import { routes } from "@/routes/ROUTES";
+import { BackToListLink } from "../../BackToListLink";
+import { ListDetailLink } from "../../ListDetailLink";
 
+function clampToPropertyInvoiceYear(year: number): number {
+  const min = Math.min(...PROPERTY_INVOICE_YEARS);
+  const max = Math.max(...PROPERTY_INVOICE_YEARS);
+  return Math.min(max, Math.max(min, year));
+}
 
 const ViewProperty = () => {
   const { toast } = useToast();
@@ -20,7 +28,9 @@ const ViewProperty = () => {
   const [isDeleting, setIsDeleting] = useState(false); // Track deletion state
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false); // Track invoice section state
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false); // Track invoice generation state
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()); // Track selected year
+  const [selectedYear, setSelectedYear] = useState(() =>
+    clampToPropertyInvoiceYear(new Date().getFullYear())
+  ); // Track selected year (restricted to property invoice years)
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyIdParam = searchParams.get("propertyId");
   const parsedPropertyId =
@@ -158,20 +168,20 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
 
     setIsGeneratingInvoice(true);
     try {
-      const clientNumber = property.propertyDetails.clientNumber;
+      const clientId = property.client?.id;
       const accountNumber = property.propertyDetails.accountNumber;
       
-      if (!clientNumber || !accountNumber) {
+      if (!clientId || !accountNumber) {
         toast({
           title: "Error",
-          description: "Missing client number or account number",
+          description: "Missing client ID or account number",
           variant: "destructive",
         });
         return;
       }
 
       const result = await generateInvoices({
-        clientNumbers: [clientNumber],
+        clientIds: [clientId],
         propertyAccountNumbers: [accountNumber],
         years: [selectedYear], // Use selected year
       });
@@ -253,6 +263,12 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
   const mailingCityZip = prop?.mailingAddressCityTxZip ?? "";
   const propertyAddress = prop?.propertyAddress ?? "";
   const cadCounty = prop?.cadCounty ?? "";
+  const cadMailingDisplay =
+    prop?.cadMailingAddressDisplay?.full ||
+    [prop?.cadMailingAddressDisplay?.line1, prop?.cadMailingAddressDisplay?.line2]
+      .filter(Boolean)
+      .join(", ") ||
+    [mailingAddress, mailingCityZip].filter(Boolean).join(", ");
   const acctType = String(client?.typeOfAcct ?? client?.TypeOfAcct ?? "")
     .trim()
     .toLowerCase();
@@ -260,6 +276,9 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
 
   return (
     <div className="w-full p-4 bg-white shadow-md rounded-lg">
+      <div className="mb-4">
+        <BackToListLink fallback={routes.properties.list()} label="Back to properties" />
+      </div>
       <div className="flex flex-col md:flex-row justify-between ">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">View Property</h1>
         <div className="flex gap-4 flex-col md:flex-row w-full md:w-auto">
@@ -267,11 +286,11 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
             <Button className="w-full">Edit Property</Button>
           </NavLink>
 
-          <NavLink
-            to={routes.invoices.byClient(clientNumber)}
+          <ListDetailLink
+            to={routes.invoices.byProperty(activePropertyId)}
           >
             <Button className="w-full">View Invoices</Button>
-          </NavLink>
+          </ListDetailLink>
 
           <NavLink to={routes.properties.aoa(property.propertyDetails.id)}>
             <Button className="w-full" variant="outline">
@@ -285,7 +304,7 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
                 <SelectValue placeholder="Select Year" />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).reverse().map((year) => (
+                {PROPERTY_INVOICE_YEARS.map((year) => (
                   <SelectItem key={year} value={year.toString()}>
                     {year}
                   </SelectItem>
@@ -393,6 +412,10 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
                 <td>
                   {propertyAddress || "—"}
                 </td>
+              </tr>
+              <tr>
+                <td className="font-medium">CAD Mailing Address:</td>
+                <td>{cadMailingDisplay || "—"}</td>
               </tr>
               <tr>
                 <td className="font-medium">County:</td>

@@ -9,14 +9,14 @@
 
 /** Possible CSV column names for each Client field (order = priority) */
 export const CLIENT_COLUMNS = {
-  clientNumber: ["Client ID", "CLIENT #", "CLIENT  Number #"],
+  clientNumber: ["Client Number", "Client ID", "CLIENT #", "CLIENT  Number #"],
   clientName: ["Client Name", "CLIENT Name", "CLIENT NAME"],
   typeOfAcct: ["Account Type", "Type of Acct"],
   email: ["Email Address", "Email"],
   billingEmail: ["Email Address", "Email"],
   billingAddress: ["Billing Address", "Mailing Address", "MAILING ADDRESS"],
   phoneNumber: ["Contact Number", "PHONE NUMBER"],
-  nameOnCad: ["CAD Name", "NAME ON CAD"],
+  nameOnCad: ["Cad Name", "CAD Name", "NAME ON CAD"],
   mailingAddress: ["Mailing Address", "MAILING ADDRESS"],
   mailingAddressCityTxZip: [
     "City, Zip Code",
@@ -35,7 +35,7 @@ export const CLIENT_COLUMNS = {
 /** Possible CSV column names for each Property field (order = priority) */
 export const PROPERTY_COLUMNS = {
   accountNumber: ["Account Number"],
-  nameOnCad: ["CAD Name", "NAME ON CAD"],
+  nameOnCad: ["Cad Name", "CAD Name", "NAME ON CAD"],
   mailingAddress: ["Mailing Address", "MAILING ADDRESS"],
   mailingAddressCityTxZip: [
     "City, Zip Code",
@@ -175,6 +175,32 @@ export function getPropertyDataFromRow(normalizedRow, clientNumber) {
     bppFee: getMapped(r, PROPERTY_COLUMNS.bppFee),
     flatFee: getMapped(r, PROPERTY_COLUMNS.flatFee),
   };
+}
+
+/** Property columns refreshed when a CSV row matches an existing client+account import key */
+const PROPERTY_CSV_UPDATE_FIELDS = [
+  "nameOnCad",
+  "mailingAddress",
+  "mailingAddressCityTxZip",
+  "propertyAddress",
+  "cadMailingAddress",
+  "cadCity",
+  "cadZipCode",
+  "cadCounty",
+  "bppFee",
+  "flatFee",
+];
+
+/**
+ * Prisma update payload for an existing property from parsed CSV row data.
+ * Omits undefined values so empty/missing CSV cells do not clear DB fields.
+ */
+export function getPropertyUpdateDataFromCsv(propertyRow) {
+  const data = {};
+  for (const key of PROPERTY_CSV_UPDATE_FIELDS) {
+    if (propertyRow[key] !== undefined) data[key] = propertyRow[key];
+  }
+  return data;
 }
 
 /**

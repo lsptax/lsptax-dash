@@ -301,7 +301,24 @@
           }
         },
         {
-          "name": "Get Invoice by Client",
+          "name": "Get Invoices by Client (Table)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoice/clientid=1?limit=50&offset=0&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoice", "clientid=1"],
+              "query": [
+                { "key": "limit", "value": "50", "description": "Page size" },
+                { "key": "offset", "value": "0", "description": "Records to skip" },
+                { "key": "search", "value": "", "description": "Filter by account number or year" }
+              ]
+            },
+            "description": "Client-level invoice table. Replace 1 in path with Client.id."
+          }
+        },
+        {
+          "name": "Get Invoice Details by Property",
           "request": {
             "method": "GET",
             "url": {
@@ -309,10 +326,10 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "invoice", "1"],
               "variable": [
-                { "key": "clientId", "value": "1" }
+                { "key": "id", "value": "1" }
               ]
             },
-            "description": "Replace 1 in path with clientId."
+            "description": "Property invoice detail. Replace 1 in path with Property.id."
           }
         },
         {

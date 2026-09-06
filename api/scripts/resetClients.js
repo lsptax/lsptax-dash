@@ -50,10 +50,10 @@ function assertProspectDataUnchanged(before, after) {
  * Empty tables: setval(..., 0, true) is invalid (PG rejects 0 for serial sequences);
  * use value 1 with is_called=false so the next nextval() returns 1.
  */
-async function syncIdSequencesToMax(db) {
+async function syncIdSequencesToMax(tx) {
   const quotedTables = ['"Contract"', '"Invoice"', '"Property"', '"Client"'];
   for (const q of quotedTables) {
-    await db.$executeRawUnsafe(`
+    await tx.$executeRawUnsafe(`
       SELECT setval(
         pg_get_serial_sequence('${q}', 'id'),
         COALESCE((SELECT MAX(id) FROM ${q}), 1),
@@ -84,42 +84,36 @@ async function countRowsThatWouldBeDeleted() {
   };
 }
 
-/** Large deletes on a remote DB can exceed Prisma's default 5s interactive transaction limit. */
-const RESET_TX_OPTIONS = {
-  timeout: 120_000,
-  maxWait: 60_000,
-};
-
 async function resetClientRowsAndRelated() {
-  const deleted = await prisma.$transaction(
-    async (tx) => {
-      const contracts = await tx.contract.deleteMany({
-        where: { client: CLIENT_ONLY },
-      });
-      const invoices = await tx.invoice.deleteMany({
-        where: { property: { client: CLIENT_ONLY } },
-      });
-      const properties = await tx.property.deleteMany({
-        where: { client: CLIENT_ONLY },
-      });
-      const clients = await tx.client.deleteMany({
-        where: CLIENT_ONLY,
-      });
+  return prisma.$transaction(async (tx) => {
+    const beforeProspects = await prospectDataSnapshot(tx);
 
-      return {
-        deletedContracts: contracts.count,
-        deletedInvoices: invoices.count,
-        deletedProperties: properties.count,
-        deletedClients: clients.count,
-      };
-    },
-    RESET_TX_OPTIONS,
-  );
+    const contracts = await tx.contract.deleteMany({
+      where: { client: CLIENT_ONLY },
+    });
+    const invoices = await tx.invoice.deleteMany({
+      where: { property: { client: CLIENT_ONLY } },
+    });
+    const properties = await tx.property.deleteMany({
+      where: { client: CLIENT_ONLY },
+    });
+    const clients = await tx.client.deleteMany({
+      where: CLIENT_ONLY,
+    });
 
-  // Run after commit: keeps the transaction short and avoids timeout on setval + count round-trips.
-  await syncIdSequencesToMax(prisma);
+    assertProspectDataUnchanged(beforeProspects, await prospectDataSnapshot(tx));
 
-  return { ...deleted, idSequencesSyncedToMaxId: true };
+    await syncIdSequencesToMax(tx);
+    assertProspectDataUnchanged(beforeProspects, await prospectDataSnapshot(tx));
+
+    return {
+      deletedContracts: contracts.count,
+      deletedInvoices: invoices.count,
+      deletedProperties: properties.count,
+      deletedClients: clients.count,
+      idSequencesSyncedToMaxId: true,
+    };
+  });
 }
 
 const isDryRun =

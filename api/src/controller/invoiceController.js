@@ -6,7 +6,34 @@ import {
   convertToXLSX,
   EXPORT_FIELDS,
 } from "../services/exportService.js";
+import * as invoiceDeliveryService from "../services/invoiceDeliveryService.js";
+import { resolveInvoiceDueAmount } from "../utils/invoiceYearlyData.js";
 
+const BULK_INVOICE_FILTER_KEYS = [
+  "invoiceIds",
+  "clientIds",
+  "propertyIds",
+  "years",
+  "accountNumbers",
+  "cadCounties",
+  "counties",
+  "search",
+  "paymentStatus",
+  "minInvoiceAmount",
+  "maxInvoiceAmount",
+  "includeArchivedInvoices",
+  "includeArchivedClients",
+  "includeArchivedProperties",
+  "hasEmail",
+];
+
+function pickBulkInvoiceFilters(source = {}) {
+  const filters = {};
+  for (const key of BULK_INVOICE_FILTER_KEYS) {
+    if (source[key] !== undefined) filters[key] = source[key];
+  }
+  return filters;
+}
 
 /**
  * Generate invoices for selected clients and properties (by clientId).
@@ -130,7 +157,11 @@ export const getPropertiesForInvoiceGeneration = async (req, res) => {
     for (const cid in propertiesByClient) {
       for (const property of propertiesByClient[cid].properties) {
         property.existingInvoices = [];
-        for (let year = new Date().getFullYear() - 4; year <= new Date().getFullYear(); year++) {
+        for (
+          let year = new Date().getFullYear() - 4;
+          year <= new Date().getFullYear() + 1;
+          year++
+        ) {
           const key = `${property.accountNumber}-${year}`;
           if (existingInvoiceMap.has(key)) {
             property.existingInvoices.push(...existingInvoiceMap.get(key));
@@ -250,11 +281,14 @@ export const getInvoiceGenerationStats = async (req, res) => {
 
     const existingInvoices = await prisma.invoice.findMany({
       where: whereClause,
-      select: { propertyId: true, accountNumber: true, year: true, invoiceAmount: true }
     });
 
     const totalInvoices = existingInvoices.length;
-    const totalAmount = existingInvoices.reduce((sum, inv) => sum + (Number(inv.invoiceAmount) || 0), 0);
+    const totalAmount = existingInvoices.reduce((sum, inv) => {
+      const clientContingencyFee =
+        inv.contingencyFee != null ? Number(inv.contingencyFee) : 25;
+      return sum + resolveInvoiceDueAmount(inv, clientContingencyFee);
+    }, 0);
     const uniqueProperties = new Set(existingInvoices.map((inv) => inv.accountNumber)).size;
 
     const invoicesByYear = {};
@@ -263,7 +297,10 @@ export const getInvoiceGenerationStats = async (req, res) => {
         invoicesByYear[invoice.year] = { count: 0, amount: 0 };
       }
       invoicesByYear[invoice.year].count++;
-      invoicesByYear[invoice.year].amount += Number(invoice.invoiceAmount) || 0;
+      invoicesByYear[invoice.year].amount += resolveInvoiceDueAmount(
+        invoice,
+        invoice.contingencyFee != null ? Number(invoice.contingencyFee) : 25
+      );
     }
 
     res.status(200).json({
@@ -284,35 +321,120 @@ export const getInvoiceGenerationStats = async (req, res) => {
   }
 };
 
-// --- Read & export (data routes) ---
-export const getInvoice = async (req, res) => {
+export const getInvoiceByProperty = async (req, res) => {
   try {
-    const { clientId } = req.params;
-    const result = await invoiceService.getInvoiceByClientId(clientId);
+    const { id } = req.params;
+    const result = await invoiceService.getInvoiceByPropertyId(id);
+    if (!result) return res.status(404).json({ message: "Property not found." });
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching property invoices:", error);
+    res.status(500).json({ message: "Failed to fetch property invoices." });
+  }
+};
+
+export const getInvoicesByClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit, offset, search } = req.query;
+    const result = await invoiceService.getInvoicesByClientId(id, limit, offset, search);
     if (!result) return res.status(404).json({ message: "Client not found." });
     res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch invoices." });
+    console.error("Error fetching client invoices:", error);
+    res.status(500).json({ message: "Failed to fetch client invoices." });
   }
 };
 
 export const getAllInvoices = async (req, res) => {
   try {
-    const { limit, offset, search } = req.query;
-    const result = await invoiceService.getAllInvoices(limit, offset, search);
+    const { limit, offset, search, sendStatus, paymentStatus } = req.query;
+    const result = await invoiceService.getAllInvoices(
+      limit,
+      offset,
+      search,
+      sendStatus,
+      paymentStatus
+    );
     res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch all invoices." });
+    const status = /paymentStatus must be/i.test(error.message) ? 400 : 500;
+    res.status(status).json({ message: error.message || "Failed to fetch all invoices." });
   }
 };
 
 export const getArchiveInvoices = async (req, res) => {
   try {
-    const { limit, offset, search } = req.query;
-    const result = await invoiceService.getArchiveInvoices(limit, offset, search);
+    const { limit, offset, search, sendStatus, paymentStatus } = req.query;
+    const result = await invoiceService.getArchiveInvoices(
+      limit,
+      offset,
+      search,
+      sendStatus,
+      paymentStatus
+    );
     res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch all invoices." });
+    const status = /paymentStatus must be/i.test(error.message) ? 400 : 500;
+    res.status(status).json({ message: error.message || "Failed to fetch all invoices." });
+  }
+};
+
+/**
+ * Toggle paid status for one or more invoices.
+ * Body: {
+ *   invoiceIds: number|number[],
+ *   isPaid: boolean,
+ *   paidDate?: string,
+ *   paymentNotes?: string,
+ *   sendAcknowledgementEmail?: boolean,
+ *   customMessage?: string
+ * }
+ */
+export const updateInvoicePaymentStatus = async (req, res) => {
+  try {
+    const {
+      invoiceIds,
+      isPaid,
+      paidDate,
+      paymentNotes,
+      sendAcknowledgementEmail,
+      customMessage,
+    } = req.body || {};
+    const result = await invoiceService.updateInvoicePaymentStatus({
+      invoiceIds,
+      isPaid,
+      paidDate,
+      paymentNotes,
+      sendAcknowledgementEmail: Boolean(sendAcknowledgementEmail),
+      customMessage,
+    });
+    const acknowledgement = result.acknowledgementEmail;
+    let message = isPaid ? "Invoice(s) marked as paid" : "Invoice(s) marked as unpaid";
+    if (acknowledgement) {
+      if (acknowledgement.sentCount > 0 && acknowledgement.failedCount === 0) {
+        message += `; acknowledgement email sent to ${acknowledgement.sentCount} client(s)`;
+      } else if (acknowledgement.sentCount > 0) {
+        message += `; acknowledgement email sent to ${acknowledgement.sentCount} client(s), ${acknowledgement.failedCount} failed`;
+      } else if (acknowledgement.failedCount > 0) {
+        message += `; acknowledgement email failed for ${acknowledgement.failedCount} client(s)`;
+      } else if (acknowledgement.skippedCount > 0) {
+        message += "; acknowledgement email skipped (no client email on file)";
+      }
+    }
+    res.status(200).json({
+      success: true,
+      message,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error updating invoice payment status:", error);
+    const status = /No matching invoices/i.test(error.message)
+      ? 404
+      : /required|must be|boolean|valid date/i.test(error.message)
+        ? 400
+        : 500;
+    sendError(res, status, error.message || "Failed to update invoice payment status", error);
   }
 };
 
@@ -335,5 +457,332 @@ export const downloadInvoicesXLSX = async (req, res) => {
     res.status(200).send(buffer);
   } catch (error) {
     sendError(res, 500, "Error downloading invoices XLSX", error);
+  }
+};
+
+/**
+ * Send client-generated invoice PDF(s) to the client via Brevo email + optional SMS.
+ *
+ * Body:
+ * {
+ *   "clientId": number,
+ *   "year"?: number,
+ *   "sendSms"?: boolean (default true),
+ *   "customMessage"?: string (HTML),
+ *   "attachments": [{ "filename": string, "contentBase64": string }],
+ *   "propertyAddresses"?: string[],
+ *   "invoiceIds"?: number[],
+ *   "propertyIds"?: number[]
+ * }
+ *
+ * Prefer propertyAddresses / invoiceIds / propertyIds so the email subject
+ * only lists the properties for the invoice(s) being sent.
+ */
+export const sendInvoiceToClient = async (req, res) => {
+  try {
+    const {
+      clientId,
+      year,
+      sendSms,
+      attachments,
+      customMessage,
+      propertyAddresses,
+      invoiceIds,
+      propertyIds,
+    } = req.body;
+
+    if (!clientId) {
+      return sendError(res, 400, "clientId is required");
+    }
+
+    const result = await invoiceDeliveryService.sendInvoiceToClient({
+      clientId,
+      year,
+      sendSms,
+      attachments,
+      customMessage,
+      propertyAddresses,
+      invoiceIds,
+      propertyIds,
+    });
+
+    const message =
+      result.smsStatus === "FAILED"
+        ? "Invoice emailed successfully, but SMS notification failed"
+        : result.smsStatus === "ACCEPTED"
+          ? "Invoice emailed successfully; SMS was accepted by Brevo and is awaiting carrier delivery"
+          : "Invoice sent successfully";
+
+    res.status(200).json({
+      success: true,
+      message,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error sending invoice to client:", error);
+    const status =
+      error.message === "Client not found"
+        ? 404
+        : /required|invalid|must be|exceeds/i.test(error.message)
+          ? 400
+          : 500;
+    sendError(res, status, error.message || "Failed to send invoice", error);
+  }
+};
+
+/**
+ * Preview clients matching invoice-page filters before bulk invoice delivery.
+ *
+ * Query filters:
+ * invoiceIds, clientIds, propertyIds, years, accountNumbers, cadCounties/counties,
+ * search, paymentStatus=any|paid|unpaid, minInvoiceAmount, maxInvoiceAmount.
+ */
+export const getBulkInvoiceRecipients = async (req, res) => {
+  try {
+    const result = await invoiceDeliveryService.getBulkInvoiceRecipients({
+      filters: pickBulkInvoiceFilters(req.query),
+      limit: req.query.limit,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error getting bulk invoice recipients:", error);
+    const status = /required|invalid|must be|valid|one of/i.test(error.message) ? 400 : 500;
+    sendError(res, status, error.message || "Failed to get bulk invoice recipients", error);
+  }
+};
+
+/**
+ * Send invoice PDFs in bulk to clients matching invoice-page filters.
+ *
+ * Body:
+ * {
+ *   "filters": { ...same filters as preview... },
+ *   "sendSms"?: boolean,
+ *   "year"?: number,
+ *   "customMessage"?: string,
+ *   "attachmentsByClient": [
+ *     { "clientId": number, "year"?: number, "attachments": [{ "filename": string, "contentBase64": string }] }
+ *   ]
+ * }
+ */
+export const sendBulkInvoicesToClients = async (req, res) => {
+  try {
+    const {
+      filters = {},
+      recipients,
+      attachmentsByClient,
+      year,
+      sendSms,
+      customMessage,
+      limit,
+    } = req.body;
+
+    const result = await invoiceDeliveryService.sendInvoicesToClientsBulk({
+      filters: {
+        ...filters,
+        ...pickBulkInvoiceFilters(req.body),
+      },
+      recipients,
+      attachmentsByClient,
+      year,
+      sendSms,
+      customMessage,
+      limit,
+    });
+
+    const message =
+      result.summary.sent > 0
+        ? `Bulk invoice send completed: ${result.summary.sent} sent, ${result.summary.failed} failed, ${result.summary.skipped} skipped`
+        : "Bulk invoice send completed with no invoices sent";
+
+    res.status(200).json({
+      success: result.success,
+      message,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error sending bulk invoices:", error);
+    const status = /required|invalid|must be|valid|one of|At least one/i.test(error.message)
+      ? 400
+      : 500;
+    sendError(res, status, error.message || "Failed to send bulk invoices", error);
+  }
+};
+
+/**
+ * Delivery history for a client. Query: clientId (required), limit (optional).
+ */
+export const getInvoiceDeliveries = async (req, res) => {
+  try {
+    const { clientId, limit } = req.query;
+    if (!clientId) {
+      return sendError(res, 400, "clientId is required");
+    }
+
+    const result = await invoiceDeliveryService.getInvoiceDeliveriesForClient(
+      clientId,
+      limit
+    );
+    if (!result) {
+      return sendError(res, 404, "Client not found");
+    }
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error fetching invoice deliveries:", error);
+    sendError(res, 500, "Failed to fetch invoice deliveries", error);
+  }
+};
+
+/**
+ * GET /invoice/deliveries/:deliveryId/download-url?fileIndex=0&expiresIn=3600
+ * Short-lived signed URL for a stored invoice PDF in Supabase.
+ */
+export const getInvoiceDeliveryDownloadUrl = async (req, res) => {
+  try {
+    const { deliveryId } = req.params;
+    const { fileIndex, expiresIn } = req.query;
+
+    const result = await invoiceDeliveryService.getInvoiceDeliveryDownloadUrl(
+      deliveryId,
+      fileIndex,
+      expiresIn
+    );
+
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    console.error("Error getting invoice download URL:", error);
+    const status =
+      error.message === "Delivery not found"
+        ? 404
+        : error.message === "Stored invoice file not available"
+          ? 404
+          : 500;
+    sendError(res, status, error.message || "Failed to get download URL", error);
+  }
+};
+
+/**
+ * POST /webhooks/brevo
+ * Brevo transactional email webhook (delivered, opened, bounced, etc.).
+ * Configure in Brevo with URL: https://<host>/webhooks/brevo?secret=<BREVO_WEBHOOK_SECRET>
+ */
+export async function brevoWebhook(req, res) {
+  const secret = (process.env.BREVO_WEBHOOK_SECRET || "").trim();
+  if (!secret) {
+    return res.status(503).send("Webhook not configured");
+  }
+
+  const provided =
+    req.query.secret ||
+    req.get("X-Brevo-Webhook-Secret") ||
+    req.get("x-brevo-webhook-secret");
+
+  if (provided !== secret) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  const payloads = Array.isArray(req.body) ? req.body : [req.body || {}];
+  let hadError = false;
+
+  for (const payload of payloads) {
+    const messageId =
+      payload["message-id"] ?? payload.messageId ?? payload.message_id;
+    const event = payload.event;
+    if (!messageId || !event) continue;
+
+    try {
+      await invoiceDeliveryService.applyBrevoEmailEvent({
+        messageId,
+        event,
+        eventTime: payload,
+        reason: payload.reason,
+      });
+    } catch (err) {
+      hadError = true;
+      console.error("Brevo webhook processing error:", err);
+    }
+  }
+
+  if (hadError) {
+    return res.status(500).send("processing failed");
+  }
+
+  return res.status(200).send("ok");
+};
+
+/**
+ * POST /invoice/deliveries/:deliveryId/sync-tracking
+ * Pull latest email tracking from Brevo for one delivery (fallback when webhooks are unavailable).
+ */
+export const syncInvoiceDeliveryTracking = async (req, res) => {
+  try {
+    const { deliveryId } = req.params;
+    const delivery = await invoiceDeliveryService.syncEmailTrackingFromBrevo(deliveryId);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        deliveryId: delivery.id,
+        emailTracking: invoiceDeliveryService.toDeliveryTrackingDto(delivery),
+      },
+    });
+  } catch (error) {
+    console.error("Error syncing invoice delivery tracking:", error);
+    const status =
+      error.message === "Delivery not found"
+        ? 404
+        : error.message === "Invalid deliveryId"
+          ? 400
+          : 500;
+    sendError(res, status, error.message || "Failed to sync delivery tracking", error);
+  }
+};
+
+/**
+ * POST /invoice/deliveries/sync-tracking
+ * Pull latest Brevo email tracking for recent deliveries (invoice list manual sync).
+ */
+export const syncInvoiceDeliveriesTracking = async (req, res) => {
+  try {
+    const limit = req.body?.limit ?? req.query?.limit;
+    const offset = req.body?.offset ?? req.query?.offset;
+    const onlyStaleRaw = req.body?.onlyStale ?? req.query?.onlyStale;
+    const includeResultsRaw = req.body?.includeResults ?? req.query?.includeResults;
+    const onlyStale =
+      onlyStaleRaw == null || onlyStaleRaw === ""
+        ? false
+        : ["true", "1", "yes"].includes(String(onlyStaleRaw).toLowerCase()) ||
+          onlyStaleRaw === true;
+    const includeResults =
+      includeResultsRaw == null || includeResultsRaw === ""
+        ? false
+        : ["true", "1", "yes"].includes(String(includeResultsRaw).toLowerCase()) ||
+          includeResultsRaw === true;
+
+    const result = await invoiceDeliveryService.syncDeliveriesFromBrevo({
+      limit,
+      offset,
+      onlyStale,
+      includeResults,
+    });
+
+    const progress = `${result.synced}/${result.attempted} synced in batch (${result.offset + 1}-${result.offset + result.attempted} of ${result.totalEligible} total)`;
+    const message = result.hasMore
+      ? `${progress}. ${result.remaining} remaining — call again with offset=${result.nextOffset}`
+      : `${progress}. All eligible deliveries synced.`;
+
+    res.status(200).json({
+      success: true,
+      message,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error syncing invoice deliveries from Brevo:", error);
+    sendError(res, 500, error.message || "Failed to sync deliveries from Brevo", error);
   }
 };

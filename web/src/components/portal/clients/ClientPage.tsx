@@ -27,6 +27,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ClientData, Property } from "@/types/types";
 import { routes } from "@/routes/ROUTES";
 import { useToast } from "@/hooks/use-toast";
+import { BackToListLink } from "../BackToListLink";
+import { ListDetailLink } from "../ListDetailLink";
 
 interface Client {
   client: ClientData;
@@ -205,6 +207,9 @@ const ClientPage = () => {
 
   return (
     <div className="m-2 rounded-lg bg-white p-4">
+      <div className="mb-4">
+        <BackToListLink fallback={routes.clients.list()} label="Back to clients" />
+      </div>
       <div className="flex justify-between">
         <h1 className="text-4xl font-bold text-center mb-6">Client Details</h1>
         <div className="flex gap-4">
@@ -347,11 +352,11 @@ const ClientPage = () => {
               Edit Client Details
             </Button>
           </NavLink>
-          <NavLink to={routes.invoices.byClient(clientData.client.id)}>
+          <ListDetailLink to={routes.invoices.byClient(clientData.client.id)}>
             <Button variant={"blue"} className="w-full">
               Invoice
             </Button>
-          </NavLink>
+          </ListDetailLink>
           <NavLink to={routes.client.contract(clientData.client.id)}>
             <Button variant={"blue"} className="w-full">
               Create Contract
@@ -645,7 +650,7 @@ const PropertyBox: React.FC<Property> = ({
   cadCounty,
 }) => {
   return (
-    <NavLink to={routes.properties.view(id)} className="block">
+    <ListDetailLink to={routes.properties.view(id)} className="block">
       <div className="border rounded-2xl p-4 shadow-md hover:shadow-lg transition duration-300 bg-gradient-to-tr from-white to-gray-50 hover:from-blue-50 cursor-pointer h-full flex flex-col justify-between">
         <div className="flex items-center gap-3 mb-4">
           <House size={24} className="text-indigo-500" />
@@ -661,6 +666,6 @@ const PropertyBox: React.FC<Property> = ({
           {nameOnCad}
         </div>
       </div>
-    </NavLink>
+    </ListDetailLink>
   );
 };

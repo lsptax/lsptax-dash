@@ -16,6 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  mergeClientListParams,
+  parseClientListParams,
+  type AccountTypeFilter,
+} from "@/utils/listParams/clients";
+import { useDraftSearch, useListSearchParams } from "@/hooks/useListSearchParams";
 
 interface ClientTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -24,24 +30,22 @@ interface ClientTableProps<TData, TValue> {
 const ClientTable = <TData, TValue>({
   columns,
 }: ClientTableProps<TData, TValue>) => {
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
-  const [archived, setArchived] = useState(false);
+  const { params, updateParams } = useListSearchParams(
+    parseClientListParams,
+    mergeClientListParams
+  );
+  const { search, accountType, offset, limit, archived } = params;
+  const { searchTerm, setSearchTerm, commitSearch } = useDraftSearch(
+    search,
+    (value) => updateParams({ search: value, offset: 0 })
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [accountType, setAccountType] = useState<"all" | "real" | "bpp">("all");
-
-  const commitSearch = () => {
-    setAppliedSearch(searchTerm.trim());
-    setOffset(0);
-  };
 
   const { data, isLoading, isError, refetch } = useClientsQuery({
     limit,
     offset,
-    search: appliedSearch,
+    search,
     archived,
     accountType: accountType === "all" ? undefined : accountType,
   });
@@ -54,7 +58,7 @@ const ClientTable = <TData, TValue>({
     setDownloadingCsv(true);
     try {
       await downloadClientsXlsx({
-        search: appliedSearch || undefined,
+        search: search || undefined,
         accountType: accountType === "all" ? undefined : accountType,
         archived,
       });
@@ -66,8 +70,7 @@ const ClientTable = <TData, TValue>({
   };
 
   const switchArchived = () => {
-    setArchived((a) => !a);
-    setOffset(0);
+    updateParams({ archived: !archived, offset: 0 });
   };
 
   if (isLoading) {
@@ -139,10 +142,12 @@ const ClientTable = <TData, TValue>({
           <div className="flex items-center gap-2 max-w-sm">
             <Select
               value={accountType}
-              onValueChange={(v) => {
-                setAccountType(v as "all" | "real" | "bpp");
-                setOffset(0);
-              }}
+              onValueChange={(value) =>
+                updateParams({
+                  accountType: value as AccountTypeFilter,
+                  offset: 0,
+                })
+              }
             >
               <SelectTrigger className="max-w-sm" aria-label="Filter clients by account type">
                 <SelectValue placeholder="Account type" />
@@ -190,11 +195,10 @@ const ClientTable = <TData, TValue>({
           limit,
           offset,
           hasMore,
-          onPrev: () => setOffset((o) => Math.max(0, o - limit)),
-          onNext: () => setOffset((o) => o + limit),
+          onPrev: () => updateParams({ offset: Math.max(0, offset - limit) }),
+          onNext: () => updateParams({ offset: offset + limit }),
           onPageSizeChange: (size) => {
-            setLimit(size);
-            setOffset(0);
+            updateParams({ limit: size, offset: 0 });
           },
         }}
       />

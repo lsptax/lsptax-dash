@@ -3,8 +3,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import formatDate from "@/utils/formatDate";
 
-import { NavLink } from "react-router-dom";
 import { routes } from "@/routes/ROUTES";
+import { ListDetailLink } from "../ListDetailLink";
 
 export type PropertyDetails = {
   type: string;
@@ -41,9 +41,9 @@ export const propertiesColumn: ColumnDef<Properties>[] = [
       const clientNumber = row.original.clientNumber ?? clientId;
 
       return (
-        <NavLink to={routes.client.detail(clientId)}>
+        <ListDetailLink to={routes.client.detail(clientId)}>
           <div className="text-blue-400 font-bold">#{clientNumber}</div>
-        </NavLink>
+        </ListDetailLink>
       );
     },
   },
@@ -54,11 +54,11 @@ export const propertiesColumn: ColumnDef<Properties>[] = [
       const propertyAccount = row.original.propertyAccount;
 
       return (
-        <NavLink
+        <ListDetailLink
           to={routes.properties.view(row.original.propertyId)}
         >
           <div className="text-green-400 font-bold">#{propertyAccount}</div>
-        </NavLink>
+        </ListDetailLink>
       );
     },
   },

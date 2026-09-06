@@ -12,7 +12,10 @@ async function seeder() {
         bppPaid: "",
         hearingDate: "",
         invoiceDate: "",
+        dueDate: "",
+        generatedDate: "",
         paidDate: "",
+        isPaid: false,
         paymentNotes: "",
         noticeLandValue: 0, // Set integer fields to 0
         noticeImprovementValue: 0,
