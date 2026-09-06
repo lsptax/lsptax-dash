@@ -4,7 +4,7 @@
   "description": "LSPTax monorepo — web + api",
   "scripts": {
     "local": "VITE_BACKEND_URL=http://localhost:3000 npm run dev --prefix web",
-    "prod": "VITE_BACKEND_URL=https://lsptax-server.fly.dev npm run dev --prefix web",
+    "prod": "VITE_BACKEND_URL=https://lsptax-dash.fly.dev npm run dev --prefix web",
     "setup:env": "node scripts/setup-env.js",
     "install:web": "npm install --prefix web",
     "install:api": "npm install --prefix api",

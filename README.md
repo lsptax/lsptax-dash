@@ -21,7 +21,7 @@ From the **repo root** (after `npm run install:all` once):
 | Command | Web dev server | API target (via Vite proxy) |
 |---------|----------------|-----------------------------|
 | `npm run local` | `web/` | `http://localhost:3000` — start API separately (see below) |
-| `npm run prod` | `web/` | `https://lsptax-server.fly.dev` — no local API needed |
+| `npm run prod` | `web/` | `https://lsptax-dash.fly.dev` — no local API needed |
 
 In dev, the frontend uses relative URLs; Vite proxies `/api`, `/auth`, `/invoice`, etc. to whichever backend URL the script sets (see `web/vite.config.ts`).
 
