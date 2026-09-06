@@ -40,6 +40,6 @@ RUN apt-get update -qq && \
 # Copy built application
 COPY --from=build /app /app
 
-# Start the server by default, this can be overwritten at runtime
-EXPOSE 3000
+# Fly.io http_service.internal_port is 8080 (PORT is injected at runtime)
+EXPOSE 8080
 CMD [ "npm", "run", "start" ]
