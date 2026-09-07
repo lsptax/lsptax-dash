@@ -9,6 +9,10 @@ Monorepo for LSPTax portal (frontend + API). Created for local testing before re
 | `web/` | React + Vite frontend (Vercel) |
 | `api/` | Express + Prisma backend (Fly.io) |
 
+## Specs
+
+- [`docs/specs/financial-dashboard-13-week.md`](docs/specs/financial-dashboard-13-week.md) — Owner reports, dashboard, tracking fields, then Payments (13 weeks)
+
 ## API documentation
 
 - [`api/doc/api_v2.md`](api/doc/api_v2.md) — API v2 reference

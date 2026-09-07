@@ -1,5 +1,6 @@
 import prisma from "../../prisma/prismaClient.js";
 import { convertToCSV, sendError } from "../services/exportService.js";
+import * as dashboardService from "../services/dashboardService.js";
 
 function parseCountyParam(county) {
   if (!county) return [];
@@ -86,6 +87,66 @@ export const downloadReportPropertiesCSV = async (req, res) => {
   } catch (error) {
     const status = error?.statusCode || 500;
     sendError(res, status, "Error downloading reporting CSV", error);
+  }
+};
+
+export const getBilledReport = async (req, res) => {
+  try {
+    const result = await dashboardService.getBilledReport({
+      groupBy: Array.isArray(req.query.groupBy) ? req.query.groupBy[0] : req.query.groupBy,
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    const status = error?.statusCode || 500;
+    sendError(res, status, error.message || "Error fetching billed report", error);
+  }
+};
+
+export const getCollectedReport = async (_req, res) => {
+  try {
+    const result = await dashboardService.getCollectedReport();
+    res.status(200).json(result);
+  } catch (error) {
+    sendError(res, 500, "Error fetching collected report", error);
+  }
+};
+
+export const getUnpaidReport = async (req, res) => {
+  try {
+    const result = await dashboardService.getUnpaidReport({
+      view: Array.isArray(req.query.view) ? req.query.view[0] : req.query.view,
+      limit: Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit,
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    sendError(res, 500, "Error fetching unpaid report", error);
+  }
+};
+
+export const getReductionsReport = async (_req, res) => {
+  try {
+    const result = await dashboardService.getReductionsReport();
+    res.status(200).json(result);
+  } catch (error) {
+    sendError(res, 500, "Error fetching reductions report", error);
+  }
+};
+
+export const getAveragePropertiesReport = async (_req, res) => {
+  try {
+    const result = await dashboardService.getAveragePropertiesPerClient();
+    res.status(200).json(result);
+  } catch (error) {
+    sendError(res, 500, "Error fetching average properties report", error);
+  }
+};
+
+export const getActiveClientsReport = async (_req, res) => {
+  try {
+    const result = await dashboardService.getActiveClientCount();
+    res.status(200).json(result);
+  } catch (error) {
+    sendError(res, 500, "Error fetching active clients report", error);
   }
 };
 

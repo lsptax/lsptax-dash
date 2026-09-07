@@ -28,6 +28,7 @@ import {
   downloadInvoicesXLSX,
 } from "../controller/invoiceController.js";
 import { listHearings } from "../controller/hearingController.js";
+import { getOwnerDashboard } from "../controller/dashboardController.js";
 
 const router = Router();
 
@@ -87,6 +88,7 @@ router.get("/invoices", getAllInvoices);
 router.get("/archive-invoices", getArchiveInvoices);
 
 router.get("/stats", getCounts);
+router.get("/dashboard/owner", getOwnerDashboard);
 router.get("/hearings", listHearings);
 
 export default router;

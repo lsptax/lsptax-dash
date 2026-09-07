@@ -1,5 +1,14 @@
 import { Router } from "express";
-import { downloadReportPropertiesCSV, getReportCounties } from "../controller/reportingController.js";
+import {
+  downloadReportPropertiesCSV,
+  getActiveClientsReport,
+  getAveragePropertiesReport,
+  getBilledReport,
+  getCollectedReport,
+  getReductionsReport,
+  getReportCounties,
+  getUnpaidReport,
+} from "../controller/reportingController.js";
 
 const router = Router();
 
@@ -9,5 +18,13 @@ router.get("/properties", downloadReportPropertiesCSV);
 
 // Optimized: distinct list of counties available in DB
 router.get("/counties", getReportCounties);
+
+// Week 1 owner reports (JSON). Billed uses invoiceDate; collected uses paidDate (full-pay v1).
+router.get("/billed", getBilledReport);
+router.get("/collected", getCollectedReport);
+router.get("/unpaid", getUnpaidReport);
+router.get("/reductions", getReductionsReport);
+router.get("/acquisition/avg-properties", getAveragePropertiesReport);
+router.get("/clients/active", getActiveClientsReport);
 
 export default router;
