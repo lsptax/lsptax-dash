@@ -26,7 +26,7 @@ export function getProspectColumns(refetch: () => void | Promise<void>): ColumnD
         const prospectId = row.original.id;
         return (
           <ListDetailLink to={routes.prospect.detail(prospectId)}>
-            <div className="text-blue-400 font-bold">#{prospectId}</div>
+            <div className="text-foreground font-semibold">#{prospectId}</div>
           </ListDetailLink>
         );
       },

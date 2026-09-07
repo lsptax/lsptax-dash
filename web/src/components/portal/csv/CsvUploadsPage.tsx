@@ -273,26 +273,20 @@ export default function CsvUploadsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
-        <div>
-          <div className="inline-flex items-center gap-2">
-          
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight mt-2">CSV Uploads</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">
-            Choose what you need to upload. Start with <span className="font-semibold">Preview</span> to see what will be added or updated before importing.
+    <div className="px-4 sm:px-5 py-4">
+      <div className="mb-3">
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Choose what you need to upload. Start with <span className="font-semibold text-foreground">Preview</span> to see what will be added or updated before importing.
           </p>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Left: Type + File */}
-        <div className="xl:col-span-7 space-y-6">
+        <div className="xl:col-span-7 space-y-3">
           <Card>
             <CardHeader className="p-6">
               <CardTitle className="flex items-center gap-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-muted text-brand-secondary text-sm font-bold">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-background text-sm font-bold">
                   1
                 </span>
                 Choose upload type
@@ -309,13 +303,13 @@ export default function CsvUploadsPage() {
                   }}
                   className={`group relative overflow-hidden rounded-xl border p-5 text-left transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                     uploadType === "clientsProperties"
-                      ? "border-brand-secondary bg-gradient-to-br from-brand-muted to-white"
-                      : "hover:bg-gray-50"
+                      ? "border-foreground/30 bg-muted"
+                      : "border-border bg-transparent hover:bg-muted/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="font-semibold text-gray-900">Clients & Properties</div>
+                      <div className="font-semibold text-foreground">Clients & Properties</div>
                       <div className="text-sm text-muted-foreground mt-1">
                         Preview/import into Client and Property tables.
                       </div>
@@ -323,8 +317,8 @@ export default function CsvUploadsPage() {
                     <div
                       className={`h-10 w-10 rounded-lg flex items-center justify-center border ${
                         uploadType === "clientsProperties"
-                          ? "border-brand-secondary text-brand-secondary bg-white"
-                          : "text-gray-600 bg-white"
+                          ? "border-border text-foreground bg-background"
+                          : "text-muted-foreground bg-muted"
                       }`}
                     >
                       <FileSpreadsheet className="h-5 w-5" />
@@ -343,13 +337,13 @@ export default function CsvUploadsPage() {
                   }}
                   className={`group relative overflow-hidden rounded-xl border p-5 text-left transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                     uploadType === "invoices"
-                      ? "border-brand-secondary bg-gradient-to-br from-brand-muted to-white"
-                      : "hover:bg-gray-50"
+                      ? "border-foreground/30 bg-muted"
+                      : "border-border bg-transparent hover:bg-muted/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="font-semibold text-gray-900">Invoices</div>
+                      <div className="font-semibold text-foreground">Invoices</div>
                       <div className="text-sm text-muted-foreground mt-1">
                         Preview/import invoices (upsert by propertyId + year).
                       </div>
@@ -357,8 +351,8 @@ export default function CsvUploadsPage() {
                     <div
                       className={`h-10 w-10 rounded-lg flex items-center justify-center border ${
                         uploadType === "invoices"
-                          ? "border-brand-secondary text-brand-secondary bg-white"
-                          : "text-gray-600 bg-white"
+                          ? "border-border text-foreground bg-background"
+                          : "text-muted-foreground bg-muted"
                       }`}
                     >
                       <FileSpreadsheet className="h-5 w-5" />
@@ -421,7 +415,7 @@ export default function CsvUploadsPage() {
                 </div>
 
                 <div className="rounded-xl border overflow-hidden">
-                  <div className="grid grid-cols-2 bg-gray-50 text-xs font-semibold text-gray-700">
+                  <div className="grid grid-cols-2 bg-muted text-xs font-semibold text-gray-700">
                     <div className="p-3 border-r">Field (header)</div>
                     <div className="p-3">Example</div>
                   </div>
@@ -441,7 +435,7 @@ export default function CsvUploadsPage() {
           <Card>
             <CardHeader className="p-6">
               <CardTitle className="flex items-center gap-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-muted text-brand-secondary text-sm font-bold">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-background text-sm font-bold">
                   2
                 </span>
                 Upload CSV
@@ -480,16 +474,16 @@ export default function CsvUploadsPage() {
                   setFileFromDrop(e.dataTransfer.files?.[0] ?? null);
                 }}
                 className={`rounded-xl border border-dashed p-6 transition ${
-                  isDragging ? "border-brand-secondary bg-brand-muted" : "bg-white hover:bg-gray-50"
+                  isDragging ? "border-foreground/40 bg-accent" : "bg-muted/40 hover:bg-muted/70"
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <FileSpreadsheet className="h-5 w-5 text-gray-700" />
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                      <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-900">Drop your CSV here</div>
+                      <div className="font-semibold text-foreground">Drop your CSV here</div>
                       <div className="text-sm text-muted-foreground">
                         or click to choose a file
                       </div>
@@ -501,7 +495,7 @@ export default function CsvUploadsPage() {
                 </div>
 
                 {file && (
-                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border bg-white p-4">
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border bg-card p-4">
                     <div>
                       <div className="text-sm font-medium">{file.name}</div>
                       <div className="text-xs text-muted-foreground">{prettyBytes(file.size)}</div>
@@ -557,7 +551,7 @@ export default function CsvUploadsPage() {
         </div>
 
         {/* Right: Results */}
-        <div className="xl:col-span-5 space-y-6">
+        <div className="xl:col-span-5 space-y-3">
           <Card>
             <CardHeader className="p-6">
               <CardTitle>Result</CardTitle>
@@ -567,7 +561,7 @@ export default function CsvUploadsPage() {
             </CardHeader>
             <CardContent className="p-6 pt-0">
               {!result ? (
-                <div className="rounded-xl border bg-gray-50 p-5 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-muted p-5 text-sm text-muted-foreground">
                   No result yet. Choose a CSV and click <span className="font-semibold">Preview</span>.
                 </div>
               ) : errorResult ? (
@@ -591,7 +585,7 @@ export default function CsvUploadsPage() {
                       errorResult.details?.line != null ||
                       errorResult.details?.expectedColumns != null ||
                       errorResult.details?.actualColumns != null) && (
-                      <div className="mt-4 rounded-lg border bg-white p-3 text-xs">
+                      <div className="mt-4 rounded-lg border bg-card p-3 text-xs">
                         <div className="font-medium text-gray-700 mb-2">Details</div>
                         <div className="space-y-1 text-muted-foreground">
                           {errorResult.details?.line != null && (
@@ -662,7 +656,7 @@ export default function CsvUploadsPage() {
                       <p className="mt-2 text-sm text-emerald-900">{successMessage}</p>
                     </div>
                   )}
-                  <div className="rounded-xl border bg-gray-50 p-4">
+                  <div className="rounded-xl border bg-muted p-4">
                     <div className="text-sm font-semibold">
                       {lastAction === "upload" ? "Upload summary" : "Preview summary"}
                     </div>
@@ -691,7 +685,7 @@ export default function CsvUploadsPage() {
                         const cols = guessColumns(items);
                         const rows = items.slice(0, 6);
                         return (
-                          <details key={`${list.label}-${listIdx}`} className="group rounded-xl border bg-white">
+                          <details key={`${list.label}-${listIdx}`} className="group rounded-xl border bg-card">
                             <summary className="cursor-pointer select-none list-none p-4 flex items-center justify-between">
                               <div className="text-sm font-semibold">{list.label}</div>
                               <div className="text-xs text-muted-foreground">
@@ -725,7 +719,7 @@ export default function CsvUploadsPage() {
                                   </table>
                                 </div>
                               ) : (
-                                <pre className="text-xs bg-gray-50 border rounded-lg p-3 overflow-auto max-h-[240px]">
+                                <pre className="text-xs bg-muted border rounded-lg p-3 overflow-auto max-h-[240px]">
                                   {JSON.stringify(rows, null, 2)}
                                 </pre>
                               )}
@@ -741,14 +735,14 @@ export default function CsvUploadsPage() {
                     </div>
                   )}
 
-                  <details className="group rounded-xl border bg-white">
+                  <details className="group rounded-xl border bg-card">
                     <summary className="cursor-pointer select-none list-none p-4 flex items-center justify-between">
                       <div className="text-sm font-semibold">Advanced: Raw JSON</div>
                       <div className="text-xs text-muted-foreground group-open:hidden">Expand</div>
                       <div className="text-xs text-muted-foreground hidden group-open:block">Collapse</div>
                     </summary>
                     <div className="border-t">
-                      <pre className="text-xs bg-white p-4 overflow-auto max-h-[520px]">
+                      <pre className="text-xs bg-card p-4 overflow-auto max-h-[520px]">
                         {JSON.stringify(result, null, 2)}
                       </pre>
                     </div>

@@ -276,3 +276,11 @@ model InvoiceDelivery {
   @@index([createdAt])
   @@index([brevoEmailMessageId])
 }
+
+/// Owner-editable infra overrides. Values overlay process.env at boot and on save.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy Int?
+}

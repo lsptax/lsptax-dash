@@ -83,7 +83,7 @@ const ContactDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold text-center text-blue-600">
+          <DialogTitle className="text-2xl font-semibold text-center">
             Start Saving on Your Property Taxes Today
           </DialogTitle>
           <div className="text-center space-y-2 mt-4  hidden md:block">
@@ -100,11 +100,11 @@ const ContactDialog = ({
             </div>
           </div>
         </DialogHeader>
-        <div className="bg-blue-50 p-4 rounded-lg mb-4 hidden md:block">
-          <h4 className="font-medium text-blue-800 mb-2">
+        <div className="bg-muted p-4 rounded-lg mb-4 hidden md:block">
+          <h4 className="font-medium text-foreground mb-2">
             Why Register With Us?
           </h4>
-          <ul className="text-sm text-blue-700 space-y-1">
+          <ul className="text-sm text-muted-foreground space-y-1">
             <li>• Professional representation at ARB hearings</li>
             <li>• Detailed property value analysis</li>
             <li>• Proven track record of successful appeals</li>
@@ -164,7 +164,7 @@ const ContactDialog = ({
 
             <Button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full"
             >
               Get Your Free Tax Savings Analysis
             </Button>

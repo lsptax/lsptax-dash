@@ -87,13 +87,13 @@ const InvoiceDetails: React.FC<{
       </div>
 
       <div
-        className="flex justify-center items-center min-h-screen bg-gray-100"
+        className="flex justify-center items-center min-h-screen bg-muted"
         style={{ overflow: "hidden" }}
       >
         <div
           ref={contentRef}
           id="pdf-content"
-          className="bg-white min-w-screen h-[210mm] overflow-auto shadow-lg sm:p-6 md:p-8"
+          className="paper-sheet bg-white min-w-screen h-[210mm] overflow-auto shadow-lg sm:p-6 md:p-8"
         >
           <div className="flex justify-between items-start mb-4 border-4 border-black">
             <div className="flex justify-between items-start">

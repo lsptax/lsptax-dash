@@ -85,6 +85,59 @@ Logout. Send `Authorization: Bearer <token>`.
 
 ---
 
+### GET `/api/profile`
+
+Current logged-in user. **Requires JWT.**
+
+**Response (200):** `{ "id": 1, "name": "Client Name", "email": "user@example.com", "type": "owner" }`
+
+### PATCH `/api/profile`
+
+Update display name and email.
+
+**Body:** `{ "name": "Jane Doe", "email": "jane@lsptax.com" }`
+
+### PATCH `/api/profile/password`
+
+**Body:** `{ "currentPassword": "...", "newPassword": "at least 6 chars" }`
+
+---
+
+### GET `/api/settings`
+
+Owner/admin only. Returns current infra settings (`.env` plus any values saved in the UI). API keys, webhook secrets, JWT, and the database URL are **not** stored or returned here.
+
+### PATCH `/api/settings`
+
+Owner/admin only. Partial update of safer fields only. Saved values overlay `process.env` immediately — no restart. Secret keys in the body are ignored.
+
+**Body (any subset):**
+
+```json
+{
+  "brevo": {
+    "senderEmail": "results@lsptax.com",
+    "senderName": "LSPT Results",
+    "smsSender": "LSP Tax",
+    "invoiceLogoUrl": "https://..."
+  },
+  "supabase": {
+    "url": "https://xxx.supabase.co"
+  },
+  "docusign": {
+    "authServer": "https://account-d.docusign.com",
+    "restBaseUrl": "https://demo.docusign.net/restapi",
+    "allowDemoInProduction": false,
+    "allowMultipleClientContractSends": true,
+    "allowMultipleAoaSends": true
+  }
+}
+```
+
+Keep `BREVO_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DOCUSIGN_CLIENT_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_USER_ID`, `DOCUSIGN_HMAC_SECRET`, and the DocuSign RSA private key in server env / files.
+
+---
+
 ## Data (Read) – `/api`
 
 All under prefix `/api`. **Requires `Authorization: Bearer <token>`**. Query params where noted.
@@ -413,7 +466,7 @@ Owner financial aggregate (Week 1). JWT required. Does not change `GET /api/stat
 
 **Access (Week 2):** `User.type` must be `owner` or `admin`. Other portal users get **403**. Login now returns `user.type`. Set a user with `UPDATE "User" SET type = 'owner' WHERE email = '...';` then log in again.
 
-**Query filters (shared with `/report/billed|collected|unpaid|reductions`):** `from`, `to` (`YYYY-MM-DD`), `month` (`YYYY-MM`), `calendarYear`, `taxYear`, `county`, `clientId`, `propertyId`. Date range uses `invoiceDate` for billed/AR and `paidDate` for collected. `month` / `calendarYear` shift the default this-month / YTD windows. Add `format=csv` on report endpoints to download the current JSON as CSV.
+**Query filters (shared with `/report/billed|collected|unpaid|reductions`):** `from`, `to` (`YYYY-MM-DD`), `month` (`YYYY-MM`), `calendarYear`, `taxYear`, `county`, `clientId`, `propertyId`. `month`, `taxYear`, and `county` accept repeated params or comma-separated lists (`?county=Bexar&county=Harris` or `?taxYear=2025,2026`). Date range uses `invoiceDate` for billed/AR and `paidDate` for collected. A single `month` / `calendarYear` shifts the default this-month / YTD windows; multiple months also span billed/collected dates from the earliest month through the latest. Add `format=csv` on report endpoints to download the current JSON as CSV.
 
 **Response (200)**
 
@@ -2301,7 +2354,7 @@ Preview endpoints use messages like "An error occurred while previewing the invo
 
 All under prefix `/report`. **Requires `Authorization: Bearer <token>`**.
 
-These endpoints are **purpose-built reports** (not the generic table exports under `/api/download-*` and not the CSV upload tooling under `/csv/*`).
+These endpoints are **purpose-built owner reports** (not the generic table exports under `/api/download-*` and not the CSV upload tooling under `/csv/*`). All `/report/*` routes require an **owner or admin** user.
 
 ### GET `/report/counties`
 
@@ -2315,24 +2368,11 @@ Return all available counties in the database (optimized: `distinct` on `Propert
 }
 ```
 
-### GET `/report/properties?county=`
+### GET `/report/properties`
 
-Download a CSV of properties, optionally filtered by county.
+Download filtered clients and/or properties using the same owner dashboard filters (`taxYear`, `county`, `clientId`, `propertyId`). Month is a dashboard window and does **not** empty the roster. Add `sheets=clients,properties` (repeatable or comma-separated) to get an `.xlsx` with a **Clients** sheet and/or a **Properties** sheet. Omit `sheets` for a properties CSV (legacy).
 
-**Query params**
-
-| Param    | Type                 | Required | Description |
-|----------|----------------------|----------|-------------|
-| `county` | string \| string[]    | No       | Filter by county. Supports `?county=Bexar`, `?county=Bexar,Travis`, or repeated `?county=Bexar&county=Travis`. Use `?county=All` (or include `All` among values) to return all. If omitted, returns all non-archived properties. |
-
-**Response (200)**: `text/csv` attachment.
-
-**CSV columns**
-
-- `NAME ON CAD`
-- `PROPERTY ADDRESS`
-- `COUNTY`
-- `Account`
+**Response (200)** with `sheets`: `owner-filtered-export.xlsx`. Without `sheets`: `owner-filtered-properties.csv`.
 
 ### GET `/report/billed`
 

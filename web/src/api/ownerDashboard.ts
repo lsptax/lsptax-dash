@@ -1,6 +1,6 @@
 import { authFetch, getApiBaseUrl } from "@/api/client";
 import type { OwnerFilters } from "@/utils/ownerFilters";
-import { ownerFiltersToQuery } from "@/utils/ownerFilters";
+import { ownerFiltersToSearchParams } from "@/utils/ownerFilters";
 
 export type OwnerDashboardStats = {
   asOf: string;
@@ -56,10 +56,14 @@ export type UnpaidClientRow = {
 
 function withFilters(path: string, filters: OwnerFilters, extra?: Record<string, string>) {
   const url = new URL(path, "http://local.invalid");
-  const query = { ...ownerFiltersToQuery(filters), ...extra };
-  for (const [key, value] of Object.entries(query)) {
-    if (value) url.searchParams.set(key, value);
+  const params = ownerFiltersToSearchParams(filters);
+  params.delete("allTime");
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) params.set(key, value);
+    }
   }
+  url.search = params.toString();
   return `${getApiBaseUrl()}${url.pathname}${url.search}`;
 }
 
@@ -129,6 +133,58 @@ function filenameFromDisposition(header: string | null, fallback: string): strin
   if (!header) return fallback;
   const match = /filename\*?=(?:UTF-8''|")?([^\";]+)"?/i.exec(header);
   return match?.[1] ? decodeURIComponent(match[1]) : fallback;
+}
+
+export async function downloadFilteredRosterXlsx(
+  filters: OwnerFilters = {},
+  sheets: { clients?: boolean; properties?: boolean } = { clients: true, properties: true }
+): Promise<void> {
+  const selected = [
+    sheets.clients ? "clients" : "",
+    sheets.properties ? "properties" : "",
+  ].filter(Boolean);
+  if (!selected.length) throw new Error("Pick client details, property details, or both.");
+  const res = await authFetch(withFilters("/report/properties", filters, { sheets: selected.join(",") }));
+  if (res.status === 403) throw new Error("You do not have access to owner reports.");
+  if (!res.ok) throw new Error(`Failed to download export (${res.status})`);
+  const blob = await res.blob();
+  const filename = filenameFromDisposition(
+    res.headers.get("content-disposition"),
+    "owner-filtered-export.xlsx"
+  );
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+export async function downloadFilteredPropertiesCsv(filters: OwnerFilters = {}): Promise<void> {
+  const res = await authFetch(withFilters("/report/properties", filters));
+  if (res.status === 403) throw new Error("You do not have access to owner reports.");
+  if (!res.ok) throw new Error(`Failed to download properties (${res.status})`);
+  const blob = await res.blob();
+  const filename = filenameFromDisposition(
+    res.headers.get("content-disposition"),
+    "owner-filtered-properties.csv"
+  );
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 export async function downloadOwnerReportCsv(

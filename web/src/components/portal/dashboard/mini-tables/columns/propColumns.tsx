@@ -40,7 +40,7 @@ export const propertiesColumn: ColumnDef<Properties>[] = [
       const clientNumber = row.original.clientNumber ?? clientId;
       return (
         <NavLink to={routes.client.detail(clientId)}>
-          <div className="text-blue-400 font-bold">#{clientNumber}</div>
+          <div className="text-foreground font-semibold">#{clientNumber}</div>
         </NavLink>
       );
     },

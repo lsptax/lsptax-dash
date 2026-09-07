@@ -10,6 +10,22 @@ function firstQuery(value) {
   return String(raw ?? "").trim();
 }
 
+function listQuery(value) {
+  if (value == null || value === "") return [];
+  const raw = Array.isArray(value) ? value : [value];
+  const seen = new Set();
+  const out = [];
+  for (const part of raw.flatMap((item) => String(item).split(","))) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 function lastDayOfMonth(year, month) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
@@ -47,10 +63,10 @@ function isValidMonth(value) {
 export function parseReportFilters(query = {}) {
   const from = firstQuery(query.from);
   const to = firstQuery(query.to);
-  const month = firstQuery(query.month);
+  const monthsRaw = listQuery(query.month);
   const calendarYearRaw = firstQuery(query.calendarYear);
-  const taxYearRaw = firstQuery(query.taxYear);
-  const county = firstQuery(query.county);
+  const taxYearRaw = listQuery(query.taxYear);
+  const countiesRaw = listQuery(query.county);
   const clientIdRaw = firstQuery(query.clientId);
   const propertyIdRaw = firstQuery(query.propertyId);
   const format = firstQuery(query.format).toLowerCase();
@@ -60,7 +76,13 @@ export function parseReportFilters(query = {}) {
   if (from && !isValidIsoDate(from)) errors.push("from must be YYYY-MM-DD");
   if (to && !isValidIsoDate(to)) errors.push("to must be YYYY-MM-DD");
   if (from && to && from > to) errors.push("from must be on or before to");
-  if (month && !isValidMonth(month)) errors.push("month must be YYYY-MM");
+
+  const months = [];
+  for (const month of monthsRaw) {
+    if (!isValidMonth(month)) errors.push("month must be YYYY-MM");
+    else months.push(month);
+  }
+  months.sort();
 
   let calendarYear = null;
   if (calendarYearRaw) {
@@ -68,13 +90,13 @@ export function parseReportFilters(query = {}) {
     else calendarYear = Number(calendarYearRaw);
   }
 
-  let taxYear = null;
-  if (taxYearRaw) {
-    const n = Number(taxYearRaw);
+  const taxYears = [];
+  for (const raw of taxYearRaw) {
+    const n = Number(raw);
     if (!Number.isInteger(n) || n < 1990 || n > 2100) {
       errors.push("taxYear must be a 4-digit protest year");
     } else {
-      taxYear = n;
+      taxYears.push(n);
     }
   }
 
@@ -92,9 +114,7 @@ export function parseReportFilters(query = {}) {
     else propertyId = n;
   }
 
-  if (county.toLowerCase() === "all") {
-    // treat All as no county filter
-  }
+  const counties = countiesRaw.filter((county) => county.toLowerCase() !== "all");
 
   if (format && format !== "csv" && format !== "json") {
     errors.push("format must be json or csv");
@@ -106,28 +126,57 @@ export function parseReportFilters(query = {}) {
     throw error;
   }
 
-  const countyFilter = county && county.toLowerCase() !== "all" ? county : "";
+  const month = months.length ? months[months.length - 1] : "";
 
   return {
     from: from || "",
     to: to || "",
-    month: month || "",
+    months,
+    month,
     calendarYear,
-    taxYear,
-    county: countyFilter,
+    taxYears,
+    taxYear: taxYears.length === 1 ? taxYears[0] : null,
+    counties,
+    county: counties.length === 1 ? counties[0] : "",
     clientId,
     propertyId,
     format: format || "json",
   };
 }
 
-/** Explicit from/to range. Month/calendarYear shift windows via referenceDate instead. */
+/** Explicit from/to range. Multiple months span earliest start through latest end. */
 export function dateConstraintFromFilters(filters) {
-  if (!filters?.from && !filters?.to) return null;
-  return {
-    start: filters.from || "0000-01-01",
-    end: filters.to || "9999-12-31",
-  };
+  if (filters?.from || filters?.to) {
+    return {
+      start: filters.from || "0000-01-01",
+      end: filters.to || "9999-12-31",
+    };
+  }
+  const months = filters?.months?.length
+    ? [...filters.months].sort()
+    : filters?.month
+      ? [filters.month]
+      : [];
+  if (months.length > 1) {
+    const [y1, m1] = months[0].split("-").map(Number);
+    const [y2, m2] = months[months.length - 1].split("-").map(Number);
+    return { start: iso(y1, m1, 1), end: iso(y2, m2, lastDayOfMonth(y2, m2)) };
+  }
+  return null;
+}
+
+/** Selected months (including a single month) bound the property/client roster export. */
+export function rosterDateConstraintFromFilters(filters) {
+  if (filters?.from || filters?.to) return dateConstraintFromFilters(filters);
+  const months = filters?.months?.length
+    ? [...filters.months].sort()
+    : filters?.month
+      ? [filters.month]
+      : [];
+  if (!months.length) return null;
+  const [y1, m1] = months[0].split("-").map(Number);
+  const [y2, m2] = months[months.length - 1].split("-").map(Number);
+  return { start: iso(y1, m1, 1), end: iso(y2, m2, lastDayOfMonth(y2, m2)) };
 }
 
 export function intersectDateRange(windowRange, constraint) {
@@ -164,14 +213,28 @@ export function referenceDateFromFilters(filters, now = new Date(), timeZone = B
   return now;
 }
 
+export function taxYearsFromFilters(filters) {
+  if (filters?.taxYears?.length) return filters.taxYears;
+  if (filters?.taxYear != null) return [filters.taxYear];
+  return [];
+}
+
+export function countiesFromFilters(filters) {
+  if (filters?.counties?.length) return filters.counties;
+  if (filters?.county) return [filters.county];
+  return [];
+}
+
 export function invoiceMatchesEntityFilters(invoice, filters) {
   if (!filters) return true;
-  if (filters.taxYear != null && Number(invoice.year) !== filters.taxYear) return false;
+  const taxYears = taxYearsFromFilters(filters);
+  if (taxYears.length && !taxYears.includes(Number(invoice.year))) return false;
   if (filters.clientId != null && Number(invoice.clientId) !== filters.clientId) return false;
   if (filters.propertyId != null && Number(invoice.propertyId) !== filters.propertyId) return false;
-  if (filters.county) {
+  const counties = countiesFromFilters(filters);
+  if (counties.length) {
     const county = String(invoice.county || "").trim().toLowerCase();
-    if (county !== filters.county.toLowerCase()) return false;
+    if (!counties.some((item) => item.toLowerCase() === county)) return false;
   }
   return true;
 }

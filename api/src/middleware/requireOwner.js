@@ -23,7 +23,7 @@ export async function requireOwner(req, res, next) {
 
     if (!isOwnerDashboardRole(user.type)) {
       return res.status(403).json({
-        message: "Owner dashboard is limited to management users.",
+        message: "This is limited to management users.",
       });
     }
 

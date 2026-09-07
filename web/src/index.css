@@ -1,11 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
 html {
   @apply font-sans;
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 html, body {
   overflow-x: hidden;
@@ -19,60 +21,84 @@ html, body {
   .page-break {
     page-break-before: always;
   }
+  html.dark {
+    color-scheme: light;
+  }
 }
-
 
 @layer base {
   :root {
     --brand-primary: #14ADD6;
     --brand-secondary: #384295;
     --brand-dark: #14212A;
-    --brand-accent: #E84F5A;
-    --brand-background: #F7FAFF;
-    --brand-blue: #0093FF;
-    --brand-muted: #F2F7FF;
-    --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --brand-accent: #C93C46;
+    --brand-background: #F4F7FB;
+    --brand-blue: #0E8FB8;
+    --brand-blue-hover: #0C7EA3;
+    --brand-muted: #EAF1F7;
+    --background: 210 24% 97%;
+    --foreground: 210 24% 12%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 12% 40%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --popover-foreground: 210 24% 12%;
+    --border: 214 18% 88%;
+    --input: 214 18% 88%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 100% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --ring: 215 20.2% 65.1%;
+    --card-foreground: 210 24% 12%;
+    --primary: 192 80% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 210 24% 12%;
+    --accent: 210 20% 94%;
+    --accent-foreground: 210 24% 12%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 192 80% 34%;
     --radius: 0.5rem;
+    --chart-1: 192 80% 36%;
+    --chart-2: 142 48% 36%;
+    --chart-3: 4 72% 50%;
+    --chart-4: 32 88% 46%;
+    --chart-5: 232 36% 42%;
   }
 
-  .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 215 20.2% 65.1%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --ring: 216 34% 17%;
+  /*
+   * Dark: keep Lone Star cyan/coral. Darken surfaces, do not invert buttons.
+   */
+  html.dark {
+    --brand-primary: #14ADD6;
+    --brand-secondary: #9aa3d4;
+    --brand-dark: #0f1a22;
+    --brand-accent: #E85A64;
+    --brand-background: #121c24;
+    --brand-blue: #2eb4d9;
+    --brand-blue-hover: #14ADD6;
+    --brand-muted: #1a2833;
+    --background: 206 22% 9%;
+    --foreground: 210 20% 96%;
+    --muted: 206 16% 14%;
+    --muted-foreground: 210 10% 70%;
+    --accent: 206 16% 16%;
+    --accent-foreground: 210 20% 96%;
+    --popover: 206 16% 16%;
+    --popover-foreground: 210 20% 96%;
+    --border: 206 12% 38%;
+    --input: 206 12% 38%;
+    --card: 206 16% 17%;
+    --card-foreground: 210 20% 96%;
+    --primary: 192 78% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 206 16% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 192 78% 38%;
+    --chart-1: 192 78% 48%;
+    --chart-2: 142 48% 48%;
+    --chart-3: 4 72% 58%;
+    --chart-4: 32 88% 56%;
+    --chart-5: 232 36% 68%;
   }
 }
 
@@ -83,4 +109,157 @@ html, body {
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  .portal-toolbar {
+    @apply mx-4 mb-3 mt-1 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:mx-5 md:flex-row md:items-center;
+  }
+  .portal-table {
+    @apply mx-4 mb-4 flex h-[calc(100dvh-13.5rem)] min-h-[20rem] flex-col overflow-y-auto rounded-xl border border-border bg-card p-4 sm:mx-5;
+  }
+  .portal-card {
+    @apply rounded-xl border border-border bg-card shadow-sm;
+  }
+}
+
+.paper-sheet {
+  background-color: #fff !important;
+  color: #14212a !important;
+}
+
+html.dark .bg-white {
+  background-color: hsl(var(--card));
+}
+html.dark .bg-white\/80,
+html.dark .bg-white\/60 {
+  background-color: hsl(var(--card) / 0.85);
+}
+html.dark .to-white {
+  --tw-gradient-to: hsl(var(--muted)) var(--tw-gradient-to-position);
+}
+html.dark .from-white {
+  --tw-gradient-from: hsl(var(--muted)) var(--tw-gradient-from-position);
+}
+html.dark .bg-gray-50,
+html.dark .bg-gray-50\/60,
+html.dark .bg-gray-100,
+html.dark .bg-slate-50,
+html.dark .bg-slate-100,
+html.dark .bg-blue-50 {
+  background-color: hsl(var(--muted));
+}
+html.dark .bg-gray-200 {
+  background-color: hsl(var(--accent));
+}
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-gray-700,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700 {
+  color: hsl(var(--foreground));
+}
+html.dark .text-gray-600,
+html.dark .text-gray-500,
+html.dark .text-slate-600,
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: hsl(var(--muted-foreground));
+}
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-100\/80 {
+  border-color: hsl(var(--border));
+}
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: hsl(var(--border));
+}
+html.dark .hover\:bg-gray-100:hover,
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-white\/60:hover {
+  background-color: hsl(var(--accent));
+}
+html.dark .odd\:bg-white:nth-child(odd) {
+  background-color: hsl(var(--card));
+}
+html.dark .even\:bg-gray-50:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.45);
+}
+
+html.dark .text-blue-600,
+html.dark .text-blue-500,
+html.dark .text-blue-400,
+html.dark .text-blue-700,
+html.dark .text-blue-800,
+html.dark .hover\:text-blue-600:hover {
+  color: hsl(var(--primary));
+}
+
+html.dark .bg-blue-400,
+html.dark .bg-blue-500,
+html.dark .bg-blue-600,
+html.dark .bg-indigo-500,
+html.dark .hover\:bg-blue-700:hover,
+html.dark .hover\:bg-blue-500:hover {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+html.dark .from-indigo-500 {
+  --tw-gradient-from: hsl(var(--primary)) var(--tw-gradient-from-position);
+  --tw-gradient-to: hsl(var(--primary) / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+html.dark .to-blue-500 {
+  --tw-gradient-to: hsl(var(--primary)) var(--tw-gradient-to-position);
+}
+
+html.dark .bg-green-100,
+html.dark .bg-green-200,
+html.dark .bg-emerald-100,
+html.dark .bg-emerald-50 {
+  background-color: rgb(52 211 153 / 0.14);
+}
+html.dark .text-green-800,
+html.dark .text-emerald-800 {
+  color: rgb(167 243 208);
+}
+html.dark .bg-blue-100,
+html.dark .bg-sky-100,
+html.dark .bg-indigo-100 {
+  background-color: rgb(20 173 214 / 0.14);
+}
+html.dark .text-indigo-800,
+html.dark .text-sky-800 {
+  color: rgb(186 230 253);
+}
+html.dark .bg-yellow-100,
+html.dark .bg-amber-100,
+html.dark .bg-amber-50 {
+  background-color: rgb(251 191 36 / 0.12);
+}
+html.dark .text-yellow-800,
+html.dark .text-amber-800,
+html.dark .text-amber-900 {
+  color: rgb(253 224 171);
+}
+html.dark .bg-red-100 {
+  background-color: rgb(248 113 113 / 0.14);
+}
+html.dark .text-red-800 {
+  color: rgb(254 202 202);
+}
+html.dark .hover\:bg-green-200:hover,
+html.dark .hover\:bg-blue-200:hover,
+html.dark .hover\:bg-yellow-200:hover,
+html.dark .hover\:bg-red-200:hover,
+html.dark .hover\:bg-gray-200:hover {
+  background-color: hsl(var(--accent));
 }

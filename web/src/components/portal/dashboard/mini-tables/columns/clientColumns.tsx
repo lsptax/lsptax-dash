@@ -11,7 +11,7 @@ export const clientsColumn: ColumnDef<Clients>[] = [
     header: "Client #",
     cell: ({ row }) => {
       const id = row.original.clientNumber;
-      return <div className="text-blue-400 font-bold">#{id}</div>;
+      return <div className="text-foreground font-semibold">#{id}</div>;
     },
   },
   {

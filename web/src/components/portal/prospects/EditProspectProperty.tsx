@@ -138,7 +138,7 @@ export default function EditProspectProperty() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="space-y-8 m-2 py-10 px-6 bg-white rounded-lg shadow-lg"
+        className="space-y-8 m-2 py-10 px-6 bg-card rounded-lg border border-border"
       >
         <div className="border-b pb-4">
           <h1 className="text-xl font-semibold text-gray-800 mb-6">
@@ -357,7 +357,7 @@ export default function EditProspectProperty() {
           </Button>
           <Button
             type="submit"
-            className="mt-6 w-full bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center"
+            className="mt-6 w-full bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
             disabled={isSubmitting} // Disable button while submitting
           >
             {isSubmitting ? (

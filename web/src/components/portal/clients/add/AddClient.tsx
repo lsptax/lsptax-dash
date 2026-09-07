@@ -145,7 +145,7 @@ export default function AddClientForm() {
   
 
   return (
-    <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-8 mt-10">
+    <div className="max-w-4xl mx-auto bg-card shadow-lg rounded-lg p-8 mt-10">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
         Add New Client
       </h1>

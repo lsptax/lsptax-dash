@@ -8,27 +8,27 @@ const Hero = () => {
   return (
     <div
       id="hero"
-      className="bg-brand-background md:max-h-[90vh] flex flex-col md:flex-row items-center justify-between relative p-6 md:p-10 lg:p-18 pb-20 md:pb-32 z-1 overflow-hidden"
+      className="relative overflow-hidden bg-background px-6 py-12 md:px-12 md:py-16 lg:px-16 flex flex-col md:flex-row items-center justify-between"
     >
       {/* /h */}
       {/* Left Section */}
-      <div className="w-full md:w-1/2 flex flex-col items-start md:ml-32 mb-8 md:mb-0">
-        <div className=" w-full max-w-[90%] md:max-w-full">
-          <h4 className="border-l-4 border-blue-400 px-4 text-lg md:text-xl">
+      <div className="w-full md:w-1/2 flex flex-col items-start md:max-w-xl mb-8 md:mb-0">
+        <div className="w-full">
+          <h4 className="border-l-4 border-primary pl-3 text-sm font-medium text-muted-foreground">
             Offering the best tax reduction services
           </h4>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold my-4">
-            Maximise Your<br/> Property Savings
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mt-4 text-foreground">
+            Maximise Your<br /> Property Savings
           </h1>
-          <h3 className="text-lg md:text-xl">
-            Trusted Professionals Committed To Reducing
-            <br /> Your Property Tax Burden - No Savings, No Fees!
-          </h3>
+          <p className="text-base md:text-lg text-muted-foreground mt-4 leading-relaxed">
+            Trusted professionals committed to reducing
+            <br className="hidden md:block" /> your property tax burden — no savings, no fees.
+          </p>
         </div>
         <div className="flex gap-4 mt-8">
           <button
             onClick={() => setIsDialogOpen(true)}
-            className="flex items-center bg-blue-400 text-white p-2 md:px-8 rounded mb-4 md:mb-0 h-16 group"
+            className="inline-flex items-center bg-primary text-primary-foreground h-11 px-6 rounded-md text-sm font-medium group"
           >
             Get Started Now
             <ArrowRight
@@ -56,15 +56,15 @@ const Hero = () => {
           viewBox="0 0 610 640"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="absolute z-0 w-[80%] md:w-[90%] lg:w-[500px] h-auto top-0 right-0 md:hidden lg:block text-brand-blue"
+          className="absolute z-0 w-[80%] md:w-[90%] lg:w-[500px] h-auto top-0 right-0 md:hidden lg:block text-primary/20"
         >
           <circle
-            opacity="0.5"
+            opacity="0.35"
             cx="420"
             cy="180"
             r="370"
             fill="currentColor"
-            fillOpacity="0.8"
+            fillOpacity="0.45"
           />
         </svg>
         <img

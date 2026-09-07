@@ -15,9 +15,16 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PRIVATE_KEY_PATH = path.resolve(__dirname, "../keys/private.key");
 
-const DOCUSIGN_REST_BASE_URL =
-  (process.env.DOCUSIGN_REST_BASE_URL || "https://demo.docusign.net/restapi").replace(/\/+$/, "");
-const DOCUSIGN_API_BASE = `${DOCUSIGN_REST_BASE_URL}/v2.1`;
+function getDocuSignRestBaseUrl() {
+  return (process.env.DOCUSIGN_REST_BASE_URL || "https://demo.docusign.net/restapi").replace(
+    /\/+$/,
+    ""
+  );
+}
+
+function getDocuSignApiBase() {
+  return `${getDocuSignRestBaseUrl()}/v2.1`;
+}
 
 function readDocuSignPrivateKey() {
   const keyPath = process.env.DOCUSIGN_PRIVATE_KEY_PATH || DEFAULT_PRIVATE_KEY_PATH;
@@ -30,6 +37,12 @@ const JWT_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 let cachedAccessToken = null;
 let cachedTokenExpiresAt = 0;
 let inflightJwtPromise = null;
+
+export function resetDocuSignAccessTokenCache() {
+  cachedAccessToken = null;
+  cachedTokenExpiresAt = 0;
+  inflightJwtPromise = null;
+}
 
 export async function getAccessToken() {
   const now = Date.now();
@@ -157,7 +170,7 @@ export async function sendEnvelope(documents, emailId, name, options = {}) {
     return await withDocuSignLimit(async () => {
       const accessToken = await getAccessToken();
       const apiClient = new docusign.ApiClient();
-      apiClient.setBasePath(DOCUSIGN_REST_BASE_URL);
+      apiClient.setBasePath(getDocuSignRestBaseUrl());
       apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
       const envelopesApi = new docusign.EnvelopesApi(apiClient);
       return envelopesApi.createEnvelope(process.env.DOCUSIGN_ACCOUNT_ID, {
@@ -178,7 +191,7 @@ export async function checkEnvelopeStatus(envelopeId) {
     const results = await withDocuSignLimit(async () => {
       const accessToken = await getAccessToken();
       const apiClient = new docusign.ApiClient();
-      apiClient.setBasePath(DOCUSIGN_REST_BASE_URL);
+      apiClient.setBasePath(getDocuSignRestBaseUrl());
       apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
       const envelopesApi = new docusign.EnvelopesApi(apiClient);
       return envelopesApi.getEnvelope(process.env.DOCUSIGN_ACCOUNT_ID, envelopeId);
@@ -215,7 +228,7 @@ export const downloadSignedPdf = async (req, res) => {
     const documentListResponse = await withDocuSignLimit(async () => {
       const accessToken = await getAccessToken();
       return axios.get(
-        `${DOCUSIGN_API_BASE}/accounts/${accountId}/envelopes/${envelopeId}/documents`,
+        `${getDocuSignApiBase()}/accounts/${accountId}/envelopes/${envelopeId}/documents`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
     });
@@ -243,7 +256,7 @@ export const downloadSignedPdf = async (req, res) => {
       const documentResponse = await withDocuSignLimit(async () => {
         const accessToken = await getAccessToken();
         return axios.get(
-          `${DOCUSIGN_API_BASE}/accounts/${accountId}/envelopes/${envelopeId}/documents/${doc.documentId}`,
+          `${getDocuSignApiBase()}/accounts/${accountId}/envelopes/${envelopeId}/documents/${doc.documentId}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -275,7 +288,7 @@ export async function getSignedDocumentBuffers(envelopeId) {
   const listRes = await withDocuSignLimit(async () => {
     const accessToken = await getAccessToken();
     return axios.get(
-      `${DOCUSIGN_API_BASE}/accounts/${accountId}/envelopes/${envelopeId}/documents`,
+      `${getDocuSignApiBase()}/accounts/${accountId}/envelopes/${envelopeId}/documents`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
   });
@@ -286,7 +299,7 @@ export async function getSignedDocumentBuffers(envelopeId) {
     const docRes = await withDocuSignLimit(async () => {
       const accessToken = await getAccessToken();
       return axios.get(
-        `${DOCUSIGN_API_BASE}/accounts/${accountId}/envelopes/${envelopeId}/documents/${doc.documentId}`,
+        `${getDocuSignApiBase()}/accounts/${accountId}/envelopes/${envelopeId}/documents/${doc.documentId}`,
         {
           headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/pdf" },
           responseType: "arraybuffer",

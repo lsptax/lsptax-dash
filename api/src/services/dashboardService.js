@@ -1,9 +1,11 @@
 import prisma from "../../prisma/prismaClient.js";
 import { getOwnerDateWindows } from "../utils/invoiceDateWindows.js";
 import {
+  countiesFromFilters,
   dateConstraintFromFilters,
   invoiceMatchesEntityFilters,
   referenceDateFromFilters,
+  taxYearsFromFilters,
 } from "../utils/reportFilters.js";
 import {
   BILLED_GROUP_BY,
@@ -52,21 +54,27 @@ function toMetricInvoice(row) {
   };
 }
 
+function cadCountyWhere(filters = {}) {
+  const counties = countiesFromFilters(filters);
+  if (!counties.length) return undefined;
+  return { in: counties, mode: "insensitive" };
+}
+
 function prismaEntityWhere(filters = {}) {
   const propertyWhere = {
     isArchived: false,
     client: { isArchived: false },
   };
   if (filters.clientId != null) propertyWhere.clientId = filters.clientId;
-  if (filters.county) {
-    propertyWhere.cadCounty = { equals: filters.county, mode: "insensitive" };
-  }
+  const cadCounty = cadCountyWhere(filters);
+  if (cadCounty) propertyWhere.cadCounty = cadCounty;
 
   const where = {
     isArchived: false,
     property: propertyWhere,
   };
-  if (filters.taxYear != null) where.year = filters.taxYear;
+  const taxYears = taxYearsFromFilters(filters);
+  if (taxYears.length) where.year = { in: taxYears };
   if (filters.propertyId != null) where.propertyId = filters.propertyId;
   return where;
 }
@@ -78,9 +86,8 @@ function propertyCountWhere(filters = {}) {
   };
   if (filters.clientId != null) where.clientId = filters.clientId;
   if (filters.propertyId != null) where.id = filters.propertyId;
-  if (filters.county) {
-    where.cadCounty = { equals: filters.county, mode: "insensitive" };
-  }
+  const cadCounty = cadCountyWhere(filters);
+  if (cadCounty) where.cadCounty = cadCounty;
   return where;
 }
 
@@ -121,13 +128,17 @@ async function loadInScopeInvoices(filters = {}) {
 }
 
 function publicFilters(filters = {}) {
+  const months = filters.months?.length ? filters.months : filters.month ? [filters.month] : [];
+  const taxYears = taxYearsFromFilters(filters);
+  const counties = countiesFromFilters(filters);
   return {
     from: filters.from || null,
     to: filters.to || null,
     month: filters.month || null,
+    months: months.length ? months : null,
     calendarYear: filters.calendarYear ?? null,
-    taxYear: filters.taxYear ?? null,
-    county: filters.county || null,
+    taxYears: taxYears.length ? taxYears : null,
+    counties: counties.length ? counties : null,
     clientId: filters.clientId ?? null,
     propertyId: filters.propertyId ?? null,
   };
@@ -310,9 +321,8 @@ export async function getAveragePropertiesPerClient(filters = {}) {
     isArchived: false,
     client: clientWhere,
   };
-  if (filters.county) {
-    propertyWhere.cadCounty = { equals: filters.county, mode: "insensitive" };
-  }
+  const cadCounty = cadCountyWhere(filters);
+  if (cadCounty) propertyWhere.cadCounty = cadCounty;
   if (filters.propertyId != null) propertyWhere.id = filters.propertyId;
 
   const [clientCount, propertyCount] = await Promise.all([
@@ -331,17 +341,86 @@ export async function getAveragePropertiesPerClient(filters = {}) {
 export async function getActiveClientCount(filters = {}) {
   const where = { isArchived: false, type: "CLIENT" };
   if (filters.clientId != null) where.id = filters.clientId;
-  if (filters.county || filters.propertyId != null) {
+  const cadCounty = cadCountyWhere(filters);
+  if (cadCounty || filters.propertyId != null) {
     where.properties = {
       some: {
         isArchived: false,
         ...(filters.propertyId != null ? { id: filters.propertyId } : {}),
-        ...(filters.county
-          ? { cadCounty: { equals: filters.county, mode: "insensitive" } }
-          : {}),
+        ...(cadCounty ? { cadCounty: cadCounty } : {}),
       },
     };
   }
   const activeClients = await prisma.client.count({ where });
   return { filters: publicFilters(filters), activeClients };
+}
+
+export async function getFilteredRosterExport(filters = {}) {
+  const where = propertyCountWhere(filters);
+  const taxYears = taxYearsFromFilters(filters);
+  if (taxYears.length) {
+    where.invoices = {
+      some: {
+        isArchived: false,
+        year: { in: taxYears },
+      },
+    };
+  }
+
+  const properties = await prisma.property.findMany({
+    where,
+    select: {
+      accountNumber: true,
+      nameOnCad: true,
+      propertyAddress: true,
+      cadCounty: true,
+      mailingAddress: true,
+      mailingAddressCityTxZip: true,
+      client: {
+        select: {
+          id: true,
+          clientNumber: true,
+          clientName: true,
+          email: true,
+          billingEmail: true,
+          phoneNumber: true,
+          mailingAddress: true,
+          mailingAddressCityTxZip: true,
+        },
+      },
+    },
+    orderBy: [{ cadCounty: "asc" }, { accountNumber: "asc" }],
+  });
+
+  const clientById = new Map();
+  const propertyRows = properties.map((property) => {
+    const client = property.client || {};
+    if (client.id != null && !clientById.has(client.id)) {
+      clientById.set(client.id, {
+        clientNumber: client.clientNumber || "",
+        clientName: client.clientName || "",
+        email: client.email || "",
+        billingEmail: client.billingEmail || "",
+        phoneNumber: client.phoneNumber || "",
+        mailingAddress: client.mailingAddress || "",
+        mailingCityTxZip: client.mailingAddressCityTxZip || "",
+      });
+    }
+    return {
+      clientNumber: client.clientNumber || "",
+      clientName: client.clientName || "",
+      accountNumber: property.accountNumber || "",
+      nameOnCad: property.nameOnCad || "",
+      propertyAddress: property.propertyAddress || "",
+      county: property.cadCounty || "",
+      mailingAddress: property.mailingAddress || "",
+      mailingCityTxZip: property.mailingAddressCityTxZip || "",
+    };
+  });
+
+  const clients = [...clientById.values()].sort((a, b) =>
+    String(a.clientName).localeCompare(String(b.clientName))
+  );
+
+  return { clients, properties: propertyRows };
 }

@@ -3,7 +3,6 @@ import { ColumnFiltersState } from "@tanstack/react-table";
 import { downloadProspectsCSV } from "@/store/data";
 import TableBuilder from "../../TableBuilder";
 import { routes } from "@/routes/ROUTES";
-import { Input } from "@/components/ui/input";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Download, LoaderCircle, Filter } from "lucide-react";
@@ -76,11 +75,7 @@ const ProspectTable = () => {
   if (isLoading) {
     return (
       <>
-        <div className="flex border rounded-xl items-center gap-4 bg-white m-4 p-4">
-          <div className="flex flex-col p-4 w-full">
-            <div className="h-5 w-40 bg-muted animate-pulse rounded mb-2" />
-            <div className="h-10 max-w-sm bg-muted animate-pulse rounded" />
-          </div>
+        <div className="portal-toolbar">
           <div className="w-full">
             <div className="h-8 w-24 bg-muted animate-pulse rounded" />
             <div className="h-5 w-48 bg-muted animate-pulse rounded mt-2" />
@@ -89,7 +84,7 @@ const ProspectTable = () => {
           <div className="h-10 w-36 bg-muted animate-pulse rounded" />
           <div className="h-10 w-24 bg-muted animate-pulse rounded" />
         </div>
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-2">
           <div className="h-10 w-32 bg-muted animate-pulse rounded" />
         </div>
         <TableSkeleton />
@@ -109,23 +104,10 @@ const ProspectTable = () => {
 
   return (
     <div>
-      <div className="flex border rounded-xl items-center gap-4 bg-white m-4 p-4">
-        <div className="flex flex-col p-4 w-full">
-          <h1>Quick search a Prospect</h1>
-          <Input
-            placeholder="Search Prospect Name..."
-            value={search}
-            onChange={(event) =>
-              updateParams({ search: event.target.value, offset: 0 })
-            }
-            className="max-w-sm"
-            aria-label="Search prospects by name"
-          />
-        </div>
-
+      <div className="portal-toolbar">
         <div className="w-full">
-          <h2 className="text-2xl font-bold">{total}</h2>
-          <h3>Total number of {archived ? "Archived" : "Active"} Prospects</h3>
+          <p className="text-2xl font-semibold tabular-nums">{total}</p>
+          <p className="text-sm text-muted-foreground">{archived ? "Archived prospects" : "Active prospects"}</p>
         </div>
         <div>
           <Button
@@ -139,7 +121,7 @@ const ProspectTable = () => {
         <NavLink to={routes.prospect.add()}>
           <Button className="w-full">Add New Prospect</Button>
         </NavLink>
-        <Button onClick={handleCsvDownload} disabled={downloadingCsv}>
+        <Button variant="outline" onClick={handleCsvDownload} disabled={downloadingCsv}>
           {downloadingCsv ? (
             <LoaderCircle className="animate-spin" />
           ) : (
@@ -147,7 +129,7 @@ const ProspectTable = () => {
           )}
         </Button>
       </div>
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="flex items-center gap-2">

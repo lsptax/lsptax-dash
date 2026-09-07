@@ -37,8 +37,9 @@ const EditProspectProperty = lazy(() => import("@/components/portal/prospects/Ed
 const EditProspectDetails = lazy(() => import("@/components/portal/prospects/edit/EditProspectDetails"));
 const PreviewSignedPdf = lazy(() => import("@/components/portal/prospects/preview/PreviewSignedPDF"));
 const CsvUploadsPage = lazy(() => import("@/components/portal/csv/CsvUploadsPage"));
-const ReportsPage = lazy(() => import("@/components/portal/reports/ReportsPage"));
 const HearingsTable = lazy(() => import("@/components/portal/hearings/HearingsTable"));
+const ProfilePage = lazy(() => import("@/components/portal/account/ProfilePage"));
+const SettingsPage = lazy(() => import("@/components/portal/account/SettingsPage"));
 
 /**
  * Child `<Route>` elements for `/portal/*`. Parent layout supplies `<Outlet />` + Suspense.
@@ -124,7 +125,9 @@ export function PortalRouteElements() {
       <Route path="agent" element={<AppointmentForm />} />
       <Route path="invoice" element={<InvoicePage />} />
       <Route path="csv-uploads" element={<CsvUploadsPage />} />
-      <Route path="reports" element={<ReportsPage />} />
+      <Route path="reports" element={<Navigate to={routes.owner()} replace />} />
+      <Route path="profile" element={<ProfilePage />} />
+      <Route path="settings" element={<SettingsPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </>
   );
@@ -133,8 +136,16 @@ export function PortalRouteElements() {
 /** Suspense fallback for lazy portal pages (used around `<Outlet />`). */
 export function PortalSuspenseFallback() {
   return (
-    <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
-      Loading...
+    <div
+      className="flex flex-col items-center justify-center min-h-[240px] gap-3 text-muted-foreground"
+      role="status"
+      aria-label="Loading page"
+    >
+      <div
+        className="h-8 w-8 rounded-full border-2 border-brand-primary border-t-transparent animate-spin"
+        aria-hidden
+      />
+      <span className="text-sm">Loading</span>
     </div>
   );
 }

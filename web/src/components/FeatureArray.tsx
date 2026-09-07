@@ -47,7 +47,7 @@ const FeatureArray = () => {
 const FeatureBox: React.FC<FeatureBoxProps> = ({ label, logo, delay }) => {
   return (
     <div
-      className="flex flex-col items-center border rounded-xl p-4 px-6 mt-4 shadow-md bg-white w-full md:w-1/4"
+      className="flex flex-col items-center border rounded-xl p-4 px-6 mt-4 bg-card w-full md:w-1/4"
       data-aos="fade-up"
       data-aos-delay={delay} // Apply delay dynamically
     >

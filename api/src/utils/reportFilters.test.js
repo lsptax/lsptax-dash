@@ -5,6 +5,7 @@ import {
   intersectDateRange,
   parseReportFilters,
   referenceDateFromFilters,
+  rosterDateConstraintFromFilters,
 } from "./reportFilters.js";
 import { calendarDateInTz } from "./weekRange.js";
 import { getOwnerDateWindows } from "./invoiceDateWindows.js";
@@ -34,10 +35,11 @@ describe("parseReportFilters", () => {
     });
     assert.equal(filters.from, "2026-08-01");
     assert.equal(filters.to, "2026-08-31");
+    assert.deepEqual(filters.months, ["2026-08"]);
     assert.equal(filters.month, "2026-08");
     assert.equal(filters.calendarYear, 2026);
-    assert.equal(filters.taxYear, 2025);
-    assert.equal(filters.county, "Bexar");
+    assert.deepEqual(filters.taxYears, [2025]);
+    assert.deepEqual(filters.counties, ["Bexar"]);
     assert.equal(filters.clientId, 12);
     assert.equal(filters.propertyId, 44);
   });
@@ -46,6 +48,19 @@ describe("parseReportFilters", () => {
     assert.throws(() => parseReportFilters({ from: "08/01/2026" }), /from must be YYYY-MM-DD/);
     assert.throws(() => parseReportFilters({ from: "2026-09-02", to: "2026-09-01" }), /on or before/);
     assert.equal(parseReportFilters({ county: "All" }).county, "");
+    assert.deepEqual(parseReportFilters({ county: "All" }).counties, []);
+  });
+
+  it("accepts repeated or comma-separated month, taxYear, and county", () => {
+    const filters = parseReportFilters({
+      month: ["2026-01", "2026-08"],
+      taxYear: "2025,2026",
+      county: ["Bexar", "Harris"],
+    });
+    assert.deepEqual(filters.months, ["2026-01", "2026-08"]);
+    assert.equal(filters.month, "2026-08");
+    assert.deepEqual(filters.taxYears, [2025, 2026]);
+    assert.deepEqual(filters.counties, ["Bexar", "Harris"]);
   });
 });
 
@@ -88,6 +103,23 @@ describe("date filters billed vs collected", () => {
     const money = moneyWindows(invoices, windows, dateConstraintFromFilters(filters));
     assert.equal(money.billedThisMonth, 2500);
     assert.equal(money.collectedThisMonth, 0);
+  });
+
+  it("multiple months span earliest through latest as a date constraint", () => {
+    const filters = parseReportFilters({ month: ["2026-01", "2026-03"] });
+    assert.deepEqual(dateConstraintFromFilters(filters), {
+      start: "2026-01-01",
+      end: "2026-03-31",
+    });
+  });
+
+  it("roster export uses a single selected month as a date range", () => {
+    const filters = parseReportFilters({ month: "2026-09" });
+    assert.equal(dateConstraintFromFilters(filters), null);
+    assert.deepEqual(rosterDateConstraintFromFilters(filters), {
+      start: "2026-09-01",
+      end: "2026-09-30",
+    });
   });
 
   it("intersects ranges without mixing billed and collected fields", () => {

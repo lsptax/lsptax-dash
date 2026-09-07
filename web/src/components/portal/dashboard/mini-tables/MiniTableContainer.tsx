@@ -24,47 +24,32 @@ const MiniTableContainer = ({
   hearingsThisWeek = [],
 }: MiniTableContainerProps) => {
   return (
-    <div className="m-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-      {/* First Item */}
-      <div className=" rounded-xl border ">
-        <DonutChart />
-      </div>
-      {/* Second Item */}
-      <div className=" rounded-xl ">
-        <MiniTableBuilder<Hearing>
-          data={hearingsThisWeek}
-          columns={hearingColumns as import("@tanstack/react-table").ColumnDef<Hearing, any>[]}
-          label="Meetings this week"
-          link={routes.hearings.list()}
-        />
-      </div>
-      {/* Third Item */}
-      <div className=" rounded-xl ">
-        <MiniTableBuilder<Prospect>
-          data={prospectData}
-          columns={prospectColumn as import("@tanstack/react-table").ColumnDef<Prospect, any>[]}
-          label="Prospects"
-          link={routes.prospects.list()}
-        />
-      </div>
-      {/* Fourth Item */}
-      <div className=" rounded-xl ">
-        <MiniTableBuilder<Properties>
-          data={propData}
-          columns={propertiesColumn as import("@tanstack/react-table").ColumnDef<Properties, any>[]}
-          label="Properties"
-          link={routes.properties.list()}
-        />
-      </div>
-      {/* Fifth Item */}
-      <div className=" rounded-xl ">
-        <MiniTableBuilder<Clients>
-          data={clientData}
-          columns={clientsColumn as import("@tanstack/react-table").ColumnDef<Clients, any>[]}
-          label="Clients"
-          link={routes.clients.list()}
-        />
-      </div>
+    <div className="px-4 sm:px-5 pt-3 pb-5 grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <DonutChart />
+      <MiniTableBuilder<Hearing>
+        data={hearingsThisWeek}
+        columns={hearingColumns as import("@tanstack/react-table").ColumnDef<Hearing, any>[]}
+        label="Meetings this week"
+        link={routes.hearings.list()}
+      />
+      <MiniTableBuilder<Prospect>
+        data={prospectData}
+        columns={prospectColumn as import("@tanstack/react-table").ColumnDef<Prospect, any>[]}
+        label="Prospects"
+        link={routes.prospects.list()}
+      />
+      <MiniTableBuilder<Properties>
+        data={propData}
+        columns={propertiesColumn as import("@tanstack/react-table").ColumnDef<Properties, any>[]}
+        label="Properties"
+        link={routes.properties.list()}
+      />
+      <MiniTableBuilder<Clients>
+        data={clientData}
+        columns={clientsColumn as import("@tanstack/react-table").ColumnDef<Clients, any>[]}
+        label="Clients"
+        link={routes.clients.list()}
+      />
     </div>
   );
 };

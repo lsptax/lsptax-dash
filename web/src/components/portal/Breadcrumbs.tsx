@@ -4,7 +4,9 @@ import { PORTAL_BASE, routes } from "@/routes/ROUTES";
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
-  owner: "Owner dashboard",
+  owner: "Owner",
+  profile: "Profile",
+  settings: "Settings",
   properties: "Properties",
   "add-property": "Add Property",
   property: "Property Details",
@@ -27,7 +29,6 @@ const ROUTE_LABELS: Record<string, string> = {
   hearings: "Hearings",
   invoices: "Invoices",
   invoice: "Invoice",
-  reports: "Reports",
   aoa: "AOA",
   agent: "Agent",
   "csv-uploads": "CSV Uploads",
@@ -58,7 +59,7 @@ export function Breadcrumbs() {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm text-muted-foreground mb-4 px-4">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm text-muted-foreground px-4 sm:px-5 pt-2 pb-1">
       {crumbs.map((crumb, index) => (
         <span key={crumb.path} className="flex items-center gap-1">
           {index > 0 && <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden />}

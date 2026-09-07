@@ -1,5 +1,5 @@
-import { useState, Suspense } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState, Suspense } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import SideMenu from "@/components/portal/SideMenu";
 import DashboardHeader from "@/components/portal/DashboardHeader";
 import { Breadcrumbs } from "@/components/portal/Breadcrumbs";
@@ -23,18 +23,23 @@ const AdminPortalErrorFallback = () => (
 
 const AdminPortal = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-background to-brand-muted/30">
+    <div className="h-screen overflow-hidden bg-background">
       <div className="flex h-full">
         <div
-          className={`fixed z-40 top-0 left-0 h-full bg-white shadow transition-transform transform ${
+          className={`fixed z-40 top-0 left-0 h-full bg-card border-r border-border transition-transform transform ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
           } sm:relative sm:translate-x-0 sm:flex`}
         >
           <SideMenu />
         </div>
-        <div className="flex-1 h-full overflow-hidden flex flex-col">
+        <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
           <DashboardHeader onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
           <main id="main" className="flex-1 overflow-auto" tabIndex={-1}>
             <Breadcrumbs />
@@ -50,7 +55,7 @@ const AdminPortal = () => {
         <div
           role="button"
           tabIndex={0}
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 sm:hidden"
+          className="fixed inset-0 bg-black/50 z-30 sm:hidden"
           onClick={() => setIsMenuOpen(false)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {

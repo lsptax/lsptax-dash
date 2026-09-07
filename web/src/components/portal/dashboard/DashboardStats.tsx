@@ -54,32 +54,30 @@ const DashboardStats = ({
     },
     {
       label: "Meetings this week",
-      icon: <CalendarDays className="h-10 w-10 text-indigo-600" strokeWidth={1.5} />,
+      icon: <CalendarDays className="h-9 w-9 text-primary" strokeWidth={1.5} />,
       number: loading ? null : (hearingStats?.meetingsThisWeek ?? 0),
       link: routes.hearings.list(),
       sublabel: weekRange ? `${weekRange}` : "Upcoming hearings",
     },
     {
       label: "Meetings today",
-      icon: <CalendarClock className="h-10 w-10 text-amber-600" strokeWidth={1.5} />,
+      icon: <CalendarClock className="h-9 w-9 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />,
       number: loading ? null : (hearingStats?.meetingsToday ?? 0),
       link: routes.hearings.list(),
     },
     {
       label: "Total scheduled",
-      icon: <Calendar className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />,
+      icon: <Calendar className="h-9 w-9 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />,
       number: loading ? null : (hearingStats?.totalScheduled ?? 0),
       link: routes.hearings.list(),
     },
   ];
 
   return (
-    <div className="flex w-full">
-      <div className="flex gap-2 m-2 flex-col md:flex-row w-full flex-wrap">
-        {items.map((item) => (
-          <StatsItem key={item.label} {...item} loading={loading} />
-        ))}
-      </div>
+    <div className="grid w-full grid-cols-1 gap-3 px-4 pt-3 sm:grid-cols-2 sm:px-5 lg:grid-cols-3 2xl:grid-cols-5">
+      {items.map((item) => (
+        <StatsItem key={item.label} {...item} loading={loading} />
+      ))}
     </div>
   );
 };
@@ -100,19 +98,19 @@ const StatsItem: React.FC<StatsItemProps> = ({
     );
 
   return (
-    <div className="bg-white w-full min-w-[10rem] flex-1 flex border rounded-xl justify-between">
+    <div className="portal-card w-full min-w-0 flex justify-between transition-colors hover:border-primary/40 hover:bg-muted/40">
       <NavLink to={link} className="w-full">
-        <div className="flex md:flex-row gap-4 p-4 rounded-xl justify-between items-center">
+        <div className="flex gap-4 px-5 py-4 rounded-xl justify-between items-center">
           <div>
             {loading ? (
               <div className="space-y-2">
-                <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+                <div className="h-6 w-16 bg-muted rounded animate-pulse" />
+                <div className="h-4 w-24 bg-muted/70 rounded animate-pulse" />
               </div>
             ) : (
               <>
-                <h2 className="text-2xl font-bold">{number}</h2>
-                <h1 className="text-sm">{label}</h1>
+                <p className="text-2xl font-semibold tabular-nums">{number}</p>
+                <p className="text-sm text-muted-foreground">{label}</p>
                 {sublabel ? <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p> : null}
               </>
             )}

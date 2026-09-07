@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { ColumnDef, ColumnFiltersState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { downloadClientsXlsx } from "@/store/data";
-import { Archive, Download, LoaderCircle, Search, UserRoundPlus } from "lucide-react";
+import { Archive, Download, LoaderCircle, UserRoundPlus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import TableBuilder from "../../TableBuilder";
 import { useClientsQuery } from "@/hooks/queries";
@@ -21,7 +20,7 @@ import {
   parseClientListParams,
   type AccountTypeFilter,
 } from "@/utils/listParams/clients";
-import { useDraftSearch, useListSearchParams } from "@/hooks/useListSearchParams";
+import { useListSearchParams } from "@/hooks/useListSearchParams";
 
 interface ClientTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -35,10 +34,6 @@ const ClientTable = <TData, TValue>({
     mergeClientListParams
   );
   const { search, accountType, offset, limit, archived } = params;
-  const { searchTerm, setSearchTerm, commitSearch } = useDraftSearch(
-    search,
-    (value) => updateParams({ search: value, offset: 0 })
-  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
 
@@ -76,14 +71,14 @@ const ClientTable = <TData, TValue>({
   if (isLoading) {
     return (
       <>
-        <div className="flex flex-col md:flex-row border rounded-xl items-center gap-4 bg-white m-4 p-4">
+        <div className="portal-toolbar">
           <div className="w-full">
             <div className="h-8 w-24 bg-muted animate-pulse rounded" />
             <div className="h-5 w-40 bg-muted animate-pulse rounded mt-2" />
           </div>
-          <div className="flex flex-col w-full gap-2">
-            <div className="h-5 w-40 bg-muted animate-pulse rounded" />
-            <div className="h-10 max-w-sm bg-muted animate-pulse rounded" />
+          <div className="flex flex-col w-full gap-2 md:max-w-[220px]">
+            <div className="h-5 w-28 bg-muted animate-pulse rounded" />
+            <div className="h-10 w-full bg-muted animate-pulse rounded" />
           </div>
           <div className="w-full flex gap-2 justify-end">
             <div className="h-10 w-32 bg-muted animate-pulse rounded" />
@@ -108,60 +103,33 @@ const ClientTable = <TData, TValue>({
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row border rounded-xl items-center gap-4 bg-white m-4 p-4">
+      <div className="portal-toolbar">
         <div className="w-full">
-          <h2 className="text-2xl font-bold">{total}</h2>
-          <h3>{archived ? "Archived Clients" : "Active Clients"}</h3>
+          <p className="text-2xl font-semibold tabular-nums">{total}</p>
+          <p className="text-sm text-muted-foreground">{archived ? "Archived clients" : "Active clients"}</p>
         </div>
-        <div className="flex flex-col w-full gap-2">
-          <h1>Quick search a Client</h1>
-          <div className="flex items-center gap-2 max-w-sm">
-            <Input
-              placeholder="Search Name or Client Number..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitSearch();
-                }
-              }}
-              className="flex-1 min-w-0"
-              aria-label="Search clients by name or client number"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={commitSearch}
-              aria-label="Run search"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 max-w-sm">
-            <Select
-              value={accountType}
-              onValueChange={(value) =>
-                updateParams({
-                  accountType: value as AccountTypeFilter,
-                  offset: 0,
-                })
-              }
-            >
-              <SelectTrigger className="max-w-sm" aria-label="Filter clients by account type">
-                <SelectValue placeholder="Account type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All account types</SelectItem>
-                <SelectItem value="real">Real</SelectItem>
-                <SelectItem value="bpp">BPP</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex flex-col w-full gap-2 md:max-w-[220px]">
+          <Select
+            value={accountType}
+            onValueChange={(value) =>
+              updateParams({
+                accountType: value as AccountTypeFilter,
+                offset: 0,
+              })
+            }
+          >
+            <SelectTrigger aria-label="Filter clients by account type">
+              <SelectValue placeholder="Account type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All account types</SelectItem>
+              <SelectItem value="real">Real</SelectItem>
+              <SelectItem value="bpp">BPP</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="w-full flex gap-2 justify-end">
-          <Button variant={"blue"} onClick={switchArchived}>
+          <Button variant="outline" onClick={switchArchived}>
             <Archive />
             {archived ? "View Active Clients" : "View Archive"}
           </Button>
@@ -170,7 +138,7 @@ const ClientTable = <TData, TValue>({
               <UserRoundPlus /> Add New Client
             </Button>
           </NavLink>
-          <Button onClick={handleCsvDownload} disabled={downloadingCsv}>
+          <Button variant="outline" onClick={handleCsvDownload} disabled={downloadingCsv}>
             {downloadingCsv ? (
               <LoaderCircle className="animate-spin" />
             ) : (

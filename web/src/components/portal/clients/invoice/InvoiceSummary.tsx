@@ -49,7 +49,7 @@ const InvoiceSummary: React.FC<{
   };
 
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100">
+    <div className="flex flex-col justify-center items-center min-h-screen bg-muted">
       <div className="text-center space-x-4 flex justify-center align-center items-center">
         <Select
           onValueChange={(value) => setSelectedYear(Number(value))}
@@ -79,7 +79,7 @@ const InvoiceSummary: React.FC<{
 
       <div
         ref={contentRef}
-        className="bg-white w-[210mm] min-h-screen overflow-auto shadow-lg p-4 sm:p-6 md:p-8"
+        className="paper-sheet bg-white w-[210mm] min-h-screen overflow-auto shadow-lg p-4 sm:p-6 md:p-8"
       >
         {/* Header Section */}
         <div className="flex justify-between items-start mb-4">

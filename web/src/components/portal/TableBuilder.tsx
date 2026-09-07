@@ -137,9 +137,9 @@ function TableBuilder<TData>({
   const totalPages = total > 0 ? Math.ceil(total / displayPageSize) : 1;
 
   return (
-    <div className="rounded-xl border m-4 bg-white p-4 flex flex-col overflow-y-auto h-[calc(100vh-260px)] ">
-      <div className="pb-8 flex justify-between">
-        <h2 className="text-2xl font-bold">{label}</h2>
+    <div className="portal-table">
+      <div className="pb-4 flex justify-between items-center gap-3">
+        <h2 className="text-base font-semibold">{label}</h2>
         <div className="text-sm">
           Showing{" "}
           <DropdownMenu>
@@ -172,7 +172,7 @@ function TableBuilder<TData>({
       <div className="overflow-auto scrollbar-custom flex-1 relative">
         <div className="overflow-x-auto h-full">
           <Table className="table-auto min-w-full">
-            <TableHeader className="sticky top-0 z-10 bg-white shadow-sm [&_tr]:border-b">
+            <TableHeader className="sticky top-0 z-10 bg-card shadow-sm [&_tr]:border-b">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header, index) => (
@@ -180,7 +180,7 @@ function TableBuilder<TData>({
                       key={header.id}
                       className={`cursor-pointer select-none ${
                         index > 1 ? "hidden md:table-cell" : ""
-                      } text-gray-700 font-semibold`}
+                      } text-muted-foreground font-semibold`}
                       onClick={header.column.getToggleSortingHandler()}
                       aria-sort={
                         header.column.getIsSorted()
@@ -298,17 +298,11 @@ function TableBuilder<TData>({
           Page {currentPage} of {totalPages}
         </p>
         <div className="flex items-center gap-2">
-          <Button
-            variant={"blue"}
-            size="sm"
-            onClick={onPrev}
-            disabled={!canPrev}
-            aria-label="Previous page"
-          >
+          <Button variant="outline" size="sm" onClick={onPrev} disabled={!canPrev} aria-label="Previous page">
             Previous
           </Button>
           <Button
-            variant={"blue"}
+            variant="blue"
             size="sm"
             onClick={onNext}
             disabled={!canNext}

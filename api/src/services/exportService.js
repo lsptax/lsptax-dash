@@ -24,6 +24,20 @@ export const convertToCSV = (data, fields) => {
   return parser.parse(data);
 };
 
+/** Build an .xlsx buffer with one or more labeled sheets. Empty sheets still include headers. */
+export const convertSheetsToXLSX = (sheets) => {
+  const workbook = XLSX.utils.book_new();
+  for (const sheet of sheets) {
+    const headers = sheet.fields.map((field) => field.label);
+    const rows = (sheet.data || []).map((item) =>
+      sheet.fields.map((field) => item[field.value] ?? "")
+    );
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name.slice(0, 31));
+  }
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+};
+
 /** Field lists for each entity (XLSX/CSV export). */
 export const EXPORT_FIELDS = {
   clients: ["id", "clientName", "email", "phoneNumber", "isArchived", "typeOfAcct"],

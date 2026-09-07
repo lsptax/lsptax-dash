@@ -33,6 +33,8 @@ import {
   getOwnerDashboardOptions,
 } from "../controller/dashboardController.js";
 import { requireOwner } from "../middleware/requireOwner.js";
+import { getProfile, updateProfile, updatePassword } from "../controller/profileController.js";
+import { getInfraSettings, updateInfraSettings } from "../controller/settingsController.js";
 
 const router = Router();
 
@@ -94,6 +96,11 @@ router.get("/archive-invoices", getArchiveInvoices);
 router.get("/stats", getCounts);
 router.get("/dashboard/owner", requireOwner, getOwnerDashboard);
 router.get("/dashboard/owner/options", requireOwner, getOwnerDashboardOptions);
+router.get("/profile", getProfile);
+router.patch("/profile", updateProfile);
+router.patch("/profile/password", updatePassword);
+router.get("/settings", requireOwner, getInfraSettings);
+router.patch("/settings", requireOwner, updateInfraSettings);
 router.get("/hearings", listHearings);
 
 export default router;

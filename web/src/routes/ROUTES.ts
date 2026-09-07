@@ -72,8 +72,10 @@ function listPathWithParams<T extends Record<string, unknown>>(
 export const routes = {
   dashboard: () => portalPath("dashboard"),
   owner: () => portalPath("owner"),
-
-  reports: () => portalPath("reports"),
+  profile: () => portalPath("profile"),
+  settings: () => portalPath("settings"),
+  /** @deprecated Merged into Owner. Kept as an alias for old links. */
+  reports: () => portalPath("owner"),
 
   properties: {
     list: (params?: Partial<PropertyListParams>) =>

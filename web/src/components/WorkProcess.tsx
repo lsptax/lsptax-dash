@@ -30,7 +30,7 @@ const WorkProcess = () => {
 <div className="bg-brand-dark text-white pt-16 relative">
   {/* Title Section */}
   <div className="text-center">
-    <h3 className="text-blue-400 text-lg font-semibold">Work process</h3>
+    <h3 className="text-primary text-lg font-semibold">Work process</h3>
     <h2 className="text-4xl font-bold mt-2">How it works</h2>
   </div>
 
@@ -77,7 +77,7 @@ const WorkProcess = () => {
         alt="Step 1"
         className="w-40 h-40 rounded shadow-lg"
       />
-      <div className="bg-blue-500 text-white rounded-full px-4 py-2 font-bold mt-3">
+      <div className="bg-primary text-primary-foreground rounded-full px-4 py-2 font-bold mt-3">
         01
       </div>
       <h3 className="text-xl font-semibold mt-4">We submit your protest</h3>
@@ -93,7 +93,7 @@ const WorkProcess = () => {
         alt="Step 2"
         className="w-40 h-40 rounded shadow-lg"
       />
-      <div className="bg-blue-500 text-white rounded-full px-4 py-2 font-bold mt-3">
+      <div className="bg-primary text-primary-foreground rounded-full px-4 py-2 font-bold mt-3">
         02
       </div>
       <h3 className="text-xl font-semibold mt-4">We gather the evidence</h3>
@@ -109,7 +109,7 @@ const WorkProcess = () => {
         alt="Step 3"
         className="w-40 h-40 rounded shadow-lg"
       />
-      <div className="bg-blue-500 text-white rounded-full px-4 py-2 font-bold mt-3">
+      <div className="bg-primary text-primary-foreground rounded-full px-4 py-2 font-bold mt-3">
         03
       </div>
       <h3 className="text-xl font-semibold mt-4">We fight your case</h3>
