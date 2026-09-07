@@ -411,6 +411,10 @@ Owner financial aggregate (Week 1). JWT required. Does not change `GET /api/stat
 - Archived clients, properties, and invoices are excluded.
 - Calendar windows use **America/Chicago**.
 
+**Access (Week 2):** `User.type` must be `owner` or `admin`. Other portal users get **403**. Login now returns `user.type`. Set a user with `UPDATE "User" SET type = 'owner' WHERE email = '...';` then log in again.
+
+**Query filters (shared with `/report/billed|collected|unpaid|reductions`):** `from`, `to` (`YYYY-MM-DD`), `month` (`YYYY-MM`), `calendarYear`, `taxYear`, `county`, `clientId`, `propertyId`. Date range uses `invoiceDate` for billed/AR and `paidDate` for collected. `month` / `calendarYear` shift the default this-month / YTD windows. Add `format=csv` on report endpoints to download the current JSON as CSV.
+
 **Response (200)**
 
 ```json

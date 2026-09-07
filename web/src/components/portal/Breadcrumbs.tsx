@@ -4,6 +4,7 @@ import { PORTAL_BASE, routes } from "@/routes/ROUTES";
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
+  owner: "Owner dashboard",
   properties: "Properties",
   "add-property": "Add Property",
   property: "Property Details",
@@ -26,6 +27,7 @@ const ROUTE_LABELS: Record<string, string> = {
   hearings: "Hearings",
   invoices: "Invoices",
   invoice: "Invoice",
+  reports: "Reports",
   aoa: "AOA",
   agent: "Agent",
   "csv-uploads": "CSV Uploads",

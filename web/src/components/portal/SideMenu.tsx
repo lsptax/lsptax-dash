@@ -11,6 +11,7 @@ import {
   ChevronRight,
   BarChart3,
   Calendar,
+  Wallet,
 } from "lucide-react";
 import {
   Tooltip,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import mainLogo from "@/assets/dashboard/main-logo.svg";
 import { routes } from "@/routes/ROUTES";
+import { currentUserCanViewOwnerDashboard } from "@/utils/ownerRole";
 
 interface MenuOption {
   to: string;
@@ -31,6 +33,7 @@ interface MenuOption {
 
 const menuOptions: MenuOption[] = [
   { to: routes.dashboard(), match: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: routes.owner(), match: "owner", label: "Owner", icon: Wallet },
   { to: routes.clients.list(), match: "clients", label: "Clients", icon: Users },
   { to: routes.properties.list(), match: "properties", label: "Properties", icon: Building },
   { to: routes.invoices.list(), match: "invoices", label: "Invoices", icon: FileText },
@@ -66,7 +69,9 @@ const SideMenu: React.FC = () => {
         </div>
 
         <div className="flex flex-col w-full mt-8 overflow-hidden">
-          {menuOptions.map(({ to, match, label, icon: Icon }) => {
+          {menuOptions
+            .filter((option) => option.match !== "owner" || currentUserCanViewOwnerDashboard())
+            .map(({ to, match, label, icon: Icon }) => {
             const isActive =
               pathTail === match || pathTail.startsWith(`${match}/`);
 

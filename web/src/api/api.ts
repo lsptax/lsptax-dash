@@ -7,3 +7,4 @@ export * from "./actions";
 export * from "./contracts";
 export * from "./csv";
 export * from "./report";
+export * from "./ownerDashboard";

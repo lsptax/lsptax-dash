@@ -9,6 +9,7 @@ import {
   getReportCounties,
   getUnpaidReport,
 } from "../controller/reportingController.js";
+import { requireOwner } from "../middleware/requireOwner.js";
 
 const router = Router();
 
@@ -19,12 +20,12 @@ router.get("/properties", downloadReportPropertiesCSV);
 // Optimized: distinct list of counties available in DB
 router.get("/counties", getReportCounties);
 
-// Week 1 owner reports (JSON). Billed uses invoiceDate; collected uses paidDate (full-pay v1).
-router.get("/billed", getBilledReport);
-router.get("/collected", getCollectedReport);
-router.get("/unpaid", getUnpaidReport);
-router.get("/reductions", getReductionsReport);
-router.get("/acquisition/avg-properties", getAveragePropertiesReport);
-router.get("/clients/active", getActiveClientsReport);
+// Owner financial reports. Billed uses invoiceDate; collected uses paidDate (full-pay v1).
+router.get("/billed", requireOwner, getBilledReport);
+router.get("/collected", requireOwner, getCollectedReport);
+router.get("/unpaid", requireOwner, getUnpaidReport);
+router.get("/reductions", requireOwner, getReductionsReport);
+router.get("/acquisition/avg-properties", requireOwner, getAveragePropertiesReport);
+router.get("/clients/active", requireOwner, getActiveClientsReport);
 
 export default router;

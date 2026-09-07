@@ -71,6 +71,18 @@ interface DashboardHeaderProps {
 
 const headerData = [
   {
+    id: "owner",
+    icon: "",
+    label: "Owner dashboard",
+    desc: "Billed vs collected, unpaid, and protest results.",
+  },
+  {
+    id: "reports",
+    icon: "",
+    label: "Reports",
+    desc: "Download billed, collected, unpaid, and property reports.",
+  },
+  {
     id: "properties",
     icon: "",
     label: "Properties",

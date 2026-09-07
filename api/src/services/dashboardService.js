@@ -1,11 +1,18 @@
 import prisma from "../../prisma/prismaClient.js";
 import { getOwnerDateWindows } from "../utils/invoiceDateWindows.js";
 import {
+  dateConstraintFromFilters,
+  invoiceMatchesEntityFilters,
+  referenceDateFromFilters,
+} from "../utils/reportFilters.js";
+import {
   BILLED_GROUP_BY,
   COLLECTED_DEFINITION_V1,
   averagePropertiesPerClient,
   billedByGroup,
   collectedByPaidMonth,
+  invoicesMatchingBilledDate,
+  invoicesMatchingCollectedDate,
   largestUnpaidClients,
   moneyWindows,
   paidUnpaidCounts,
@@ -45,9 +52,41 @@ function toMetricInvoice(row) {
   };
 }
 
-async function loadInScopeInvoices() {
+function prismaEntityWhere(filters = {}) {
+  const propertyWhere = {
+    isArchived: false,
+    client: { isArchived: false },
+  };
+  if (filters.clientId != null) propertyWhere.clientId = filters.clientId;
+  if (filters.county) {
+    propertyWhere.cadCounty = { equals: filters.county, mode: "insensitive" };
+  }
+
+  const where = {
+    isArchived: false,
+    property: propertyWhere,
+  };
+  if (filters.taxYear != null) where.year = filters.taxYear;
+  if (filters.propertyId != null) where.propertyId = filters.propertyId;
+  return where;
+}
+
+function propertyCountWhere(filters = {}) {
+  const where = {
+    isArchived: false,
+    client: { isArchived: false },
+  };
+  if (filters.clientId != null) where.clientId = filters.clientId;
+  if (filters.propertyId != null) where.id = filters.propertyId;
+  if (filters.county) {
+    where.cadCounty = { equals: filters.county, mode: "insensitive" };
+  }
+  return where;
+}
+
+async function loadInScopeInvoices(filters = {}) {
   const rows = await prisma.invoice.findMany({
-    where: IN_SCOPE_INVOICE_WHERE,
+    where: prismaEntityWhere(filters),
     select: {
       id: true,
       propertyId: true,
@@ -76,14 +115,30 @@ async function loadInScopeInvoices() {
       },
     },
   });
-  return rows.map(toMetricInvoice);
+  return rows
+    .map(toMetricInvoice)
+    .filter((invoice) => invoiceMatchesEntityFilters(invoice, filters));
 }
 
-function reportMeta(windows) {
+function publicFilters(filters = {}) {
+  return {
+    from: filters.from || null,
+    to: filters.to || null,
+    month: filters.month || null,
+    calendarYear: filters.calendarYear ?? null,
+    taxYear: filters.taxYear ?? null,
+    county: filters.county || null,
+    clientId: filters.clientId ?? null,
+    propertyId: filters.propertyId ?? null,
+  };
+}
+
+function reportMeta(windows, filters) {
   return {
     asOf: windows.asOf,
     timeZone: windows.timeZone,
     collectedDefinition: COLLECTED_DEFINITION_V1,
+    filters: publicFilters(filters),
     windows: {
       thisMonth: windows.thisMonth,
       lastMonth: windows.lastMonth,
@@ -93,28 +148,29 @@ function reportMeta(windows) {
   };
 }
 
-export async function getOwnerDashboard(referenceDate = new Date()) {
-  const windows = getOwnerDateWindows(referenceDate);
+function resolveContext(filters = {}, referenceDate = new Date()) {
+  const now = referenceDateFromFilters(filters, referenceDate);
+  const windows = getOwnerDateWindows(now);
+  const dateConstraint = dateConstraintFromFilters(filters);
+  return { windows, dateConstraint };
+}
+
+export async function getOwnerDashboard(filters = {}, referenceDate = new Date()) {
+  const { windows, dateConstraint } = resolveContext(filters, referenceDate);
   const [invoices, activeProperties] = await Promise.all([
-    loadInScopeInvoices(),
-    prisma.property.count({
-      where: {
-        isArchived: false,
-        client: { isArchived: false },
-      },
-    }),
+    loadInScopeInvoices(filters),
+    prisma.property.count({ where: propertyCountWhere(filters) }),
   ]);
 
-  const money = moneyWindows(invoices, windows);
-  const unpaid = unpaidTotals(invoices);
-  const pastDue = pastDueTotals(invoices, windows.asOf);
-  const counts = paidUnpaidCounts(invoices);
-  const protest = protestTotals(invoices);
+  const money = moneyWindows(invoices, windows, dateConstraint);
+  const arInvoices = invoicesMatchingBilledDate(invoices, dateConstraint);
+  const unpaid = unpaidTotals(arInvoices);
+  const pastDue = pastDueTotals(arInvoices, windows.asOf);
+  const counts = paidUnpaidCounts(arInvoices);
+  const protest = protestTotals(invoicesMatchingBilledDate(invoices, dateConstraint));
 
   return {
-    asOf: windows.asOf,
-    timeZone: windows.timeZone,
-    collectedDefinition: COLLECTED_DEFINITION_V1,
+    ...reportMeta(windows, filters),
     billedThisMonth: money.billedThisMonth,
     billedLastMonth: money.billedLastMonth,
     billedYtd: money.billedYtd,
@@ -140,7 +196,39 @@ export async function getOwnerDashboard(referenceDate = new Date()) {
   };
 }
 
-export async function getBilledReport({ groupBy } = {}, referenceDate = new Date()) {
+export async function getOwnerDashboardOptions() {
+  const [yearRows, countyRows] = await Promise.all([
+    prisma.invoice.findMany({
+      where: IN_SCOPE_INVOICE_WHERE,
+      distinct: ["year"],
+      select: { year: true },
+      orderBy: { year: "desc" },
+    }),
+    prisma.property.findMany({
+      where: {
+        isArchived: false,
+        cadCounty: { not: null },
+        NOT: { cadCounty: "" },
+        client: { isArchived: false },
+      },
+      distinct: ["cadCounty"],
+      select: { cadCounty: true },
+    }),
+  ]);
+
+  const taxYears = yearRows
+    .map((row) => row.year)
+    .filter((year) => Number(year) > 0)
+    .sort((a, b) => b - a);
+  const counties = countyRows
+    .map((row) => String(row.cadCounty || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+
+  return { taxYears, counties };
+}
+
+export async function getBilledReport({ groupBy, ...filters } = {}, referenceDate = new Date()) {
   const normalizedGroupBy = groupBy ? String(groupBy).trim() : "";
   if (normalizedGroupBy && !BILLED_GROUP_BY.has(normalizedGroupBy)) {
     const error = new Error(
@@ -150,44 +238,48 @@ export async function getBilledReport({ groupBy } = {}, referenceDate = new Date
     throw error;
   }
 
-  const windows = getOwnerDateWindows(referenceDate);
-  const invoices = await loadInScopeInvoices();
-  const money = moneyWindows(invoices, windows);
+  const { windows, dateConstraint } = resolveContext(filters, referenceDate);
+  const invoices = await loadInScopeInvoices(filters);
+  const money = moneyWindows(invoices, windows, dateConstraint);
+  const billedInvoices = invoicesMatchingBilledDate(invoices, dateConstraint);
 
   return {
-    ...reportMeta(windows),
+    ...reportMeta(windows, filters),
     billedThisMonth: money.billedThisMonth,
     billedLastMonth: money.billedLastMonth,
     billedYtd: money.billedYtd,
     billedCalendarYear: money.billedCalendarYear,
     ...(normalizedGroupBy
-      ? { groupBy: normalizedGroupBy, groups: billedByGroup(invoices, normalizedGroupBy) }
+      ? { groupBy: normalizedGroupBy, groups: billedByGroup(billedInvoices, normalizedGroupBy) }
       : {}),
   };
 }
 
-export async function getCollectedReport(referenceDate = new Date()) {
-  const windows = getOwnerDateWindows(referenceDate);
-  const invoices = await loadInScopeInvoices();
-  const money = moneyWindows(invoices, windows);
+export async function getCollectedReport(filters = {}, referenceDate = new Date()) {
+  const { windows, dateConstraint } = resolveContext(filters, referenceDate);
+  const invoices = await loadInScopeInvoices(filters);
+  const money = moneyWindows(invoices, windows, dateConstraint);
+  const collectedInvoices = invoicesMatchingCollectedDate(invoices, dateConstraint);
 
   return {
-    ...reportMeta(windows),
+    ...reportMeta(windows, filters),
     collectedThisMonth: money.collectedThisMonth,
     collectedLastMonth: money.collectedLastMonth,
     collectedYtd: money.collectedYtd,
     collectedCalendarYear: money.collectedCalendarYear,
-    byMonth: collectedByPaidMonth(invoices),
+    byMonth: collectedByPaidMonth(collectedInvoices),
   };
 }
 
-export async function getUnpaidReport({ view, limit } = {}) {
-  const invoices = await loadInScopeInvoices();
+export async function getUnpaidReport({ view, limit, ...filters } = {}, referenceDate = new Date()) {
+  const { dateConstraint } = resolveContext(filters, referenceDate);
+  const invoices = invoicesMatchingBilledDate(await loadInScopeInvoices(filters), dateConstraint);
   const unpaid = unpaidTotals(invoices);
   const largestLimit = view === "largest" ? Math.min(Number(limit) || 25, 100) : 10;
 
   return {
     collectedDefinition: COLLECTED_DEFINITION_V1,
+    filters: publicFilters(filters),
     unpaidInvoiceCount: unpaid.unpaidInvoiceCount,
     unpaidClientCount: unpaid.unpaidClientCount,
     totalUnpaid: unpaid.totalUnpaid,
@@ -195,39 +287,61 @@ export async function getUnpaidReport({ view, limit } = {}) {
   };
 }
 
-export async function getReductionsReport() {
-  const invoices = await loadInScopeInvoices();
+export async function getReductionsReport(filters = {}, referenceDate = new Date()) {
+  const { dateConstraint } = resolveContext(filters, referenceDate);
+  const invoices = invoicesMatchingBilledDate(await loadInScopeInvoices(filters), dateConstraint);
   const protest = protestTotals(invoices);
   return {
     ...protest,
+    filters: publicFilters(filters),
     groupBy: "county",
     byCounty: reductionsByCounty(invoices),
   };
 }
 
-export async function getAveragePropertiesPerClient() {
+export async function getAveragePropertiesPerClient(filters = {}) {
+  const clientWhere = {
+    isArchived: false,
+    type: "CLIENT",
+  };
+  if (filters.clientId != null) clientWhere.id = filters.clientId;
+
+  const propertyWhere = {
+    isArchived: false,
+    client: clientWhere,
+  };
+  if (filters.county) {
+    propertyWhere.cadCounty = { equals: filters.county, mode: "insensitive" };
+  }
+  if (filters.propertyId != null) propertyWhere.id = filters.propertyId;
+
   const [clientCount, propertyCount] = await Promise.all([
-    prisma.client.count({
-      where: { isArchived: false, type: "CLIENT" },
-    }),
-    prisma.property.count({
-      where: {
-        isArchived: false,
-        client: { isArchived: false, type: "CLIENT" },
-      },
-    }),
+    prisma.client.count({ where: clientWhere }),
+    prisma.property.count({ where: propertyWhere }),
   ]);
 
   return {
+    filters: publicFilters(filters),
     clientCount,
     propertyCount,
     averagePropertiesPerClient: averagePropertiesPerClient(clientCount, propertyCount),
   };
 }
 
-export async function getActiveClientCount() {
-  const activeClients = await prisma.client.count({
-    where: { isArchived: false, type: "CLIENT" },
-  });
-  return { activeClients };
+export async function getActiveClientCount(filters = {}) {
+  const where = { isArchived: false, type: "CLIENT" };
+  if (filters.clientId != null) where.id = filters.clientId;
+  if (filters.county || filters.propertyId != null) {
+    where.properties = {
+      some: {
+        isArchived: false,
+        ...(filters.propertyId != null ? { id: filters.propertyId } : {}),
+        ...(filters.county
+          ? { cadCounty: { equals: filters.county, mode: "insensitive" } }
+          : {}),
+      },
+    };
+  }
+  const activeClients = await prisma.client.count({ where });
+  return { filters: publicFilters(filters), activeClients };
 }

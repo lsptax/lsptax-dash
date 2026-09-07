@@ -28,7 +28,11 @@ import {
   downloadInvoicesXLSX,
 } from "../controller/invoiceController.js";
 import { listHearings } from "../controller/hearingController.js";
-import { getOwnerDashboard } from "../controller/dashboardController.js";
+import {
+  getOwnerDashboard,
+  getOwnerDashboardOptions,
+} from "../controller/dashboardController.js";
+import { requireOwner } from "../middleware/requireOwner.js";
 
 const router = Router();
 
@@ -88,7 +92,8 @@ router.get("/invoices", getAllInvoices);
 router.get("/archive-invoices", getArchiveInvoices);
 
 router.get("/stats", getCounts);
-router.get("/dashboard/owner", getOwnerDashboard);
+router.get("/dashboard/owner", requireOwner, getOwnerDashboard);
+router.get("/dashboard/owner/options", requireOwner, getOwnerDashboardOptions);
 router.get("/hearings", listHearings);
 
 export default router;

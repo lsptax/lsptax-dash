@@ -4,7 +4,7 @@ Lone Star Property Tax · 31 August 2026 → 27 November 2026 · Reports and das
 
 Source: owner game plan (31 Aug 2026). These specs map that plan onto this repo.
 
-**Status as of 7 Sep 2026:** Calendar Week 2 has started. **Week 1 API is implemented** (`GET /api/dashboard/owner` + `/report/billed|collected|unpaid|reductions|...`). Do not skip to Week 2 UI until you start that week. Do not start Payments before Week 11.
+**Status as of 7 Sep 2026:** **Week 1 API and Week 2 owner dashboard UI are implemented** on branch `week-2`. Staff keep the ops dashboard. Owner/admin see `/portal/owner`. Do not start Payments before Week 11.
 
 ## Contents
 

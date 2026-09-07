@@ -11,6 +11,7 @@ import { ClientSectionLayout, ProspectSectionLayout } from "@/routes/layouts/Por
 import { routes } from "@/routes/ROUTES";
 
 const Dashboard = lazy(() => import("@/components/portal/Dashboard"));
+const OwnerDashboardPage = lazy(() => import("@/components/portal/owner/OwnerDashboardPage"));
 const PropertiesTable = lazy(() => import("@/components/portal/properties/PropertiesTable"));
 const PropertyForm = lazy(() => import("@/components/portal/properties/add/PropertyForm"));
 const ViewProperty = lazy(() => import("@/components/portal/properties/view/ViewProperty"));
@@ -47,6 +48,7 @@ export function PortalRouteElements() {
     <>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="owner" element={<OwnerDashboardPage />} />
       <Route
         path="properties"
         element={

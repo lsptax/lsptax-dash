@@ -1,6 +1,23 @@
 import prisma from "../../prisma/prismaClient.js";
 import { convertToCSV, sendError } from "../services/exportService.js";
 import * as dashboardService from "../services/dashboardService.js";
+import {
+  csvForBilledReport,
+  csvForCollectedReport,
+  csvForReductionsReport,
+  csvForUnpaidReport,
+  sendCsv,
+} from "../services/ownerReportCsv.js";
+import { parseReportFilters } from "../utils/reportFilters.js";
+
+function firstQuery(value) {
+  if (value == null) return "";
+  return String(Array.isArray(value) ? value[0] : value).trim();
+}
+
+function queryFilters(req) {
+  return parseReportFilters(req.query);
+}
 
 function parseCountyParam(county) {
   if (!county) return [];
@@ -92,9 +109,14 @@ export const downloadReportPropertiesCSV = async (req, res) => {
 
 export const getBilledReport = async (req, res) => {
   try {
+    const filters = queryFilters(req);
     const result = await dashboardService.getBilledReport({
-      groupBy: Array.isArray(req.query.groupBy) ? req.query.groupBy[0] : req.query.groupBy,
+      ...filters,
+      groupBy: firstQuery(req.query.groupBy),
     });
+    if (filters.format === "csv") {
+      return sendCsv(res, "report-billed.csv", csvForBilledReport(result));
+    }
     res.status(200).json(result);
   } catch (error) {
     const status = error?.statusCode || 500;
@@ -102,51 +124,71 @@ export const getBilledReport = async (req, res) => {
   }
 };
 
-export const getCollectedReport = async (_req, res) => {
+export const getCollectedReport = async (req, res) => {
   try {
-    const result = await dashboardService.getCollectedReport();
+    const filters = queryFilters(req);
+    const result = await dashboardService.getCollectedReport(filters);
+    if (filters.format === "csv") {
+      return sendCsv(res, "report-collected.csv", csvForCollectedReport(result));
+    }
     res.status(200).json(result);
   } catch (error) {
-    sendError(res, 500, "Error fetching collected report", error);
+    const status = error?.statusCode || 500;
+    sendError(res, status, error.message || "Error fetching collected report", error);
   }
 };
 
 export const getUnpaidReport = async (req, res) => {
   try {
+    const filters = queryFilters(req);
     const result = await dashboardService.getUnpaidReport({
-      view: Array.isArray(req.query.view) ? req.query.view[0] : req.query.view,
-      limit: Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit,
+      ...filters,
+      view: firstQuery(req.query.view),
+      limit: firstQuery(req.query.limit),
     });
+    if (filters.format === "csv") {
+      return sendCsv(res, "report-unpaid.csv", csvForUnpaidReport(result));
+    }
     res.status(200).json(result);
   } catch (error) {
-    sendError(res, 500, "Error fetching unpaid report", error);
+    const status = error?.statusCode || 500;
+    sendError(res, status, error.message || "Error fetching unpaid report", error);
   }
 };
 
-export const getReductionsReport = async (_req, res) => {
+export const getReductionsReport = async (req, res) => {
   try {
-    const result = await dashboardService.getReductionsReport();
+    const filters = queryFilters(req);
+    const result = await dashboardService.getReductionsReport(filters);
+    if (filters.format === "csv") {
+      return sendCsv(res, "report-reductions.csv", csvForReductionsReport(result));
+    }
     res.status(200).json(result);
   } catch (error) {
-    sendError(res, 500, "Error fetching reductions report", error);
+    const status = error?.statusCode || 500;
+    sendError(res, status, error.message || "Error fetching reductions report", error);
   }
 };
 
-export const getAveragePropertiesReport = async (_req, res) => {
+export const getAveragePropertiesReport = async (req, res) => {
   try {
-    const result = await dashboardService.getAveragePropertiesPerClient();
+    const filters = queryFilters(req);
+    const result = await dashboardService.getAveragePropertiesPerClient(filters);
     res.status(200).json(result);
   } catch (error) {
-    sendError(res, 500, "Error fetching average properties report", error);
+    const status = error?.statusCode || 500;
+    sendError(res, status, error.message || "Error fetching average properties report", error);
   }
 };
 
-export const getActiveClientsReport = async (_req, res) => {
+export const getActiveClientsReport = async (req, res) => {
   try {
-    const result = await dashboardService.getActiveClientCount();
+    const filters = queryFilters(req);
+    const result = await dashboardService.getActiveClientCount(filters);
     res.status(200).json(result);
   } catch (error) {
-    sendError(res, 500, "Error fetching active clients report", error);
+    const status = error?.statusCode || 500;
+    sendError(res, status, error.message || "Error fetching active clients report", error);
   }
 };
 

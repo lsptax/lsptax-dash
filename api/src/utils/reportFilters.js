@@ -1,0 +1,177 @@
+import { calendarDateInTz, BUSINESS_TZ, zonedDateTimeToUtc } from "./weekRange.js";
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-\d{2}$/;
+const YEAR_RE = /^\d{4}$/;
+
+function firstQuery(value) {
+  if (value == null) return "";
+  const raw = Array.isArray(value) ? value[0] : value;
+  return String(raw ?? "").trim();
+}
+
+function lastDayOfMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function iso(y, m, d) {
+  return `${y}-${pad2(m)}-${pad2(d)}`;
+}
+
+function parseIsoParts(yyyyMmDd) {
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  return { y, m, d };
+}
+
+function isValidIsoDate(value) {
+  if (!ISO_DATE_RE.test(value)) return false;
+  const { y, m, d } = parseIsoParts(value);
+  const utc = new Date(Date.UTC(y, m - 1, d));
+  return utc.getUTCFullYear() === y && utc.getUTCMonth() === m - 1 && utc.getUTCDate() === d;
+}
+
+function isValidMonth(value) {
+  if (!MONTH_RE.test(value)) return false;
+  const [y, m] = value.split("-").map(Number);
+  return m >= 1 && m <= 12 && y >= 1990 && y <= 2100;
+}
+
+/**
+ * Shared owner report/dashboard query parser (F-16, F-01–F-07).
+ * Date filters apply to invoiceDate (billed) or paidDate (collected).
+ */
+export function parseReportFilters(query = {}) {
+  const from = firstQuery(query.from);
+  const to = firstQuery(query.to);
+  const month = firstQuery(query.month);
+  const calendarYearRaw = firstQuery(query.calendarYear);
+  const taxYearRaw = firstQuery(query.taxYear);
+  const county = firstQuery(query.county);
+  const clientIdRaw = firstQuery(query.clientId);
+  const propertyIdRaw = firstQuery(query.propertyId);
+  const format = firstQuery(query.format).toLowerCase();
+
+  const errors = [];
+
+  if (from && !isValidIsoDate(from)) errors.push("from must be YYYY-MM-DD");
+  if (to && !isValidIsoDate(to)) errors.push("to must be YYYY-MM-DD");
+  if (from && to && from > to) errors.push("from must be on or before to");
+  if (month && !isValidMonth(month)) errors.push("month must be YYYY-MM");
+
+  let calendarYear = null;
+  if (calendarYearRaw) {
+    if (!YEAR_RE.test(calendarYearRaw)) errors.push("calendarYear must be YYYY");
+    else calendarYear = Number(calendarYearRaw);
+  }
+
+  let taxYear = null;
+  if (taxYearRaw) {
+    const n = Number(taxYearRaw);
+    if (!Number.isInteger(n) || n < 1990 || n > 2100) {
+      errors.push("taxYear must be a 4-digit protest year");
+    } else {
+      taxYear = n;
+    }
+  }
+
+  let clientId = null;
+  if (clientIdRaw) {
+    const n = Number(clientIdRaw);
+    if (!Number.isInteger(n) || n < 1) errors.push("clientId must be a positive integer");
+    else clientId = n;
+  }
+
+  let propertyId = null;
+  if (propertyIdRaw) {
+    const n = Number(propertyIdRaw);
+    if (!Number.isInteger(n) || n < 1) errors.push("propertyId must be a positive integer");
+    else propertyId = n;
+  }
+
+  if (county.toLowerCase() === "all") {
+    // treat All as no county filter
+  }
+
+  if (format && format !== "csv" && format !== "json") {
+    errors.push("format must be json or csv");
+  }
+
+  if (errors.length) {
+    const error = new Error(errors.join("; "));
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const countyFilter = county && county.toLowerCase() !== "all" ? county : "";
+
+  return {
+    from: from || "",
+    to: to || "",
+    month: month || "",
+    calendarYear,
+    taxYear,
+    county: countyFilter,
+    clientId,
+    propertyId,
+    format: format || "json",
+  };
+}
+
+/** Explicit from/to range. Month/calendarYear shift windows via referenceDate instead. */
+export function dateConstraintFromFilters(filters) {
+  if (!filters?.from && !filters?.to) return null;
+  return {
+    start: filters.from || "0000-01-01",
+    end: filters.to || "9999-12-31",
+  };
+}
+
+export function intersectDateRange(windowRange, constraint) {
+  if (!windowRange) return null;
+  if (!constraint) return windowRange;
+  const start = windowRange.start >= constraint.start ? windowRange.start : constraint.start;
+  const end = windowRange.end <= constraint.end ? windowRange.end : constraint.end;
+  if (start > end) return null;
+  return { start, end };
+}
+
+/**
+ * Month / calendarYear change which "today" the default windows are relative to.
+ * from/to do not shift windows; they intersect billed/collected dates.
+ */
+export function referenceDateFromFilters(filters, now = new Date(), timeZone = BUSINESS_TZ) {
+  const todayIso = calendarDateInTz(now, timeZone);
+  const today = parseIsoParts(todayIso);
+
+  if (filters?.month && !filters.from && !filters.to) {
+    const [y, m] = filters.month.split("-").map(Number);
+    const last = iso(y, m, lastDayOfMonth(y, m));
+    const asOf = today.y === y && today.m === m && todayIso < last ? todayIso : last;
+    return zonedDateTimeToUtc(asOf, 12, 0, 0, 0, timeZone);
+  }
+
+  if (filters?.calendarYear != null && !filters.from && !filters.to && !filters.month) {
+    const y = filters.calendarYear;
+    const last = iso(y, 12, 31);
+    const asOf = today.y === y && todayIso < last ? todayIso : last;
+    return zonedDateTimeToUtc(asOf, 12, 0, 0, 0, timeZone);
+  }
+
+  return now;
+}
+
+export function invoiceMatchesEntityFilters(invoice, filters) {
+  if (!filters) return true;
+  if (filters.taxYear != null && Number(invoice.year) !== filters.taxYear) return false;
+  if (filters.clientId != null && Number(invoice.clientId) !== filters.clientId) return false;
+  if (filters.propertyId != null && Number(invoice.propertyId) !== filters.propertyId) return false;
+  if (filters.county) {
+    const county = String(invoice.county || "").trim().toLowerCase();
+    if (county !== filters.county.toLowerCase()) return false;
+  }
+  return true;
+}

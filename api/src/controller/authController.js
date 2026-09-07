@@ -25,7 +25,7 @@ export const register = async (req, res) => {
       data: { email, password: hashedPassword },
     });
 
-    const safeUser = { id: user.id, email: user.email };
+    const safeUser = { id: user.id, email: user.email, type: user.type || "client" };
     res.status(201).json({ message: "User registered successfully", user: safeUser });
   } catch (error) {
     console.error("Register error:", error);
@@ -52,12 +52,17 @@ export const login = async (req, res) => {
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN ?? "72h";
 
     const token = jwt.sign(
-      { userId: user.id, jti: crypto.randomUUID() },
+      { userId: user.id, jti: crypto.randomUUID(), type: user.type || "client" },
       SECRET_KEY,
       { expiresIn: jwtExpiresIn }
     );
 
-    const safeUser = { id: user.id, email: user.email };
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      type: user.type || "client",
+    };
     res.status(200).json({ message: "Logged in successfully", token, user: safeUser });
   } catch (error) {
     console.error("Login error:", error);

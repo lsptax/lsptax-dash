@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, FileSpreadsheet, Sparkles } from "lucide-react";
+import { Download, FileSpreadsheet, Wallet } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { downloadPropertiesReportCsv, getReportCounties } from "@/api/api";
+import { downloadOwnerReportCsv } from "@/api/ownerDashboard";
+import OwnerFiltersBar from "@/components/portal/owner/OwnerFilters";
+import {
+  ownerFiltersFromSearchParams,
+  ownerFiltersToSearchParams,
+} from "@/utils/ownerFilters";
+import { currentUserCanViewOwnerDashboard } from "@/utils/ownerRole";
 
 function ReportCard({
   title,
@@ -44,6 +52,12 @@ function ReportCard({
 }
 
 export default function ReportsPage() {
+  const [params, setParams] = useSearchParams();
+  const ownerFilters = useMemo(() => ownerFiltersFromSearchParams(params), [params]);
+  const canViewOwner = currentUserCanViewOwnerDashboard();
+  const [downloadingKind, setDownloadingKind] = useState<string | null>(null);
+  const [ownerError, setOwnerError] = useState<string | null>(null);
+
   const [loadingCounties, setLoadingCounties] = useState(false);
   const [counties, setCounties] = useState<string[]>([]);
   const [countiesError, setCountiesError] = useState<string | null>(null);
@@ -112,99 +126,197 @@ export default function ReportsPage() {
     }
   };
 
+  const downloadOwner = async (
+    kind: "billed" | "collected" | "unpaid" | "reductions",
+    extra?: Record<string, string>
+  ) => {
+    setOwnerError(null);
+    setDownloadingKind(kind);
+    try {
+      await downloadOwnerReportCsv(kind, ownerFilters, extra);
+    } catch (error) {
+      setOwnerError(error instanceof Error ? error.message : "Download failed");
+    } finally {
+      setDownloadingKind(null);
+    }
+  };
+
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-start justify-between gap-6 mb-6">
-          <div>
-            <div className="text-2xl font-semibold text-gray-900">Reports</div>
-            <div className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Download purpose-built reports. More reports will be added here over time.
-            </div>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <div className="text-2xl font-semibold text-gray-900">Reports</div>
+          <div className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Download purpose-built reports. Owner financial reports use invoice date for billed and
+            paid date for collected.
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ReportCard
-          title="Properties Report"
-          description="Download a CSV of properties filtered by county."
-          icon={<FileSpreadsheet className="h-5 w-5" />}
-          footer={
-            <div className="flex items-center justify-between gap-3">
-              <Button onClick={handleDownload} disabled={!canDownload} className="gap-2">
-                <Download className="h-4 w-4" />
-                {downloading ? "Downloading..." : "Download CSV"}
-              </Button>
-            </div>
-          }
-        >
+        {canViewOwner ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-900">County</div>
-            <Input
-              value={countyQuery}
-              onChange={(e) => setCountyQuery(e.target.value)}
-              placeholder="Search county..."
+            <OwnerFiltersBar
+              value={ownerFilters}
+              onChange={(next) => setParams(ownerFiltersToSearchParams(next), { replace: true })}
             />
+            {ownerError ? <div className="text-sm text-destructive">{ownerError}</div> : null}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ReportCard
+                title="Billed"
+                description="Invoice amounts grouped by invoice date. CSV uses the filters above."
+                icon={<Wallet className="h-5 w-5" />}
+                footer={
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-2"
+                      disabled={downloadingKind !== null}
+                      onClick={() => downloadOwner("billed")}
+                    >
+                      <Download className="h-4 w-4" />
+                      {downloadingKind === "billed" ? "Downloading..." : "Totals CSV"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      disabled={downloadingKind !== null}
+                      onClick={() => downloadOwner("billed", { groupBy: "county" })}
+                    >
+                      By county
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      disabled={downloadingKind !== null}
+                      onClick={() => downloadOwner("billed", { groupBy: "taxYear" })}
+                    >
+                      By tax year
+                    </Button>
+                  </div>
+                }
+              />
+              <ReportCard
+                title="Collected"
+                description="Fully paid invoices grouped by paid date (v1)."
+                icon={<Wallet className="h-5 w-5" />}
+                footer={
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    disabled={downloadingKind !== null}
+                    onClick={() => downloadOwner("collected")}
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloadingKind === "collected" ? "Downloading..." : "Download CSV"}
+                  </Button>
+                }
+              />
+              <ReportCard
+                title="Unpaid"
+                description="Outstanding full invoice amounts and largest unpaid clients."
+                icon={<Wallet className="h-5 w-5" />}
+                footer={
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    disabled={downloadingKind !== null}
+                    onClick={() => downloadOwner("unpaid")}
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloadingKind === "unpaid" ? "Downloading..." : "Download CSV"}
+                  </Button>
+                }
+              />
+              <ReportCard
+                title="Reductions"
+                description="Appraised reductions and estimated tax savings by county."
+                icon={<Wallet className="h-5 w-5" />}
+                footer={
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    disabled={downloadingKind !== null}
+                    onClick={() => downloadOwner("reductions")}
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloadingKind === "reductions" ? "Downloading..." : "Download CSV"}
+                  </Button>
+                }
+              />
             </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border bg-white p-4 text-sm text-muted-foreground">
+            Financial billed/collected reports are limited to management users.
+          </div>
+        )}
 
-            <div className="max-h-[320px] overflow-auto rounded-xl border bg-white p-2">
-              {loadingCounties ? (
-                <div className="text-sm text-muted-foreground p-2">Loading...</div>
-              ) : countyOptions.length === 0 ? (
-                <div className="text-sm text-muted-foreground p-2">No county found.</div>
-              ) : (
-                <div className="space-y-1">
-                  {countyOptions.map((county) => {
-                    const checked = selectedCounties.includes(county);
-                    return (
-                      <label
-                        key={county}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={() => toggleCounty(county)}
-                        />
-                        <span className="text-sm">{county}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+        <div className="grid grid-cols-1 gap-6">
+          <ReportCard
+            title="Properties Report"
+            description="Download a CSV of properties filtered by county."
+            icon={<FileSpreadsheet className="h-5 w-5" />}
+            footer={
+              <div className="flex items-center justify-between gap-3">
+                <Button onClick={handleDownload} disabled={!canDownload} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  {downloading ? "Downloading..." : "Download CSV"}
+                </Button>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-gray-900">County</div>
+                <Input
+                  value={countyQuery}
+                  onChange={(e) => setCountyQuery(e.target.value)}
+                  placeholder="Search county..."
+                />
+              </div>
+
+              <div className="max-h-[320px] overflow-auto rounded-xl border bg-white p-2">
+                {loadingCounties ? (
+                  <div className="text-sm text-muted-foreground p-2">Loading...</div>
+                ) : countyOptions.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-2">No county found.</div>
+                ) : (
+                  <div className="space-y-1">
+                    {countyOptions.map((county) => {
+                      const checked = selectedCounties.includes(county);
+                      return (
+                        <label
+                          key={county}
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleCounty(county)}
+                          />
+                          <span className="text-sm">{county}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {!!countiesError && (
+                <div className="text-sm text-destructive">{countiesError}</div>
               )}
-            </div>
 
-            {!!countiesError && (
-              <div className="text-sm text-destructive">{countiesError}</div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {selectedCounties.map((c) => (
-                <Badge key={c} variant="secondary">
-                  {c}
-                </Badge>
-              ))}
+              <div className="flex flex-wrap gap-2">
+                {selectedCounties.map((c) => (
+                  <Badge key={c} variant="secondary">
+                    {c}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
-        </ReportCard>
-
-        <ReportCard
-          title="More reports coming soon"
-          description="This is a placeholder for future report tiles."
-          icon={<Sparkles className="h-5 w-5" />}
-          footer={
-            <div className="text-xs text-muted-foreground">
-              Add new report tiles here as endpoints become available.
-            </div>
-          }
-        >
-          <div className="rounded-xl border bg-gray-50/50 p-4 text-sm text-muted-foreground">
-            We’ll add more downloadable reports here as they’re built.
-          </div>
-        </ReportCard>
+          </ReportCard>
         </div>
       </div>
     </div>
   );
 }
-

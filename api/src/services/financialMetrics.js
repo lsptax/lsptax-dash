@@ -1,4 +1,5 @@
 import { roundMoney } from "../utils/invoiceYearlyData.js";
+import { intersectDateRange } from "../utils/reportFilters.js";
 import {
   dateInInclusiveRange,
   parseInvoiceCalendarDate,
@@ -24,6 +25,7 @@ function emptyCounty(county) {
 }
 
 export function sumBilledInRange(invoices, range) {
+  if (!range) return { amount: 0, propertyCount: 0 };
   let amount = 0;
   const propertyIds = new Set();
   for (const invoice of invoices) {
@@ -36,6 +38,7 @@ export function sumBilledInRange(invoices, range) {
 }
 
 export function sumCollectedInRange(invoices, range) {
+  if (!range) return 0;
   let amount = 0;
   for (const invoice of invoices) {
     if (!invoice.isPaid) continue;
@@ -113,15 +116,56 @@ export function protestTotals(invoices) {
   };
 }
 
-export function moneyWindows(invoices, windows) {
-  const billedThisMonth = sumBilledInRange(invoices, windows.thisMonth);
-  const billedLastMonth = sumBilledInRange(invoices, windows.lastMonth);
-  const billedYtd = sumBilledInRange(invoices, windows.ytd);
-  const billedCalendarYear = sumBilledInRange(invoices, windows.calendarYear);
-  const collectedThisMonth = sumCollectedInRange(invoices, windows.thisMonth);
-  const collectedLastMonth = sumCollectedInRange(invoices, windows.lastMonth);
-  const collectedYtd = sumCollectedInRange(invoices, windows.ytd);
-  const collectedCalendarYear = sumCollectedInRange(invoices, windows.calendarYear);
+export function invoicesMatchingBilledDate(invoices, range) {
+  if (!range) return invoices;
+  return invoices.filter((invoice) => {
+    const parsed = parseInvoiceCalendarDate(invoice.invoiceDate);
+    return dateInInclusiveRange(parsed, range.start, range.end);
+  });
+}
+
+export function invoicesMatchingCollectedDate(invoices, range) {
+  if (!range) return invoices;
+  return invoices.filter((invoice) => {
+    if (!invoice.isPaid) return false;
+    const parsed = parseInvoiceCalendarDate(invoice.paidDate);
+    return dateInInclusiveRange(parsed, range.start, range.end);
+  });
+}
+
+export function moneyWindows(invoices, windows, dateConstraint = null) {
+  const billedThisMonth = sumBilledInRange(
+    invoices,
+    intersectDateRange(windows.thisMonth, dateConstraint)
+  );
+  const billedLastMonth = sumBilledInRange(
+    invoices,
+    intersectDateRange(windows.lastMonth, dateConstraint)
+  );
+  const billedYtd = sumBilledInRange(
+    invoices,
+    intersectDateRange(windows.ytd, dateConstraint)
+  );
+  const billedCalendarYear = sumBilledInRange(
+    invoices,
+    intersectDateRange(windows.calendarYear, dateConstraint)
+  );
+  const collectedThisMonth = sumCollectedInRange(
+    invoices,
+    intersectDateRange(windows.thisMonth, dateConstraint)
+  );
+  const collectedLastMonth = sumCollectedInRange(
+    invoices,
+    intersectDateRange(windows.lastMonth, dateConstraint)
+  );
+  const collectedYtd = sumCollectedInRange(
+    invoices,
+    intersectDateRange(windows.ytd, dateConstraint)
+  );
+  const collectedCalendarYear = sumCollectedInRange(
+    invoices,
+    intersectDateRange(windows.calendarYear, dateConstraint)
+  );
 
   return {
     billedThisMonth: billedThisMonth.amount,
