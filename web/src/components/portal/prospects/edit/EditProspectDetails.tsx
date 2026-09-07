@@ -179,7 +179,7 @@ export default function EditProspectDetails() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border p-8"
+        className="max-w-4xl mx-auto bg-card rounded-lg shadow-sm border p-8"
       >
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-xl font-semibold text-gray-900">Edit Prospect</h1>
@@ -471,7 +471,7 @@ export default function EditProspectDetails() {
         <div className="mt-8">
           <Button
             type="submit"
-            className="w-full md:w-auto flex items-center justify-center bg-blue-600 text-white hover:bg-blue-700"
+            className="w-full md:w-auto flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={loading} // Disable button while loading
           >
             {loading ? (

@@ -34,7 +34,7 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
       ref={ref}
       data-invoice-pdf-sheet
       id="invoice-2025-sheet"
-      className="mx-auto w-full max-w-[950px] min-h-[255mm] bg-white shadow p-5 text-[12px] leading-[1.2] text-black font-sans"
+      className="paper-sheet mx-auto w-full max-w-[950px] min-h-[255mm] bg-white shadow p-5 text-[12px] leading-[1.2] text-black font-sans"
     >
       <div className="flex items-start gap-2 pb-2">
         <img src={brandLogo} alt="LSP Tax logo" className="h-[76px] w-[76px] object-contain" />

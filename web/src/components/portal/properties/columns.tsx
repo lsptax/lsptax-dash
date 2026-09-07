@@ -42,7 +42,7 @@ export const propertiesColumn: ColumnDef<Properties>[] = [
 
       return (
         <ListDetailLink to={routes.client.detail(clientId)}>
-          <div className="text-blue-400 font-bold">#{clientNumber}</div>
+          <div className="text-foreground font-semibold">#{clientNumber}</div>
         </ListDetailLink>
       );
     },

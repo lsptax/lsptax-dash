@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +20,6 @@ import {
   LoaderCircle,
   Mail,
   RefreshCw,
-  Search,
-  X,
 } from "lucide-react";
 import { useInvoicesQuery } from "@/hooks/queries";
 import { TableSkeleton } from "../TableSkeleton";
@@ -62,7 +59,7 @@ import {
   mergeInvoiceListParams,
   parseInvoiceListParams,
 } from "./invoiceListSearchParams";
-import { useDraftSearch, useListSearchParams } from "@/hooks/useListSearchParams";
+import { useListSearchParams } from "@/hooks/useListSearchParams";
 import {
   buildRenderJobsForRecipients,
   downloadInvoicePdfsAsZip,
@@ -93,10 +90,6 @@ const InvoicesTable = ({
     limit,
     archived,
   } = params;
-  const { searchTerm, setSearchTerm, commitSearch, clearSearch } = useDraftSearch(
-    appliedSearch,
-    (value) => updateParams({ search: value, offset: 0 })
-  );
   const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [downloadingPdfs, setDownloadingPdfs] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ completed: number; total: number } | null>(null);
@@ -455,14 +448,14 @@ const InvoicesTable = ({
   if (isLoading) {
     return (
       <>
-        <div className="flex border rounded-xl items-center gap-4 bg-white m-4 p-4">
+        <div className="portal-toolbar">
           <div className="w-full">
             <div className="h-8 w-24 bg-muted animate-pulse rounded" />
             <div className="h-5 w-40 bg-muted animate-pulse rounded mt-2" />
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-10 flex-1 max-w-md w-80 bg-muted animate-pulse rounded" />
-            <div className="h-10 w-10 bg-muted animate-pulse rounded shrink-0" />
+            <div className="h-10 w-40 bg-muted animate-pulse rounded" />
+            <div className="h-10 w-36 bg-muted animate-pulse rounded" />
           </div>
           <div className="h-10 w-40 bg-muted animate-pulse rounded" />
           <div className="h-10 w-24 bg-muted animate-pulse rounded" />
@@ -484,50 +477,13 @@ const InvoicesTable = ({
 
   return (
     <div>
-      <div className="flex border rounded-xl items-center gap-4 bg-white m-4 p-4">
+      <div className="portal-toolbar">
         <div className="w-full">
-          <h2 className="text-2xl font-bold">{total}</h2>
-          <h3>Total number of Invoices</h3>
+          <p className="text-2xl font-semibold tabular-nums">{total}</p>
+          <p className="text-sm text-muted-foreground">Invoices</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="relative flex flex-1 items-center max-w-md w-80 min-w-0">
-            <Input
-              type="text"
-              placeholder="Search by property/account number or #client number..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitSearch();
-                }
-              }}
-              className="pr-9 w-full"
-              aria-label="Search invoices by property/account number or client number (e.g. #4324)"
-            />
-            {(searchTerm || appliedSearch) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={clearSearch}
-                className="absolute right-1 h-7 w-7 p-0"
-                aria-label="Clear search"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={commitSearch}
-            aria-label="Run search"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
           <Select
             value={sendStatus}
             onValueChange={(value) => handleSendStatusChange(value as InvoiceSendStatusFilter)}
@@ -574,7 +530,7 @@ const InvoicesTable = ({
             ? `Syncing ${brevoSyncProgress}…`
             : "Sync with Brevo"}
         </Button>
-        <Button variant={"blue"} onClick={switchArchived}>
+        <Button variant="outline" onClick={switchArchived}>
           <Archive />
           {archived ? "View Active Invoices" : "View Archive"}
         </Button>
@@ -589,7 +545,7 @@ const InvoicesTable = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="blue"
+              variant="outline"
               disabled={
                 selectedInvoiceIdList.length === 0 ||
                 downloadingPdfs ||
@@ -639,7 +595,7 @@ const InvoicesTable = ({
             Clear Selection
           </Button>
         )}
-        <Button onClick={handleCsvDownload} disabled={downloadingCsv}>
+        <Button variant="outline" onClick={handleCsvDownload} disabled={downloadingCsv}>
           {downloadingCsv ? (
             <LoaderCircle className="animate-spin" />
           ) : (
@@ -654,7 +610,7 @@ const InvoicesTable = ({
           selectedInvoiceIdList.length > 0
             ? { invoiceIds: selectedInvoiceIdList }
             : {
-                search: searchTerm.trim() || appliedSearch || undefined,
+                search: appliedSearch || undefined,
                 paymentStatus: "unpaid",
               }
         }

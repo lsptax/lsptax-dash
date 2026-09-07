@@ -9,7 +9,7 @@ export const hearingColumns: ColumnDef<Hearing>[] = [
     accessorKey: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="font-medium text-slate-900">{formatHearingDate(row.original.date)}</div>
+      <div className="font-medium text-foreground">{formatHearingDate(row.original.date)}</div>
     ),
   },
   {
@@ -18,7 +18,7 @@ export const hearingColumns: ColumnDef<Hearing>[] = [
     cell: ({ row }) => (
       <NavLink
         to={routes.properties.view(row.original.propertyId)}
-        className="text-indigo-700 hover:underline"
+        className="text-primary hover:underline"
       >
         {row.original.accountNumber ?? "—"}
       </NavLink>
@@ -28,7 +28,7 @@ export const hearingColumns: ColumnDef<Hearing>[] = [
     accessorKey: "clientName",
     header: "Client",
     cell: ({ row }) => (
-      <span className="text-slate-700">{row.original.clientName ?? "—"}</span>
+      <span className="text-foreground">{row.original.clientName ?? "—"}</span>
     ),
   },
   {
@@ -36,7 +36,7 @@ export const hearingColumns: ColumnDef<Hearing>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = normalizeHearingStatus(row.original.status);
-      return <span className="text-xs text-slate-600">{hearingStatusLabel(status)}</span>;
+      return <span className="text-xs text-muted-foreground">{hearingStatusLabel(status)}</span>;
     },
   },
 ];

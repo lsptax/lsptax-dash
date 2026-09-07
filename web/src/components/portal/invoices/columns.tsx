@@ -23,7 +23,7 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
         : routes.invoices.byClient(row.original.clientId);
       return (
         <ListDetailLink to={invoiceLink}>
-          <div className="text-blue-400 font-bold">#{id}</div>
+          <div className="text-foreground font-semibold">#{id}</div>
         </ListDetailLink>
       );
     },
@@ -40,7 +40,7 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
         <div>
           <ListDetailLink
             to={routes.client.detail(clientId)}
-            className="font-semibold text-blue-600 hover:underline"
+            className="font-semibold text-foreground hover:underline"
           >
             {label}
           </ListDetailLink>
@@ -67,7 +67,7 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
             {propertyNumbers.map((property, index) => (
               <h1
                 key={index}
-                className="bg-green-200 p-1 m-1 text-green-800 font-bold w-max border rounded-xl"
+                className="bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300 p-1 m-1 font-semibold w-max border border-transparent dark:border-emerald-400/20 rounded-md text-xs"
               >
                 {property}
               </h1>

@@ -274,7 +274,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
   }
 
   return (
-    <div className="bg-gray-100 py-4">
+    <div className="bg-muted py-4">
       <div className="mx-auto max-w-[1100px] px-3">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <div className="mr-auto flex items-center gap-2 text-sm text-muted-foreground">

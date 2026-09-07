@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const formSchema = z.object({
     email: z.string().email("Please enter a valid email address"),
@@ -85,113 +86,97 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center overflow-hidden">
-      {/* Left Side  */}
-      <div className="flex-1 flex flex-col mt-32 md:justify-center items-center min-h-screen ">
-        <div className="md:w-[350px] md:h-[562px] ">
-          <div className="flex justify-between items-center w-full mb-12 ">
-            <div>
-              <NavLink to={"/"}>
-                <img className="" src={Logo} alt="Lone Star Property Tax logo" />
-              </NavLink>
-            </div>
-          </div>
-          <div>
-            <Card className="w-full max-w-md border-none  ">
-              <CardHeader className="mb-12">
-                <CardDescription>Welcome back!</CardDescription>
-                <CardTitle className="text-2xl">Please Login</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-8"
-                  >
-                    <div className="grid gap-4">
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem className="grid gap-2">
-                            <FormLabel htmlFor="email">Email Address</FormLabel>
-                            <FormControl>
-                              <Input
-                                className="w-full"
-                                id="email"
-                                placeholder="johndoe@mail.com"
-                                type="email"
-                                autoComplete="email"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem className="grid gap-2">
-                            <div className="flex justify-between items-center">
-                              <FormLabel htmlFor="password">Password</FormLabel>
-                              <button
-                                type="button"
-                                className="text-sm text-blue-600 hover:underline"
-                                onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
-                              >
-                                {showPassword ? "Hide" : "Show"}
-                              </button>
-                            </div>
-                            <FormControl>
-                              <Input
-                                type={showPassword ? "text" : "password"} // Toggle input type
-                                className="w-full"
-                                id="password"
-                                placeholder="******"
-                                autoComplete="current-password"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="text-right">
-                        <a
-                          href="#"
-                          className="text-sm text-muted-foreground hover:text-primary hover:underline"
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          Forgot password?
-                        </a>
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary flex items-center justify-center"
-                        disabled={loading} // Disable button while loading
-                      >
-                        {loading ? (
-                          <>
-                            <LoaderCircle className="animate-spin w-5 h-5 mr-2" />
-                            Logging In...
-                          </>
-                        ) : (
-                          "Login"
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </div>
+    <div className="relative flex min-h-screen w-full bg-background">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+        <div className="w-full max-w-[22rem]">
+          <NavLink to="/" className="mb-8 inline-block">
+            <img className="h-14 w-auto" src={Logo} alt="Lone Star Property Tax logo" />
+          </NavLink>
+          <Card className="w-full border-border shadow-none">
+            <CardHeader className="space-y-1 p-6 pb-2">
+              <CardDescription>Welcome back</CardDescription>
+              <CardTitle className="text-xl font-semibold tracking-tight">Log in</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 pt-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel htmlFor="email">Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            id="email"
+                            placeholder="you@company.com"
+                            type="email"
+                            autoComplete="email"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <FormLabel htmlFor="password">Password</FormLabel>
+                          <button
+                            type="button"
+                            className="text-sm text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                        <FormControl>
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            id="password"
+                            placeholder="••••••••"
+                            autoComplete="current-password"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="text-right">
+                    <a
+                      href="#"
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      Forgot password?
+                    </a>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in…
+                      </>
+                    ) : (
+                      "Log in"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         </div>
       </div>
-      {/* Right Side  */}
       <img
-        className="flex-1 hidden lg:block min-h-screen "
+        className="hidden min-h-screen w-[46%] object-cover lg:block"
         src={Image}
         alt=""
       />

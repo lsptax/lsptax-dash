@@ -208,17 +208,17 @@ const PreviewSignedPdf = () => {
         ].map(({ title, data }, index) => (
           <div
             key={index}
-            className="p-4 rounded-lg bg-transparent border border-gray-300"
+            className="p-4 rounded-lg bg-card border"
           >
             <h2 className="text-lg font-semibold mb-2">{title}</h2>
             {data ? (
               <iframe
                 title={title}
                 src={`data:application/pdf;base64,${uint8ArrayToBase64(data)}#toolbar=0&navpanes=0`}
-                className="w-full h-[75vh] min-h-[400px] rounded border bg-white"
+                className="paper-sheet w-full h-[75vh] min-h-[400px] rounded border bg-white"
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
                 <p>No {title} available.</p>
               </div>
             )}

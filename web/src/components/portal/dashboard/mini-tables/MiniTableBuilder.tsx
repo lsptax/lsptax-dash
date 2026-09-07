@@ -64,17 +64,16 @@ function MiniTableBuilder<TData>({
   });
 
   return (
-    <div className="rounded-xl bg-white p-4 border rounded-xl">
-      <div className="">
-        <div className="flex justify-between align-center mb-4">
-          <h2 className="font-bold text-xl">{label}</h2>
-          <NavLink to={link}>
-            <Button size={"sm"} className="mr-8" variant={"blue"}>
-              See More
-            </Button>
-          </NavLink>
-        </div>
-        <div className="overflow-x-auto h-48">
+    <div className="portal-card h-full overflow-hidden">
+      <div className="flex justify-between items-center gap-3 px-5 py-3.5">
+        <h2 className="font-semibold text-sm">{label}</h2>
+        <NavLink to={link}>
+          <Button size="sm" variant="outline">
+            See more
+          </Button>
+        </NavLink>
+      </div>
+      <div className="overflow-x-auto px-3 pb-3">
           <Table className="table-auto min-w-full">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -83,8 +82,8 @@ function MiniTableBuilder<TData>({
                     <TableHead
                       key={header.id}
                       className={`cursor-pointer select-none whitespace-nowrap ${
-                        index > 1 ? "hidden md:table-cell" : ""
-                      } text-gray-700 font-semibold`}
+                        index > 1 ? "hidden lg:table-cell" : ""
+                      } text-muted-foreground font-semibold`}
                       onClick={
                         header.id === "select"
                           ? undefined
@@ -122,7 +121,7 @@ function MiniTableBuilder<TData>({
                       <TableCell
                         key={cell.id}
                         className={`whitespace-nowrap ${
-                          index > 1 ? "hidden sm:table-cell" : ""
+                          index > 1 ? "hidden lg:table-cell" : ""
                         }`}
                       >
                         {flexRender(
@@ -146,7 +145,6 @@ function MiniTableBuilder<TData>({
             </TableBody>
           </Table>
         </div>
-      </div>
     </div>
   );
 }

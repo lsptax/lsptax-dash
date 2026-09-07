@@ -206,13 +206,11 @@ const ClientPage = () => {
   };
 
   return (
-    <div className="m-2 rounded-lg bg-white p-4">
+    <div className="px-4 sm:px-6 py-4 rounded-lg bg-card">
       <div className="mb-4">
         <BackToListLink fallback={routes.clients.list()} label="Back to clients" />
       </div>
-      <div className="flex justify-between">
-        <h1 className="text-4xl font-bold text-center mb-6">Client Details</h1>
-        <div className="flex gap-4">
+      <div className="flex justify-end mb-4 flex-wrap gap-2">
           <AlertDialog
             open={sendAllDocsOpen}
             onOpenChange={(open) => {
@@ -362,7 +360,6 @@ const ClientPage = () => {
               Create Contract
             </Button>
           </NavLink>
-        </div>
       </div>
 
       <div className="gap-2 flex flex-col md:flex-row justify-between">
@@ -376,21 +373,21 @@ const ClientPage = () => {
               <tr>
                 <td className="font-medium">Phone:</td>
                 <td>
-                  <Phone size={18} className="inline text-indigo-600 mr-2" />
+                  <Phone size={18} className="inline text-primary mr-2" />
                   {clientData.client.phoneNumber}
                 </td>
               </tr>
               <tr>
                 <td className="font-medium">Email:</td>
                 <td>
-                  <Mail size={18} className="inline text-indigo-600 mr-2" />
+                  <Mail size={18} className="inline text-primary mr-2" />
                   {clientData.client.email}
                 </td>
               </tr>
               <tr>
                 <td className="font-medium">Address:</td>
                 <td>
-                  <MapPin size={18} className="inline text-indigo-600 mr-2" />
+                  <MapPin size={18} className="inline text-primary mr-2" />
                   {clientData.client.mailingAddress},{" "}
                   {clientData.client.mailingAddressCityTxZip}
                 </td>

@@ -275,7 +275,7 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
   const showBpp = acctType === "bpp";
 
   return (
-    <div className="w-full p-4 bg-white shadow-md rounded-lg">
+    <div className="w-full p-4 bg-card border rounded-lg">
       <div className="mb-4">
         <BackToListLink fallback={routes.properties.list()} label="Back to properties" />
       </div>
@@ -448,10 +448,10 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
         )}
       </div> */}
       <div
-        className="flex justify-between items-center cursor-pointer bg-blue-100 hover:bg-blue-200 p-4 rounded-lg my-2"
+        className="flex justify-between items-center cursor-pointer bg-muted hover:bg-accent p-4 rounded-lg my-2"
         onClick={() => setIsInvoiceOpen(!isInvoiceOpen)}
       >
-        <h2 className="text-xl font-semibold text-blue-800">Invoice Details</h2>
+        <h2 className="text-xl font-semibold">Invoice Details</h2>
         {/* <span className="text-blue-800">
           {isInvoiceOpen ? <ChevronUp /> : <ChevronDown />}
         </span> */}

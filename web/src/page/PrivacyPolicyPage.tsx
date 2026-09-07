@@ -10,7 +10,7 @@ export default function PrivacyPolicyPage() {
         description="Read Lone Star Property Tax’s Privacy Policy, including what data we collect, how we use it, sharing, cookies/analytics, retention, and how to contact us."
       />
       <Header />
-      <main id="main" className="min-h-[70vh] bg-white">
+      <main id="main" className="min-h-[70vh] bg-background">
         <div className="container mx-auto px-4 py-12">
           <header className="max-w-3xl">
             <h1 className="text-3xl md:text-4xl font-bold text-brand-dark">

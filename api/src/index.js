@@ -13,6 +13,7 @@ import cors from "cors";
 import { protect } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { assertDocusignGoLiveConfigOrExit } from "./utils/docusignEnv.js";
+import { applyAppSettingsFromDb } from "./utils/appSettings.js";
 import "./utils/loadEnv.js";
 
 const app = express();
@@ -105,9 +106,15 @@ app.use("/", (req, res) => {
 
 app.use(errorHandler);
 
-assertDocusignGoLiveConfigOrExit();
-
 const port = Number(process.env.PORT) || 3000;
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Server running on http://0.0.0.0:${port}`);
-});
+
+applyAppSettingsFromDb()
+  .catch((error) => {
+    console.error("Failed to load app settings from database:", error);
+  })
+  .finally(() => {
+    assertDocusignGoLiveConfigOrExit();
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`Server running on http://0.0.0.0:${port}`);
+    });
+  });

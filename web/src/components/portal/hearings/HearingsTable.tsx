@@ -69,7 +69,7 @@ const HearingsTable = () => {
   if (isLoading) {
     return (
       <>
-        <div className="flex flex-col gap-3 border rounded-xl bg-white m-4 p-4 md:flex-row md:items-end">
+        <div className="portal-toolbar md:items-end">
           <div className="h-8 w-32 bg-muted animate-pulse rounded" />
           <div className="h-10 flex-1 bg-muted animate-pulse rounded" />
         </div>
@@ -92,10 +92,10 @@ const HearingsTable = () => {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 border rounded-xl bg-white m-4 p-4 lg:flex-row lg:items-end">
+      <div className="portal-toolbar lg:items-end">
         <div className="flex-1">
-          <h2 className="text-2xl font-bold">{total}</h2>
-          <h3 className="text-sm text-muted-foreground">Scheduled hearings</h3>
+          <p className="text-2xl font-semibold tabular-nums">{total}</p>
+          <p className="text-sm text-muted-foreground">Scheduled hearings</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
           <div>

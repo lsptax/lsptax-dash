@@ -143,9 +143,9 @@ const EditableYearTable: React.FC<{ invoices?: Invoice[] }> = ({
         Editable Yearly Invoices Summary
       </h2>
       <div className="overflow-x-auto rounded-lg shadow-md">
-        <table className="min-w-full text-left border-collapse bg-white rounded-lg">
+        <table className="min-w-full text-left border-collapse bg-card rounded-lg">
           <thead>
-            <tr className="bg-gradient-to-r from-indigo-500 to-blue-500 text-white">
+            <tr className="bg-primary text-primary-foreground">
               <th className="px-6 py-3 text-sm font-medium uppercase"></th>
               {years.map((year) => (
                 <th

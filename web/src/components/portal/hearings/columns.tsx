@@ -39,7 +39,7 @@ export function createHearingsColumns(onUpdated: () => void): ColumnDef<Hearing>
         if (!clientId) return <span>{label}</span>;
         return (
           <div>
-            <ListDetailLink to={routes.client.detail(clientId)} className="text-blue-600 font-semibold hover:underline">
+            <ListDetailLink to={routes.client.detail(clientId)} className="text-foreground font-semibold hover:underline">
               {label}
             </ListDetailLink>
             {number ? <div className="text-xs text-muted-foreground">#{number}</div> : null}

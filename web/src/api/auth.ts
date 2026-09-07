@@ -53,15 +53,14 @@ export const logoutUser = async () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Error response during logout:", errorText);
-        throw new Error("Logout failed on the server");
       }
     }
-
+  } catch (error) {
+    console.error("Error during logout:", error);
+  } finally {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     localStorage.removeItem("user");
-  } catch (error) {
-    console.error("Error during logout:", error);
-    throw new Error("Logout failed. Please try again.");
+    localStorage.removeItem("email");
   }
 };

@@ -13,7 +13,7 @@ const Footer = () => {
               <MapPin className="w-4 h-4" />
               <span>Mailing Address</span>
             </h3>
-            <div className="text-white hover:text-blue-400 transition-all duration-300 leading-tight">
+            <div className="text-white hover:text-primary transition-all duration-300 leading-tight">
               <p>16107 Kensington Dr. #194,</p>
               <p>Sugar Land, TX 77479</p>
             </div>
@@ -25,14 +25,14 @@ const Footer = () => {
             <div className="space-y-2">
               <a
                 href="mailto:info@lsptax.com"
-                className="flex items-center gap-2 text-white hover:text-blue-400 transition-all duration-300"
+                className="flex items-center gap-2 text-white hover:text-primary transition-all duration-300"
               >
                 <Mail className="w-4 h-4" />
                 info@lsptax.com
               </a>
               <a
                 href="tel:+18335778291"
-                className="flex items-center gap-2 text-white hover:text-blue-400 transition-all duration-300"
+                className="flex items-center gap-2 text-white hover:text-primary transition-all duration-300"
               >
                 <Phone className="w-4 h-4" />
                 +1-833-577-8291
@@ -46,31 +46,31 @@ const Footer = () => {
             <div className="flex flex-col space-y-1">
               {/* <NavLink
                 to="/portal/dashboard"
-                className="text-white hover:text-blue-400 transition-all duration-300 hover:translate-x-2"
+                className="text-white hover:text-primary transition-all duration-300 hover:translate-x-2"
               >
                 Admin Portal
               </NavLink> */}
               {/* <NavLink
                 to="#service"
-                className="text-white hover:text-blue-400 transition-all duration-300 hover:translate-x-2"
+                className="text-white hover:text-primary transition-all duration-300 hover:translate-x-2"
               >
                 Our Services
               </NavLink> */}
               <a
                 href="/#about"
-                className="text-white hover:text-blue-400 transition-all duration-300 hover:translate-x-2"
+                className="text-white hover:text-primary transition-all duration-300 hover:translate-x-2"
               >
                 About Us
               </a>
               <Link
                 to="/privacy"
-                className="text-white hover:text-blue-400 transition-all duration-300 hover:translate-x-2"
+                className="text-white hover:text-primary transition-all duration-300 hover:translate-x-2"
               >
                 Privacy Policy
               </Link>
               <Link
                 to="/terms"
-                className="text-white hover:text-blue-400 transition-all duration-300 hover:translate-x-2"
+                className="text-white hover:text-primary transition-all duration-300 hover:translate-x-2"
               >
                 Terms of Use
               </Link>

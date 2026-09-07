@@ -73,10 +73,10 @@ const Contact = () => {
   return (
     <div
       id="contact"
-      className="bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center p-8 m-4 rounded-xl shadow-lg"
+      className="bg-muted/60 flex flex-col items-center p-8 mx-4 my-8 rounded-xl border"
     >
       <div className="text-center max-w-2xl mb-8">
-        <h1 className="text-3xl font-semibold text-blue-800 mb-4">
+        <h1 className="text-3xl font-semibold text-foreground mb-4">
           Start Your Property Tax Savings Journey
         </h1>
         <p className="text-gray-600 mb-4">
@@ -97,11 +97,11 @@ const Contact = () => {
       </div>
 
       <div className="w-full max-w-3xl">
-        <div className="bg-blue-50 p-6 rounded-t-xl border-b border-blue-100">
-          <h4 className="font-medium text-blue-800 mb-3">
+        <div className="bg-card p-6 rounded-t-xl border-b">
+          <h4 className="font-medium text-foreground mb-3">
             Why Choose Our Services?
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground">
             <div>• Professional ARB hearing representation</div>
             <div>• Detailed property value analysis</div>
             <div>• Proven success track record</div>
@@ -112,7 +112,7 @@ const Contact = () => {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6 bg-white p-10 rounded-b-xl shadow-md border border-gray-200"
+            className="space-y-6 bg-card p-8 rounded-b-xl border border-t-0"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <FormField
@@ -195,7 +195,7 @@ const Contact = () => {
             <Button
               disabled={loading}
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg shadow-md transition-all"
+              className="w-full"
             >
               {loading ? (
                 <>

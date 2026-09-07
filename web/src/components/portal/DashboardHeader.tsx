@@ -2,13 +2,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLocation } from "react-router-dom";
-import { BellIcon, Menu, User2 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { LogOut, Menu, Settings, User2 } from "lucide-react";
 import { logoutUser } from "@/api/api";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { HeaderSearch } from "@/components/portal/HeaderSearch";
+import { routes } from "@/routes/ROUTES";
+import { currentUserCanViewOwnerDashboard } from "@/utils/ownerRole";
 
 const CurrentDate: React.FC = () => {
   const formatDate = (): string => {
@@ -42,7 +46,6 @@ const CurrentDate: React.FC = () => {
     const month = months[now.getMonth()];
     const year = now.getFullYear();
 
-    // Add ordinal suffix (st, nd, rd, th)
     const ordinalSuffix = (date: number): string => {
       if (date > 3 && date < 21) return "th";
       switch (date % 10) {
@@ -60,152 +63,224 @@ const CurrentDate: React.FC = () => {
     return `${dayName}, ${date}${ordinalSuffix(date)} ${month} ${year}`;
   };
 
-  return <h3>{formatDate()}</h3>;
+  return <p>{formatDate()}</p>;
 };
 
 interface DashboardHeaderProps {
-  icon: string;
   label: string;
   desc: string;
 }
 
-const headerData = [
+const headerEntries: { prefix: string; label: string; desc: string }[] = [
   {
-    id: "properties",
-    icon: "",
-    label: "Properties",
-    desc: "See all Properties here.",
+    prefix: "profile",
+    label: "Profile",
+    desc: "Your name, email, and password.",
   },
   {
-    id: "invoices",
-    icon: "",
-    label: "Invoices",
-    desc: "See all Invoices here.",
+    prefix: "settings",
+    label: "Settings",
+    desc: "Brevo, Supabase, and DocuSign.",
   },
   {
-    id: "hearings",
-    icon: "",
+    prefix: "owner",
+    label: "Owner",
+    desc: "Billed vs collected, unpaid, and protest results.",
+  },
+  {
+    prefix: "csv-uploads",
+    label: "CSV uploads",
+    desc: "Import property and hearing data from spreadsheets.",
+  },
+  {
+    prefix: "hearings",
     label: "Hearings",
     desc: "View and filter scheduled property hearings.",
   },
   {
-    id: "clients/list-client",
-    icon: "",
+    prefix: "invoices",
+    label: "Invoices",
+    desc: "Track billed, unpaid, and paid invoices.",
+  },
+  {
+    prefix: "invoice",
+    label: "Invoice",
+    desc: "Review and send this invoice.",
+  },
+  {
+    prefix: "properties",
+    label: "Properties",
+    desc: "Search, filter, and manage protest properties.",
+  },
+  {
+    prefix: "add-property",
+    label: "Add property",
+    desc: "Create a property and attach it to a client or prospect.",
+  },
+  {
+    prefix: "edit-properties",
+    label: "Edit property",
+    desc: "Update account, address, and yearly protest data.",
+  },
+  {
+    prefix: "property",
+    label: "Property",
+    desc: "Yearly data, hearings, and documents for this account.",
+  },
+  {
+    prefix: "clients",
     label: "Clients",
-    desc: "View, search for and add new Client.",
+    desc: "Search, open, or add clients.",
   },
   {
-    id: "prospects/list-prospect",
-    icon: "",
+    prefix: "client",
+    label: "Client",
+    desc: "Properties, invoices, and contract for this client.",
+  },
+  {
+    prefix: "edit-client",
+    label: "Edit client",
+    desc: "Update contact and billing details.",
+  },
+  {
+    prefix: "prospects",
     label: "Prospects",
-    desc: "View, search for and add new Prospect.",
+    desc: "Track outreach and convert prospects to clients.",
   },
   {
-    id: "contract",
-    icon: "",
-    label: "Contracts",
-    desc: "Create and send client contract.",
+    prefix: "prospect",
+    label: "Prospect",
+    desc: "Contact details, properties, and documents.",
   },
   {
-    id: "agent",
-    icon: "",
-    label: "Appointment of Agent (AOA)",
-    desc: "Create and send Appointment of Agent (Form 50-162).",
+    prefix: "edit-prospect",
+    label: "Edit prospect",
+    desc: "Update prospect contact details.",
+  },
+  {
+    prefix: "contract",
+    label: "Contract",
+    desc: "Create and send a client contract.",
+  },
+  {
+    prefix: "agent",
+    label: "Appointment of Agent",
+    desc: "Create and send Form 50-162.",
+  },
+  {
+    prefix: "aoa",
+    label: "Appointment of Agent",
+    desc: "Create and send Form 50-162.",
   },
 ];
+
+function resolveHeader(path: string, username: string): DashboardHeaderProps {
+  if (!path || path === "dashboard") {
+    return {
+      label: `Welcome, ${username}`,
+      desc: "Clients, prospects, and hearings at a glance.",
+    };
+  }
+  const match = headerEntries.find(
+    (item) => path === item.prefix || path.startsWith(`${item.prefix}/`)
+  );
+  return match ?? { label: username, desc: "" };
+}
 
 const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const currentPath = location.pathname.split("/portal/")[1];
-
+  const currentPath = location.pathname.replace(/^\/portal\/?/, "").split("?")[0] ?? "";
   const username = localStorage.getItem("username") || "User";
+  const currentHeader = resolveHeader(currentPath, username);
+
+  const showHeaderSearch =
+    currentPath !== "" &&
+    currentPath !== "dashboard" &&
+    currentPath !== "csv-uploads";
 
   async function logoutHandler() {
     try {
-      logoutUser();
-      // Show success toast
-      toast({
-        title: "Logged Out!",
-      });
-      navigate("/login");
-    } catch (error) {}
+      await logoutUser();
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("user");
+      localStorage.removeItem("email");
+    }
+    toast({ title: "Logged out" });
+    navigate("/login");
   }
 
-  // If there's no path after /portal, treat it as the dashboard
-  const isDashboard = !currentPath;
-
-  const currentHeader = headerData.find((item) => item.id === currentPath);
-
   return (
-    <div className="flex justify-between p-4">
-      {/* Hamburger Menu Button (Small Screens) */}
+    <header className="flex w-full items-center gap-3 pl-4 pr-2 sm:pl-6 sm:pr-3 py-3 border-b border-border bg-background/90 backdrop-blur-md">
       <button
         type="button"
-        className="sm:hidden p-2 text-gray-700"
+        className="sm:hidden p-2 rounded-md text-foreground hover:bg-muted"
         onClick={onMenuToggle}
-        aria-label="Toggle menu"
+        aria-label="Open menu"
       >
         <Menu size={24} />
       </button>
-      <div>
-        {isDashboard ? (
-          <HeaderDescriptionItem
-            icon=""
-            label={`Welcome, ${username}`}
-            desc="This is your dashboard."
-          />
-        ) : currentHeader ? (
-          <HeaderDescriptionItem
-            icon={currentHeader.icon}
-            label={currentHeader.label}
-            desc={currentHeader.desc}
-          />
-        ) : (
-          <div className="hidden md:block">
-            <HeaderDescriptionItem
-              icon={""}
-              label={`Welcome, ${username}`}
-              desc={""}
-            />
-          </div>
-        )}
+      <div className="min-w-0 shrink-0 max-w-[10rem] sm:max-w-[14rem] lg:max-w-[18rem]">
+        <HeaderDescriptionItem label={currentHeader.label} desc={currentHeader.desc} />
       </div>
-      <div className="flex justify-center align-center items-center gap-4">
-        <span className="sr-only">Notifications</span>
-        <BellIcon size={20} aria-hidden />
-        <div className="flex justify-center align-center items-center gap-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <div className="text-sm flex gap-1 border p-1 rounded-lg">
-                <User2 size={20} />
-                <h1>{username}</h1>
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="p-4 font-semibold">
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem onClick={logoutHandler}>
-                Logout
+      {showHeaderSearch ? (
+        <HeaderSearch className="ml-auto w-1/2 shrink-0" />
+      ) : (
+        <div className="ml-auto" />
+      )}
+      <div className="flex items-center gap-2 shrink-0">
+        <ThemeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="text-sm flex items-center gap-2 border border-border bg-card px-2 py-1.5 rounded-lg hover:bg-muted transition-colors"
+              aria-label="Account menu"
+            >
+              <User2 size={18} aria-hidden />
+              <span className="hidden sm:inline max-w-[10rem] truncate">{username}</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[10rem]">
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={() => navigate(routes.profile())}
+            >
+              <User2 className="h-4 w-4" aria-hidden />
+              Profile
+            </DropdownMenuItem>
+            {currentUserCanViewOwnerDashboard() ? (
+              <DropdownMenuItem
+                className="gap-2"
+                onClick={() => navigate(routes.settings())}
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+                Settings
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logoutHandler} className="gap-2">
+              <LogOut className="h-4 w-4" aria-hidden />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </div>
+    </header>
   );
 };
 
-const HeaderDescriptionItem = ({ icon, label, desc }: DashboardHeaderProps) => {
+const HeaderDescriptionItem = ({ label, desc }: DashboardHeaderProps) => {
   return (
-    <div className="">
-      {icon && <img src={icon} alt="" aria-hidden />}
-      <p className="font-extrabold text-xl">{label}</p>
+    <div className="min-w-0">
+      <h1 className="font-semibold text-lg sm:text-xl tracking-tight truncate">{label}</h1>
       {desc ? (
-        <p className="text-sm font-thin">{desc}</p>
+        <p className="text-sm text-muted-foreground truncate hidden sm:block">{desc}</p>
       ) : (
-        <div className="text-sm font-thin">
+        <div className="text-sm text-muted-foreground hidden sm:block">
           <CurrentDate />
         </div>
       )}

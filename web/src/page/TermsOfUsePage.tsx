@@ -10,7 +10,7 @@ export default function TermsOfUsePage() {
         description="Review Lone Star Property Tax’s Terms of Use, including acceptance of terms, services description, user responsibilities, disclaimers, limitation of liability, and governing law (Texas)."
       />
       <Header />
-      <main id="main" className="min-h-[70vh] bg-white">
+      <main id="main" className="min-h-[70vh] bg-background">
         <div className="container mx-auto px-4 py-12">
           <header className="max-w-3xl">
             <h1 className="text-3xl md:text-4xl font-bold text-brand-dark">

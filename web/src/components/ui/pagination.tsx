@@ -38,7 +38,7 @@ function Pagination<TData>({ table }: PaginationProps<TData>) {
           size="sm"
           onClick={() => table.setPageIndex(pageNumber - 1)} // Convert to zero-based index
           className={
-            pageNumber - 1 === pageIndex ? "bg-blue-500 text-white" : ""
+            pageNumber - 1 === pageIndex ? "bg-primary text-primary-foreground" : ""
           }
         >
           {pageNumber}

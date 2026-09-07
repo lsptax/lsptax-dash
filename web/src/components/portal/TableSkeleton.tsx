@@ -12,8 +12,8 @@ export function TableSkeleton({
   showHeader = true,
 }: TableSkeletonProps) {
   return (
-    <div className="rounded-xl border m-4 bg-white p-4 flex flex-col overflow-y-auto h-[calc(100vh-260px)]">
-      <div className="pb-8 flex justify-between">
+    <div className="portal-table">
+      <div className="pb-4 flex justify-between">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-6 w-40" />
       </div>

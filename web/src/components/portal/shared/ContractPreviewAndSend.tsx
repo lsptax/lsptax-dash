@@ -79,7 +79,7 @@ export function ContractPreviewAndSend({
       )}
 
       {hasPdf && (
-        <div className="rounded-lg border bg-white overflow-hidden">
+        <div className="rounded-lg border bg-card overflow-hidden">
           <p className="text-sm font-medium text-gray-700 p-2 border-b bg-gray-50">
             {title}
           </p>

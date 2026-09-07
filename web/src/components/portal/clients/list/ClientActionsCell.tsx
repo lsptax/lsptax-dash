@@ -106,7 +106,7 @@ export function ClientActionsCell({
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleArchive}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Archive
               </AlertDialogAction>

@@ -160,7 +160,7 @@ const MoveFromProspect = () => {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border p-8"
+        className="max-w-4xl mx-auto bg-card rounded-lg shadow-sm border p-8"
       >
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-xl font-semibold text-gray-900">

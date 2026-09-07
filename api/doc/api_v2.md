@@ -85,6 +85,59 @@ Logout. Send `Authorization: Bearer <token>`.
 
 ---
 
+### GET `/api/profile`
+
+Current logged-in user. **Requires JWT.**
+
+**Response (200):** `{ "id": 1, "name": "Client Name", "email": "user@example.com", "type": "owner" }`
+
+### PATCH `/api/profile`
+
+Update display name and email.
+
+**Body:** `{ "name": "Jane Doe", "email": "jane@lsptax.com" }`
+
+### PATCH `/api/profile/password`
+
+**Body:** `{ "currentPassword": "...", "newPassword": "at least 6 chars" }`
+
+---
+
+### GET `/api/settings`
+
+Owner/admin only. Returns current infra settings (`.env` plus any values saved in the UI). API keys, webhook secrets, JWT, and the database URL are **not** stored or returned here.
+
+### PATCH `/api/settings`
+
+Owner/admin only. Partial update of safer fields only. Saved values overlay `process.env` immediately — no restart. Secret keys in the body are ignored.
+
+**Body (any subset):**
+
+```json
+{
+  "brevo": {
+    "senderEmail": "results@lsptax.com",
+    "senderName": "LSPT Results",
+    "smsSender": "LSP Tax",
+    "invoiceLogoUrl": "https://..."
+  },
+  "supabase": {
+    "url": "https://xxx.supabase.co"
+  },
+  "docusign": {
+    "authServer": "https://account-d.docusign.com",
+    "restBaseUrl": "https://demo.docusign.net/restapi",
+    "allowDemoInProduction": false,
+    "allowMultipleClientContractSends": true,
+    "allowMultipleAoaSends": true
+  }
+}
+```
+
+Keep `BREVO_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DOCUSIGN_CLIENT_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_USER_ID`, `DOCUSIGN_HMAC_SECRET`, and the DocuSign RSA private key in server env / files.
+
+---
+
 ## Data (Read) – `/api`
 
 All under prefix `/api`. **Requires `Authorization: Bearer <token>`**. Query params where noted.
@@ -396,6 +449,59 @@ Includes client/prospect counts plus **`hearings`** summary (non-archived proper
 | `weekStartDate` / `weekEndDate` | Calendar dates (`YYYY-MM-DD`) for the same window |
 | `meetingsThisWeekList` | Flat hearing rows for the dashboard “Meetings this week” table (same shape as [GET `/api/hearings`](#get-apihearings) items) |
 
+`GET /api/stats` is the **ops** dashboard (clients, prospects, hearings). Do **not** replace it with financial totals.
+
+#### GET `/api/dashboard/owner`
+
+Owner financial aggregate (Week 1). JWT required. Does not change `GET /api/stats`.
+
+**Money rules**
+
+- **Billed** uses `Invoice.invoiceDate` (TEXT `MM/DD/YYYY`). Empty or unparseable dates are skipped.
+- **Collected (v1)** = full `invoiceAmount` when `isPaid === true`, grouped by `paidDate`. Label: fully paid invoices only.
+- An August invoice paid in September is billed in August and collected in September.
+- Tax year is `Invoice.year` (protest year). Billing month is never tax year.
+- Archived clients, properties, and invoices are excluded.
+- Calendar windows use **America/Chicago**.
+
+**Access (Week 2):** `User.type` must be `owner` or `admin`. Other portal users get **403**. Login now returns `user.type`. Set a user with `UPDATE "User" SET type = 'owner' WHERE email = '...';` then log in again.
+
+**Query filters (shared with `/report/billed|collected|unpaid|reductions`):** `from`, `to` (`YYYY-MM-DD`), `month` (`YYYY-MM`), `calendarYear`, `taxYear`, `county`, `clientId`, `propertyId`. `month`, `taxYear`, and `county` accept repeated params or comma-separated lists (`?county=Bexar&county=Harris` or `?taxYear=2025,2026`). Date range uses `invoiceDate` for billed/AR and `paidDate` for collected. A single `month` / `calendarYear` shifts the default this-month / YTD windows; multiple months also span billed/collected dates from the earliest month through the latest. Add `format=csv` on report endpoints to download the current JSON as CSV.
+
+**Response (200)**
+
+```json
+{
+  "asOf": "2026-09-07",
+  "timeZone": "America/Chicago",
+  "collectedDefinition": "full_pay_on_paid_date",
+  "billedThisMonth": 0,
+  "billedLastMonth": 2500,
+  "billedYtd": 2500,
+  "billedCalendarYear": 2500,
+  "collectedThisMonth": 2500,
+  "collectedLastMonth": 0,
+  "collectedYtd": 2500,
+  "collectedCalendarYear": 2500,
+  "collectionRate": 1,
+  "outstandingReceivables": 0,
+  "pastDueReceivables": 0,
+  "activeProperties": 12,
+  "propertiesInvoiced": 1,
+  "propertiesInvoicedThisMonth": 0,
+  "propertiesInvoicedYtd": 1,
+  "paidInvoiceCount": 1,
+  "unpaidInvoiceCount": 0,
+  "pastDueInvoiceCount": 0,
+  "propertiesProtested": 1,
+  "averageReduction": 50000,
+  "totalValueReductions": 50000,
+  "totalTaxSavings": 1200
+}
+```
+
+`collectionRate` is collected YTD ÷ billed YTD (`null` when billed YTD is 0). Past due is unpaid invoices whose parsed `dueDate` is before `asOf`.
+
 **`GET /api/property`** — includes **`hearings`** array for that property (sorted by `date` ascending; compact rows without nested client/property).
 
 ### Invoices
@@ -574,6 +680,7 @@ Each `invoices[]` row uses the same enriched DTO as **`GET /api/invoice/:id`** (
 | Method | Endpoint                         | Description           |
 |--------|----------------------------------|-----------------------|
 | GET    | `/api/stats`                     | Dashboard counts + **`hearings`** stats — see [GET `/api/stats`](#get-apistats) under Hearings |
+| GET    | `/api/dashboard/owner`           | Owner financial aggregate (billed vs collected, unpaid, collection rate, reductions) — see [GET `/api/dashboard/owner`](#get-apidashboardowner) |
 | GET    | `/api/hearings`                  | Paginated **hearings** table (`propertyId`, `clientId`, `clientName`, `date`, `status`, …). Query: `limit`, `offset`, optional `from`, `to`, `status` |
 | GET    | `/api/download-clients-xlsx`     | Download clients Excel (XLSX). Query: `accountType` (optional: `real` or `bpp`) |
 | GET    | `/api/download-prospects-xlsx`   | Download prospects Excel (XLSX) |
@@ -2247,7 +2354,7 @@ Preview endpoints use messages like "An error occurred while previewing the invo
 
 All under prefix `/report`. **Requires `Authorization: Bearer <token>`**.
 
-These endpoints are **purpose-built reports** (not the generic table exports under `/api/download-*` and not the CSV upload tooling under `/csv/*`).
+These endpoints are **purpose-built owner reports** (not the generic table exports under `/api/download-*` and not the CSV upload tooling under `/csv/*`). All `/report/*` routes require an **owner or admin** user.
 
 ### GET `/report/counties`
 
@@ -2261,24 +2368,52 @@ Return all available counties in the database (optimized: `distinct` on `Propert
 }
 ```
 
-### GET `/report/properties?county=`
+### GET `/report/properties`
 
-Download a CSV of properties, optionally filtered by county.
+Download filtered clients and/or properties using the same owner dashboard filters (`taxYear`, `county`, `clientId`, `propertyId`). Month is a dashboard window and does **not** empty the roster. Add `sheets=clients,properties` (repeatable or comma-separated) to get an `.xlsx` with a **Clients** sheet and/or a **Properties** sheet. Omit `sheets` for a properties CSV (legacy).
+
+**Response (200)** with `sheets`: `owner-filtered-export.xlsx`. Without `sheets`: `owner-filtered-properties.csv`.
+
+### GET `/report/billed`
+
+JSON billed report. Sums `invoiceAmount` where `invoiceDate` is parseable.
 
 **Query params**
 
-| Param    | Type                 | Required | Description |
-|----------|----------------------|----------|-------------|
-| `county` | string \| string[]    | No       | Filter by county. Supports `?county=Bexar`, `?county=Bexar,Travis`, or repeated `?county=Bexar&county=Travis`. Use `?county=All` (or include `All` among values) to return all. If omitted, returns all non-archived properties. |
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `groupBy` | string | No | `taxYear` (protest year), `county`, `client`, or `property`. Omit to return window totals only. |
 
-**Response (200)**: `text/csv` attachment.
+**Response (200)** includes `billedThisMonth`, `billedLastMonth`, `billedYtd`, `billedCalendarYear`, date windows, and `collectedDefinition`. When `groupBy` is set, also `groups`.
 
-**CSV columns**
+### GET `/report/collected`
 
-- `NAME ON CAD`
-- `PROPERTY ADDRESS`
-- `COUNTY`
-- `Account`
+JSON collected report (v1 full-pay). Sums `invoiceAmount` for `isPaid` invoices, grouped by month of `paidDate`.
+
+**Response (200)** includes collected window totals and `byMonth`: `{ year, month, collected }`.
+
+### GET `/report/unpaid`
+
+JSON unpaid / AR snapshot. Outstanding is the full unpaid `invoiceAmount` (no Payment rows yet).
+
+**Query params**
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `view` | string | No | `largest` returns up to 25 (or `limit`) outstanding clients instead of 10. |
+| `limit` | number | No | Cap for largest-client list when `view=largest` (max 100). |
+
+### GET `/report/reductions`
+
+Protest value reductions and estimated tax savings, plus `byCounty`.
+
+### GET `/report/acquisition/avg-properties`
+
+Average non-archived properties per non-archived `CLIENT`.
+
+### GET `/report/clients/active`
+
+Count of non-archived clients (`type=CLIENT`). v1 until client status ships in Week 3.
 
 ---
 

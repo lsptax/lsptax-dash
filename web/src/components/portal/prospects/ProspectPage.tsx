@@ -238,13 +238,13 @@ const ProspectPage = () => {
   };
 
   return (
-    <div className="m-2 rounded-lg bg-white p-4">
+    <div className="px-4 sm:px-6 py-4 rounded-lg bg-card">
       <div className="mb-4">
         <BackToListLink fallback={routes.prospects.list()} label="Back to prospects" />
       </div>
       <div className="flex justify-between">
         <div className="flex justify-center items-center gap-4 mb-6">
-          <h1 className="text-4xl font-bold text-center">Prospect Details</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Prospect</h1>
           <span
             className={`${
               statusColors[prospect.status] ?? "bg-gray-100 text-gray-800 hover:bg-gray-200"
