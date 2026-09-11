@@ -70,7 +70,7 @@ function withFilters(path: string, filters: OwnerFilters, extra?: Record<string,
 async function getJson<T>(path: string): Promise<T> {
   const res = await authFetch(path);
   if (res.status === 403) {
-    throw new Error("You do not have access to the owner dashboard.");
+    throw new Error("You do not have access to Finances.");
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

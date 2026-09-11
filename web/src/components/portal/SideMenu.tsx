@@ -36,7 +36,7 @@ interface MenuOption {
 
 const menuOptions: MenuOption[] = [
   { to: routes.dashboard(), match: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: routes.owner(), match: "owner", label: "Owner", icon: Wallet, ownerOnly: true },
+  { to: routes.owner(), match: "owner", label: "Finances", icon: Wallet, ownerOnly: true },
   { to: routes.clients.list(), match: "clients", label: "Clients", icon: Users },
   { to: routes.properties.list(), match: "properties", label: "Properties", icon: Building },
   { to: routes.invoices.list(), match: "invoices", label: "Invoices", icon: FileText },

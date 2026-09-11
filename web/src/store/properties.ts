@@ -80,32 +80,37 @@ export const getProspectProperty = async ({ propertyId }: { propertyId: string }
   }
 };
 
-export const downloadPropertiesCSV = async ({
+async function downloadPropertiesFile(endpoint: string, filenameBase: string) {
+  const response = await authFetch(`${base()}${endpoint}`);
+  if (!response.ok) throw new Error("Failed to download properties export");
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filenameBase}_${getFormattedDate()}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export const downloadPropertiesXlsx = async ({
   accountType,
 }: {
   accountType?: string;
 } = {}) => {
-  try {
-    const params = new URLSearchParams();
-    if (accountType?.trim()) params.set("accountType", accountType.trim());
-    const qs = params.toString();
-    const response = await authFetch(
-      `${base()}/api/download-properties-csv${qs ? `?${qs}` : ""}`
-    );
-    if (!response.ok) throw new Error("Failed to download properties CSV");
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `properties_${getFormattedDate()}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } catch {
-    // Error surfaced via UI if needed
-  }
+  const params = new URLSearchParams();
+  if (accountType?.trim()) params.set("accountType", accountType.trim());
+  const qs = params.toString();
+  const typeLabel = accountType?.trim() ? accountType.trim() : "all";
+  await downloadPropertiesFile(
+    `/api/download-properties-xlsx${qs ? `?${qs}` : ""}`,
+    `properties_${typeLabel}`
+  );
 };
+
+/** Back-compat name used by the properties table export button. */
+export const downloadPropertiesCSV = downloadPropertiesXlsx;
 
 export const getProtests = async () => {
   try {

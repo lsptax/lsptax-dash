@@ -4,7 +4,7 @@ import { PORTAL_BASE, routes } from "@/routes/ROUTES";
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
-  owner: "Owner",
+  owner: "Finances",
   profile: "Profile",
   settings: "Settings",
   properties: "Properties",

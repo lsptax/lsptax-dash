@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { ColumnDef, ColumnFiltersState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import {
-  downloadPropertiesCSV,
-} from "@/store/data";
+import { downloadPropertiesXlsx } from "@/store/data";
 import TableBuilder from "../TableBuilder";
 import { routes } from "@/routes/ROUTES";
 import { Archive, Download, LoaderCircle } from "lucide-react";
@@ -23,6 +21,7 @@ import {
   type AccountTypeFilter,
 } from "@/utils/listParams/properties";
 import { useListSearchParams } from "@/hooks/useListSearchParams";
+import { useToast } from "@/hooks/use-toast";
 
 interface PropertiesTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -31,6 +30,7 @@ interface PropertiesTableProps<TData, TValue> {
 const PropertiesTable = <TData extends Properties, TValue>({
   columns,
 }: PropertiesTableProps<TData, TValue>) => {
+  const { toast } = useToast();
   const { params, updateParams } = useListSearchParams(
     parsePropertyListParams,
     mergePropertyListParams
@@ -54,11 +54,16 @@ const PropertiesTable = <TData extends Properties, TValue>({
   const handleCsvDownload = async () => {
     setDownloadingCsv(true);
     try {
-      await downloadPropertiesCSV({
+      await downloadPropertiesXlsx({
         accountType: accountType === "all" ? undefined : accountType,
       });
     } catch (err) {
-      console.error("Error downloading CSV:", err);
+      console.error("Error downloading properties export:", err);
+      toast({
+        title: "Export failed",
+        description: err instanceof Error ? err.message : "Could not download properties.",
+        variant: "destructive",
+      });
     } finally {
       setDownloadingCsv(false);
     }

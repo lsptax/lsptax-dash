@@ -74,7 +74,7 @@ export const routes = {
   owner: () => portalPath("owner"),
   profile: () => portalPath("profile"),
   settings: () => portalPath("settings"),
-  /** @deprecated Merged into Owner. Kept as an alias for old links. */
+  /** @deprecated Merged into Finances (owner route). Kept as an alias for old links. */
   reports: () => portalPath("owner"),
 
   properties: {

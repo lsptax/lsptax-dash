@@ -84,7 +84,7 @@ const headerEntries: { prefix: string; label: string; desc: string }[] = [
   },
   {
     prefix: "owner",
-    label: "Owner",
+    label: "Finances",
     desc: "Billed vs collected, unpaid, and protest results.",
   },
   {

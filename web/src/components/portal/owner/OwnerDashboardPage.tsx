@@ -99,7 +99,7 @@ export default function OwnerDashboardPage() {
   if (!canView) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-10 max-w-2xl">
-        <h1 className="text-2xl font-semibold">Owner</h1>
+        <h1 className="text-2xl font-semibold">Finances</h1>
         <p className="text-sm text-muted-foreground mt-2">
           This view is limited to management users. Ask an admin to set your portal user type to
           owner or admin, then log in again.
@@ -122,7 +122,7 @@ export default function OwnerDashboardPage() {
 
       {error ? (
         <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
-          {error instanceof Error ? error.message : "Failed to load owner dashboard"}
+          {error instanceof Error ? error.message : "Failed to load Finances"}
           <div className="mt-2">
             <Button variant="outline" size="sm" onClick={() => dashboardQuery.refetch()}>
               Retry
