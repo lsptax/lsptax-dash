@@ -223,14 +223,12 @@ const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
       >
         <Menu size={24} />
       </button>
-      <div className="min-w-0 shrink-0 max-w-[10rem] sm:max-w-[14rem] lg:max-w-[18rem]">
+      <div className="min-w-0 flex-1">
         <HeaderDescriptionItem label={currentHeader.label} desc={currentHeader.desc} />
       </div>
       {showHeaderSearch ? (
-        <HeaderSearch className="ml-auto w-1/2 shrink-0" />
-      ) : (
-        <div className="ml-auto" />
-      )}
+        <HeaderSearch className="w-36 sm:w-56 md:w-72 lg:w-96 shrink-0" />
+      ) : null}
       <div className="flex items-center gap-2 shrink-0">
         <ThemeToggle />
         <DropdownMenu>

@@ -21,6 +21,7 @@ import {
   type OwnerFilters,
 } from "@/utils/ownerFilters";
 import { currentUserCanViewOwnerDashboard } from "@/utils/ownerRole";
+import { formatClientNumberDisplay } from "@/utils/clientContact";
 import { useToast } from "@/hooks/use-toast";
 
 const money = new Intl.NumberFormat("en-US", {
@@ -201,7 +202,7 @@ export default function OwnerDashboardPage() {
           loading={unpaidQuery.isLoading}
           onDownload={() => downloadTable("unpaid")}
           rows={(unpaidQuery.data?.largestOutstandingClients ?? []).slice(0, 8).map((row) => [
-            row.clientName || `Client ${row.clientId}`,
+            row.clientName || formatClientNumberDisplay(row.clientNumber),
             formatMoney(row.unpaidAmount),
           ])}
         />

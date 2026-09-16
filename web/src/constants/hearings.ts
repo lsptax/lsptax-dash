@@ -8,10 +8,10 @@ export const HEARING_STATUS_OPTIONS: { value: HearingStatus; label: string }[] =
 ];
 
 export const HEARING_STATUS_COLORS: Record<HearingStatus, string> = {
-  SCHEDULED: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  ATTENDED: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  CANCELLED: "bg-slate-100 text-slate-700 border-slate-200",
-  NO_SHOW: "bg-amber-100 text-amber-900 border-amber-200",
+  SCHEDULED: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-400/15 dark:text-indigo-300 dark:border-indigo-400/25",
+  ATTENDED: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-400/15 dark:text-emerald-300 dark:border-emerald-400/25",
+  CANCELLED: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/20 dark:text-slate-200 dark:border-slate-500/30",
+  NO_SHOW: "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-400/15 dark:text-amber-200 dark:border-amber-400/25",
 };
 
 export function normalizeHearingStatus(raw: string | null | undefined): HearingStatus {

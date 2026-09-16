@@ -86,6 +86,7 @@ export const getArchiveInvoices = async (
 
 export type PaymentAcknowledgementEmailClientResult = {
   clientId?: number;
+  clientNumber?: string;
   clientName?: string;
   recipientEmail?: string;
   deliveryId?: number;

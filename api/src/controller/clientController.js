@@ -5,6 +5,7 @@ import {
   convertToXLSX,
   EXPORT_FIELDS,
 } from "../services/exportService.js";
+import { parseEntityId } from "../utils/http.js";
 
 // --- Mutations (action routes) ---
 export const addClient = async (req, res) => {
@@ -35,8 +36,9 @@ export const addClient = async (req, res) => {
 
 export const editClient = async (req, res) => {
   try {
-    const { clientId, clientDetails } = req.body;
-    if (!clientId) return sendError(res, 400, "Client ID is required");
+    const clientId = parseEntityId(req.body, "clientId", "id");
+    const { clientDetails } = req.body;
+    if (Number.isNaN(clientId)) return sendError(res, 400, "Client ID is required");
     const updatedClient = await clientService.updateClient(
       clientId,
       clientDetails,
@@ -55,7 +57,7 @@ export const editClient = async (req, res) => {
 
 export const deleteClient = async (req, res) => {
   try {
-    const id = parseInt(req.body.id, 10);
+    const id = parseEntityId(req.body, "clientId", "id");
     if (Number.isNaN(id)) return sendError(res, 400, "Invalid ID format");
     const client = await clientService.findClientById(id);
     if (!client) return sendError(res, 404, "Client not found");

@@ -47,15 +47,25 @@ export function withQuery(
   return q ? `${path}?${q}` : path;
 }
 
+export function isSafeReturnTo(path: string | null | undefined): path is string {
+  return !!path && path.startsWith("/portal/") && !path.includes("//");
+}
+
 export function withReturnTo(path: string, returnTo?: string | null): string {
-  if (!returnTo || !returnTo.startsWith("/portal/") || returnTo.includes("//")) {
-    return path;
-  }
+  if (!isSafeReturnTo(returnTo)) return path;
   const [basePath, existingQuery] = path.split("?");
   const usp = new URLSearchParams(existingQuery ?? "");
   usp.set("returnTo", returnTo);
   const q = usp.toString();
   return q ? `${basePath}?${q}` : basePath;
+}
+
+/** Prefer a safe `returnTo` list URL; otherwise the fallback list. */
+export function resolveReturnTo(
+  returnTo: string | null | undefined,
+  fallback: string
+): string {
+  return isSafeReturnTo(returnTo) ? returnTo : fallback;
 }
 
 function listPathWithParams<T extends Record<string, unknown>>(

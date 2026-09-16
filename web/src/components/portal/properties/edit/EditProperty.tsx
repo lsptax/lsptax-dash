@@ -243,9 +243,12 @@ export default function EditProperty() {
                 .join(", "),
           );
           form.reset(
-            mapPropertyDetailsToFormValues(
-              (property.propertyDetails ?? {}) as Record<string, unknown>
-            )
+            mapPropertyDetailsToFormValues({
+              ...(property.propertyDetails ?? {}),
+              clientNumber:
+                property.client?.clientNumber ??
+                property.propertyDetails?.clientNumber,
+            } as Record<string, unknown>)
           );
         } else {
           setError("Property not found");

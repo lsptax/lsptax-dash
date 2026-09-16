@@ -97,20 +97,20 @@ export function PropertyHearingsSection({
   };
 
   return (
-    <div className="mt-3 rounded-lg border border-indigo-100 bg-white/80 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Scheduled hearings</p>
+    <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Scheduled hearings</p>
 
       {sorted.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-600">No hearing dates on file for this property yet.</p>
+        <p className="mt-2 text-xs text-muted-foreground">No hearing dates on file for this property yet.</p>
       ) : (
         <ul className="mt-2 space-y-2">
           {sorted.map((h) => (
             <li
               key={h.id}
-              className="flex flex-col gap-2 rounded-md border border-slate-100 bg-slate-50/60 px-2.5 py-2"
+              className="flex flex-col gap-2 rounded-md border border-border bg-card px-2.5 py-2"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-900">{formatHearingDate(h.date)}</p>
+                <p className="text-sm font-medium text-foreground">{formatHearingDate(h.date)}</p>
                 <HearingStatusCell
                   hearingId={h.id}
                   status={h.status}
@@ -119,12 +119,12 @@ export function PropertyHearingsSection({
                 />
               </div>
               {h.notes?.trim() ? (
-                <p className="text-xs text-slate-600">{h.notes}</p>
+                <p className="text-xs text-muted-foreground">{h.notes}</p>
               ) : null}
               <div className="flex shrink-0 items-center gap-2">
                 <Input
                   type="date"
-                  className="h-8 flex-1 min-w-0 text-xs"
+                  className="h-8 flex-1 min-w-0 bg-background text-xs text-foreground"
                   defaultValue={toHearingDateInputValue(h.date)}
                   disabled={busyId === h.id}
                   onBlur={(e) => {
@@ -146,10 +146,10 @@ export function PropertyHearingsSection({
         </ul>
       )}
 
-      <div className="mt-3 border-t border-slate-100 pt-3">
-        <p className="text-xs font-semibold text-slate-800">Add hearing date</p>
+      <div className="mt-3 border-t border-border pt-3">
+        <p className="text-xs font-semibold text-foreground">Add hearing date</p>
         {!canAdd ? (
-          <p className="mt-1 text-xs text-amber-800">
+          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
             Move this property to the <strong>Hearing Management</strong> phase before scheduling hearings.
           </p>
         ) : (
@@ -164,7 +164,7 @@ export function PropertyHearingsSection({
                   type="date"
                   value={dateValue}
                   onChange={(e) => setDateValue(e.target.value)}
-                  className="mt-1"
+                  className="mt-1 bg-background text-foreground"
                 />
               </div>
               <div className="w-full sm:w-36">
@@ -172,7 +172,7 @@ export function PropertyHearingsSection({
                   Status
                 </label>
                 <Select value={addStatus} onValueChange={setAddStatus}>
-                  <SelectTrigger id={`hearing-status-add-${propertyId}`} className="mt-1 h-9">
+                  <SelectTrigger id={`hearing-status-add-${propertyId}`} className="mt-1 h-9 bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -195,7 +195,7 @@ export function PropertyHearingsSection({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Room, ARB panel…"
-                  className="mt-1"
+                  className="mt-1 bg-background text-foreground"
                 />
               </div>
               <Button

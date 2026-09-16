@@ -80,7 +80,7 @@ const AppointmentForm: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `appointment-of-agent-${clientData?.client?.clientNumber ?? clientIdParam ?? "aoa"}.pdf`;
+      a.download = `appointment-of-agent-${clientData?.client?.clientNumber ?? "aoa"}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

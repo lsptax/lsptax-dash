@@ -1,8 +1,12 @@
 import type { PaymentAcknowledgementEmailResult } from "@/store/invoices";
 
-function clientLabel(item: { clientName?: string; clientId?: number }): string {
+function clientLabel(item: {
+  clientName?: string;
+  clientNumber?: string;
+}): string {
   if (item.clientName?.trim()) return item.clientName.trim();
-  if (item.clientId != null) return `Client #${item.clientId}`;
+  const number = item.clientNumber?.trim();
+  if (number) return `Client #${number}`;
   return "Client";
 }
 

@@ -19,6 +19,7 @@ import { getProperties } from "@/store/properties";
 import { currentOwnerMonth, emptyOwnerFilters, type OwnerFilters } from "@/utils/ownerFilters";
 import type { Clients } from "@/components/portal/clients/list/columns";
 import type { Properties } from "@/components/portal/properties/columns";
+import { formatClientNumberDisplay } from "@/utils/clientContact";
 
 const ALL = "__all__";
 const ADVANCED_KEYS: (keyof OwnerFilters)[] = [
@@ -463,7 +464,7 @@ function EntitySearch({
         const res = await getClients(20, 0, query);
         return (res.data as Clients[]).map((row) => ({
           id: String(row.clientId),
-          label: `${row.clientName || "Unnamed"} (#${row.clientNumber || row.clientId})`,
+          label: `${row.clientName || "Unnamed"} (${formatClientNumberDisplay(row.clientNumber)})`,
         }));
       }
       const res = await getProperties(20, 0, query);

@@ -6,6 +6,7 @@ import {
   convertToXLSX,
   EXPORT_FIELDS,
 } from "../services/exportService.js";
+import { parseEntityId } from "../utils/http.js";
 
 // --- Mutations (action routes) ---
 export const addProspect = async (req, res) => {
@@ -34,8 +35,9 @@ export const addProspect = async (req, res) => {
 
 export const editProspect = async (req, res) => {
   try {
-    const { prospectId, prospectDetails } = req.body;
-    if (!prospectId) return sendError(res, 400, "Client ID is required");
+    const prospectId = parseEntityId(req.body, "prospectId", "id");
+    const { prospectDetails } = req.body;
+    if (Number.isNaN(prospectId)) return sendError(res, 400, "Prospect ID is required");
     const updatedClient = await prospectService.updateProspect(
       prospectId,
       prospectDetails,
@@ -50,7 +52,7 @@ export const editProspect = async (req, res) => {
 
 export const deleteProspect = async (req, res) => {
   try {
-    const id = parseInt(req.body.id, 10);
+    const id = parseEntityId(req.body, "prospectId", "id");
     if (Number.isNaN(id)) return sendError(res, 400, "Invalid ID format");
     const prospect = await prospectService.findProspectById(id);
     if (!prospect) return sendError(res, 404, "Prospect not found");
@@ -79,7 +81,9 @@ export const changeProspectStatus = async (req, res) => {
 
 export const convertProspectToClient = async (req, res) => {
   try {
-    const { id, clientNumber } = req.body;
+    const { clientNumber } = req.body;
+    const id = parseEntityId(req.body, "prospectId", "id");
+    if (Number.isNaN(id)) return sendError(res, 400, "Prospect ID is required");
     if (clientNumber == null || String(clientNumber).trim() === "") {
       return sendError(res, 400, "Client number is required (user-entered)");
     }
@@ -97,8 +101,9 @@ export const convertProspectToClient = async (req, res) => {
 
 export const addPropertyToProspect = async (req, res) => {
   try {
-    const { id, propertyData } = req.body;
-    if (!id) return sendError(res, 400, "Prospect number is required");
+    const { propertyData } = req.body;
+    const id = parseEntityId(req.body, "prospectId", "id");
+    if (Number.isNaN(id)) return sendError(res, 400, "Prospect ID is required");
     const newProperty = await prospectService.addPropertyToProspect(id, propertyData);
     if (!newProperty) return sendError(res, 404, "Prospect not found");
     res.status(201).json({
@@ -113,8 +118,8 @@ export const addPropertyToProspect = async (req, res) => {
 
 export const deleteProspectProperty = async (req, res) => {
   try {
-    const { propertyId } = req.body;
-    if (!propertyId) return sendError(res, 400, "Property ID is required");
+    const propertyId = parseEntityId(req.body, "propertyId", "id");
+    if (Number.isNaN(propertyId)) return sendError(res, 400, "Property ID is required");
     const property = await propertyService.deleteProperty(propertyId);
     if (!property) return sendError(res, 404, "Prospect property not found");
     res.status(200).json({ message: "Prospect property deleted successfully", property });
@@ -169,7 +174,10 @@ export const getProspectDetails = async (req, res) => {
 
 export const getProspectPropertyDetails = async (req, res) => {
   try {
-    const { id } = req.query;
+    const id = parseEntityId(req.query, "propertyId", "id");
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ message: "Property ID is required." });
+    }
     const data = await prospectService.getProspectPropertyDetails(id);
     if (!data) return res.status(404).json({ message: "Property not found." });
     res.status(200).json(data);

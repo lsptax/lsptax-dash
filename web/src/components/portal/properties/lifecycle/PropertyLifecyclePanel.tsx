@@ -163,7 +163,7 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
 
   return (
     <section className="mt-6">
-      <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <button
           type="button"
           aria-expanded={lifecycleOpen}
@@ -171,49 +171,49 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
           onClick={() => setLifecycleOpen((o) => !o)}
           className={cn(
             "flex w-full items-start gap-3 px-3 py-3 text-left sm:gap-3 sm:px-4 sm:py-3.5",
-            "hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/25 focus-visible:ring-offset-1",
-            lifecycleOpen && "border-b border-slate-100",
+            "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+            lifecycleOpen && "border-b border-border",
           )}
         >
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
             <Route className="h-4 w-4" strokeWidth={2} aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 id="property-lifecycle-heading" className="text-lg font-semibold tracking-tight text-slate-900">
+            <h2 id="property-lifecycle-heading" className="text-lg font-semibold tracking-tight text-foreground">
               Property lifecycle
             </h2>
-            <p id="property-lifecycle-heading-description" className="mt-0.5 text-xs text-slate-600 sm:text-[13px]">
+            <p id="property-lifecycle-heading-description" className="mt-0.5 text-xs text-muted-foreground sm:text-[13px]">
               Tap a phase below, pick the step — open to edit.
             </p>
 
             {currentPhaseId && currentStepId ? (
               <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
-                <span className="font-semibold uppercase tracking-wide text-slate-500">Now</span>
-                <span className="font-medium text-slate-900">
+                <span className="font-semibold uppercase tracking-wide text-muted-foreground">Now</span>
+                <span className="font-medium text-foreground">
                   {labelResolver.stepLabel(currentStepId, currentPhaseId)}
                 </span>
                 {completedAt ? (
-                  <span className="text-slate-500">
+                  <span className="text-muted-foreground">
                     · <time dateTime={completedAt}>{new Date(completedAt).toLocaleString()}</time>
                   </span>
                 ) : null}
               </div>
             ) : currentPhaseId && !currentStepId ? (
               <div className="mt-2">
-                <Badge variant="outline" className="border-amber-200/90 bg-amber-50 py-0 text-xs font-normal text-amber-900">
+                <Badge variant="outline" className="border-amber-200/90 bg-amber-50 py-0 text-xs font-normal text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
                   Phase set — choose a step when open
                 </Badge>
               </div>
             ) : (
               <div className="mt-2">
-                <Badge variant="outline" className="border-amber-200/90 bg-amber-50 py-0 text-xs font-normal text-amber-900">
+                <Badge variant="outline" className="border-amber-200/90 bg-amber-50 py-0 text-xs font-normal text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
                   Not started — expand to set step
                 </Badge>
               </div>
             )}
           </div>
           <ChevronDown
-            className={cn("mt-0.5 h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200", lifecycleOpen && "rotate-180")}
+            className={cn("mt-0.5 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200", lifecycleOpen && "rotate-180")}
             aria-hidden
           />
         </button>
@@ -226,8 +226,8 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
           hidden={!lifecycleOpen}
           className={cn(!lifecycleOpen && "hidden")}
         >
-          <div className="border-b border-slate-100 bg-slate-50/70 px-2 py-3 sm:px-4">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:text-[11px]">
+          <div className="border-b border-border bg-muted/50 px-2 py-3 sm:px-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px]">
               Phases
             </p>
             <div className="overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -245,26 +245,26 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
                         title={phase.title}
                         className={cn(
                           "group flex w-[4.25rem] flex-col items-center gap-1 rounded-lg px-0.5 py-1.5 transition-colors sm:w-[4.85rem]",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30",
-                          isFocused ? "bg-white shadow-sm ring-1 ring-slate-200/80" : "hover:bg-white/60",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                          isFocused ? "bg-card shadow-sm ring-1 ring-border" : "hover:bg-card/70",
                         )}
                       >
                         <span
                           className={cn(
                             "flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold tabular-nums",
                             past && "bg-emerald-600 text-white",
-                            isCurrentSlot && !past && "bg-indigo-600 text-white ring-2 ring-indigo-100",
-                            !past && !isCurrentSlot && currentPi >= 0 && "bg-slate-200 text-slate-700",
-                            currentPi < 0 && "bg-slate-200 text-slate-700",
+                            isCurrentSlot && !past && "bg-indigo-600 text-white ring-2 ring-indigo-100 dark:ring-indigo-400/30",
+                            !past && !isCurrentSlot && currentPi >= 0 && "bg-background text-muted-foreground ring-1 ring-border",
+                            currentPi < 0 && "bg-background text-muted-foreground ring-1 ring-border",
                           )}
                         >
                           {past ? <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} /> : phase.order}
                         </span>
                         <span
                           className={cn(
-                            "line-clamp-2 text-center text-[10px] font-semibold leading-[1.15] text-slate-600 group-hover:text-slate-900",
-                            isFocused && "text-slate-900",
-                            isCurrentSlot && "text-indigo-700",
+                            "line-clamp-2 text-center text-[10px] font-semibold leading-[1.15] text-muted-foreground group-hover:text-foreground",
+                            isFocused && "text-foreground",
+                            isCurrentSlot && "text-indigo-700 dark:text-indigo-300",
                           )}
                         >
                           {phase.shortTitle}
@@ -272,10 +272,10 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
                       </button>
                       {i < phaseStrip.length - 1 && (
                         <div
-                          className="mx-0 mt-[14px] h-1 w-2 shrink-0 rounded-full bg-slate-200 sm:mx-0.5 sm:w-8"
+                          className="mx-0 mt-[14px] h-1 w-2 shrink-0 rounded-full bg-border sm:mx-0.5 sm:w-8"
                           aria-hidden
                         >
-                          <div className={cn("h-full w-full rounded-full", i < currentPi ? "bg-emerald-500" : "bg-slate-200")} />
+                          <div className={cn("h-full w-full rounded-full", i < currentPi ? "bg-emerald-500" : "bg-border")} />
                         </div>
                       )}
                     </li>
@@ -285,13 +285,13 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
             </div>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             <div className="px-3 py-4 sm:px-5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
                 Phase {focusedPhase.order} of {CLIENT_LIFECYCLE_PHASES.length}
               </p>
-              <h3 className="mt-0.5 text-base font-semibold text-slate-900">{focusedPhase.title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">{focusedPhase.summary}</p>
+              <h3 className="mt-0.5 text-base font-semibold text-foreground">{focusedPhase.title}</h3>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{focusedPhase.summary}</p>
 
               <ol className="relative mt-4 space-y-0">
                 {focusedPhase.steps.map((step, si) => {
@@ -308,77 +308,79 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
                         <div
                           className={cn(
                             "flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] font-bold",
-                            rowDone && "border-emerald-500 bg-emerald-50 text-emerald-700",
+                            rowDone && "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
                             isMarkedCurrent && "border-indigo-600 bg-indigo-600 text-white",
-                            !rowDone && !isMarkedCurrent && "border-slate-200 bg-white text-slate-400",
+                            !rowDone && !isMarkedCurrent && "border-border bg-card text-muted-foreground",
                           )}
                         >
-                          {rowDone ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" strokeWidth={2.5} /> : si + 1}
+                          {rowDone ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" strokeWidth={2.5} /> : si + 1}
                         </div>
                         {!isLast && (
-                          <div className={cn("my-0.5 w-px flex-1 min-h-[10px]", rowDone ? "bg-emerald-200" : "bg-slate-200")} />
+                          <div className={cn("my-0.5 w-px flex-1 min-h-[10px]", rowDone ? "bg-emerald-200 dark:bg-emerald-500/40" : "bg-border")} />
                         )}
                       </div>
 
                       <div className={cn("min-w-0 flex-1 pb-4 pl-2 sm:pl-3 sm:pb-5", isLast && "pb-3")}>
                         <div
                           className={cn(
-                            "rounded-lg border px-3 py-2.5 sm:flex sm:items-center sm:justify-between sm:gap-3 sm:py-3",
-                            isMarkedCurrent && "border-indigo-200/90 bg-indigo-50/50",
-                            rowDone && !isMarkedCurrent && "border-slate-100 bg-slate-50/40",
-                            !rowDone && !isMarkedCurrent && "border-slate-100 hover:border-slate-200",
+                            "rounded-lg border px-3 py-2.5 sm:py-3",
+                            isMarkedCurrent && "border-indigo-200/90 bg-indigo-50/50 dark:border-indigo-400/35 dark:bg-indigo-500/15",
+                            rowDone && !isMarkedCurrent && "border-border bg-muted/40",
+                            !rowDone && !isMarkedCurrent && "border-border hover:border-border",
                           )}
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-sm font-semibold text-slate-900">{step.title}</span>
-                              {isMarkedCurrent && (
-                                <Badge className="h-5 bg-indigo-600 px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide hover:bg-indigo-600">
-                                  Active
-                                </Badge>
-                              )}
-                              {rowDone && !isMarkedCurrent && (
-                                <span className="rounded bg-emerald-100 px-1.5 py-0 text-[10px] font-medium text-emerald-800">
-                                  Done
-                                </span>
-                              )}
+                          <div className="sm:flex sm:items-start sm:justify-between sm:gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-sm font-semibold text-foreground">{step.title}</span>
+                                {isMarkedCurrent && (
+                                  <Badge className="h-5 bg-indigo-600 px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-white hover:bg-indigo-600">
+                                    Active
+                                  </Badge>
+                                )}
+                                {rowDone && !isMarkedCurrent && (
+                                  <span className="rounded bg-emerald-100 px-1.5 py-0 text-[10px] font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                    Done
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 text-xs leading-snug text-muted-foreground">{step.description}</p>
                             </div>
-                            <p className="mt-1 text-xs leading-snug text-slate-600">{step.description}</p>
-                            {step.id === "calendarIntegration" ? (
-                              <PropertyHearingsSection
-                                propertyId={propertyId}
-                                hearings={hearings}
-                                lifecyclePhaseId={currentPhaseId}
-                                onUpdated={onUpdated}
-                              />
-                            ) : null}
+                            <div className="mt-2 shrink-0 sm:mt-0">
+                              <Button
+                                type="button"
+                                variant={isMarkedCurrent ? "secondary" : "outline"}
+                                size="sm"
+                                className={cn(
+                                  "h-8 w-full text-xs sm:w-auto",
+                                  isMarkedCurrent && "cursor-default bg-muted text-muted-foreground",
+                                )}
+                                disabled={(!!saving && !isSavingThis) || isMarkedCurrent}
+                                onClick={() => onPickStep(focusedPhase.id, step.id)}
+                              >
+                                {isSavingThis ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                                    Saving…
+                                  </span>
+                                ) : isMarkedCurrent ? (
+                                  "Active step"
+                                ) : rowDone ? (
+                                  "Move here"
+                                ) : (
+                                  "Set here"
+                                )}
+                              </Button>
+                            </div>
                           </div>
-                          <div className="mt-2 shrink-0 sm:mt-0">
-                            <Button
-                              type="button"
-                              variant={isMarkedCurrent ? "secondary" : "outline"}
-                              size="sm"
-                              className={cn(
-                                "h-8 w-full text-xs sm:w-auto",
-                                isMarkedCurrent && "cursor-default bg-slate-100",
-                              )}
-                              disabled={(!!saving && !isSavingThis) || isMarkedCurrent}
-                              onClick={() => onPickStep(focusedPhase.id, step.id)}
-                            >
-                              {isSavingThis ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                                  Saving…
-                                </span>
-                              ) : isMarkedCurrent ? (
-                                "Active step"
-                              ) : rowDone ? (
-                                "Move here"
-                              ) : (
-                                "Set here"
-                              )}
-                            </Button>
-                          </div>
+                          {step.id === "calendarIntegration" ? (
+                            <PropertyHearingsSection
+                              propertyId={propertyId}
+                              hearings={hearings}
+                              lifecyclePhaseId={currentPhaseId}
+                              onUpdated={onUpdated}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     </li>
@@ -387,8 +389,8 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
               </ol>
             </div>
 
-            <div className="bg-slate-50/50 px-3 py-4 sm:px-5">
-              <label htmlFor={`lifecycle-notes-${propertyId}`} className="text-xs font-semibold text-slate-900">
+            <div className="bg-muted/40 px-3 py-4 sm:px-5">
+              <label htmlFor={`lifecycle-notes-${propertyId}`} className="text-xs font-semibold text-foreground">
                 Notes at this stage
               </label>
               <textarea
@@ -397,8 +399,8 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
                 onChange={(e) => setNotesDraft(e.target.value)}
                 rows={3}
                 className={cn(
-                  "mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900",
-                  "placeholder:text-slate-400 focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500/20",
+                  "mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground",
+                  "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/30",
                 )}
                 placeholder="Deadlines, CAD ref, filing method…"
               />
@@ -425,13 +427,13 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
 
             {historyTimeline.length > 0 && (
               <details className="group">
-                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 sm:px-5 marker:content-none [&::-webkit-details-marker]:hidden">
-                  <History className="h-3.5 w-3.5 text-slate-500" />
+                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/60 sm:px-5 marker:content-none [&::-webkit-details-marker]:hidden">
+                  <History className="h-3.5 w-3.5 text-muted-foreground" />
                   History
-                  <span className="font-normal text-slate-500">({historyTimeline.length})</span>
-                  <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+                  <span className="font-normal text-muted-foreground">({historyTimeline.length})</span>
+                  <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="border-t border-slate-100 bg-slate-50/40 px-2 py-2 sm:px-4">
+                <div className="border-t border-border bg-muted/30 px-2 py-2 sm:px-4">
                   <ul className="space-y-0">
                     {historyTimeline.map((item, idx) => {
                       const isLatest = idx === historyTimeline.length - 1;
@@ -445,41 +447,41 @@ export function PropertyLifecyclePanel({ propertyId, lifecycle, hearings = [], o
                             : item.isoAt || "—";
 
                       return (
-                        <li key={`${idx}-${item.isoAt}`} className={cn("flex gap-2 border-b border-slate-100/80 py-2 last:border-0")}>
+                        <li key={`${idx}-${item.isoAt}`} className={cn("flex gap-2 border-b border-border/80 py-2 last:border-0")}>
                           <div className="flex w-7 shrink-0 flex-col items-center pt-1" aria-hidden>
                             <span
                               className={cn(
                                 "h-2 w-2 shrink-0 rounded-full",
-                                isLatest ? "bg-indigo-600 ring-4 ring-indigo-100/50" : "bg-slate-300",
+                                isLatest ? "bg-indigo-600 ring-4 ring-indigo-100/50 dark:ring-indigo-400/20" : "bg-muted-foreground/40",
                               )}
                             />
                           </div>
                           <div className="min-w-0 pb-1">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                              <time className="text-[10px] font-semibold uppercase tracking-wide text-slate-500" dateTime={canonical?.at ?? item.isoAt}>
+                              <time className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground" dateTime={canonical?.at ?? item.isoAt}>
                                 {timeLabel}
                               </time>
                               {isLatest ? (
-                                <span className="rounded bg-indigo-100 px-1 py-0 text-[9px] font-semibold uppercase text-indigo-800">
+                                <span className="rounded bg-indigo-100 px-1 py-0 text-[9px] font-semibold uppercase text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300">
                                   Latest
                                 </span>
                               ) : null}
                             </div>
                             {canonical ? (
                               <>
-                                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-medium leading-snug text-slate-800">
+                                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-medium leading-snug text-foreground">
                                   <span>{describeTransitionEnd(canonical.from, labelResolver)}</span>
-                                  <ArrowRight className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
+                                  <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
                                   <span>{describeTransitionEnd(canonical.to, labelResolver)}</span>
                                 </p>
                                 {canonical.notes ? (
-                                  <p className="mt-1 rounded border border-slate-100/80 bg-white px-2 py-1 text-xs text-slate-700">
+                                  <p className="mt-1 rounded border border-border bg-card px-2 py-1 text-xs text-muted-foreground">
                                     {canonical.notes}
                                   </p>
                                 ) : null}
                               </>
                             ) : (
-                              <p className="mt-1 text-xs leading-snug text-slate-700">{formatLifecycleHistoryRow(item.raw, labelResolver)}</p>
+                              <p className="mt-1 text-xs leading-snug text-muted-foreground">{formatLifecycleHistoryRow(item.raw, labelResolver)}</p>
                             )}
                           </div>
                         </li>

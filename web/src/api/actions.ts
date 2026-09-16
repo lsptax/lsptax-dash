@@ -1,4 +1,5 @@
 import { getAuthHeaders, getApiBaseUrl } from "./client";
+import { sendAoaForClient, sendContractForClient } from "./contracts";
 
 const baseUrl = () => {
   const url = getApiBaseUrl();
@@ -170,7 +171,7 @@ export const deleteProperty = async (propertyId: string) => {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ id: Number(propertyId) }),
+      body: JSON.stringify({ propertyId: Number(propertyId) }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -230,10 +231,10 @@ export const addProperty = async ({
 };
 
 export const addProspectProperty = async ({
-  id,
+  prospectId,
   propertyData,
 }: {
-  id: number;
+  prospectId: number;
   propertyData: Record<string, unknown>;
 }) => {
   const response = await fetch(`${baseUrl()}/action/add-prospect-property`, {
@@ -242,7 +243,7 @@ export const addProspectProperty = async ({
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ id, propertyData }),
+    body: JSON.stringify({ prospectId, propertyData }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -259,7 +260,7 @@ export const deleteProspectProperty = async (propertyId: string) => {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ id: Number(propertyId) }),
+      body: JSON.stringify({ propertyId: Number(propertyId) }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -272,7 +273,7 @@ export const deleteProspectProperty = async (propertyId: string) => {
   }
 };
 
-export const deleteClient = async (id: Number) => {
+export const deleteClient = async (clientId: Number) => {
   try {
     const response = await fetch(`${baseUrl()}/action/delete-client`, {
       method: "POST",
@@ -280,7 +281,7 @@ export const deleteClient = async (id: Number) => {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ clientId }),
     });
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -292,7 +293,7 @@ export const deleteClient = async (id: Number) => {
   }
 };
 
-export const deleteProspect = async (id: Number) => {
+export const deleteProspect = async (prospectId: Number) => {
   try {
     const response = await fetch(`${baseUrl()}/action/delete-prospect`, {
       method: "POST",
@@ -300,7 +301,7 @@ export const deleteProspect = async (id: Number) => {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ prospectId }),
     });
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -312,7 +313,10 @@ export const deleteProspect = async (id: Number) => {
   }
 };
 
-export const moveProspectToClient = async (id: Number) => {
+export const moveProspectToClient = async (
+  prospectId: Number,
+  clientNumber: string
+) => {
   try {
     const response = await fetch(`${baseUrl()}/action/move-to-client`, {
       method: "POST",
@@ -320,9 +324,18 @@ export const moveProspectToClient = async (id: Number) => {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({
+        prospectId,
+        clientNumber: String(clientNumber).trim(),
+      }),
     });
-    if (!response.ok) throw new Error("Failed to move prospect to client.");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        (err as { message?: string }).message ||
+          "Failed to move prospect to client."
+      );
+    }
     const data = await response.json();
     return data.client;
   } catch (error: unknown) {
@@ -385,18 +398,14 @@ export const sendAOAToClient = async ({
   propertyId?: number;
 }) => {
   try {
-    const response = await fetch(`${baseUrl()}/action/sign-aoa`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ clientId, propertyId }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to send AOA to client");
+    const cid = Number(clientId);
+    if (!Number.isFinite(cid) || cid <= 0) {
+      throw new Error("clientId is required");
     }
+    if (propertyId == null) {
+      throw new Error("propertyId is required");
+    }
+    await sendAoaForClient(cid, propertyId);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Not able to send AOA to client. Please try again.";
     throw new Error(errorMessage);
@@ -405,18 +414,11 @@ export const sendAOAToClient = async ({
 
 export const sendClientContract = async ({ clientId }: { clientId: string }) => {
   try {
-    const response = await fetch(`${baseUrl()}/action/sign-aoa`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ clientId }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to send contract to client");
+    const cid = Number(clientId);
+    if (!Number.isFinite(cid) || cid <= 0) {
+      throw new Error("clientId is required");
     }
+    await sendContractForClient(cid);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Not able to send contract to client. Please try again.";
     throw new Error(errorMessage);

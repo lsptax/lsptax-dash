@@ -150,7 +150,7 @@ export function ClientActionsCell({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Client</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete client {clientName} (#{clientId}) and
+                  This will permanently delete client {clientName} (#{clientNum}) and
                   all associated properties and invoices. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>

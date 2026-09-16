@@ -61,7 +61,7 @@ export default function ContractForm() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `contract-client-${clientData?.client?.clientNumber ?? clientId ?? "contract"}.pdf`;
+      a.download = `contract-client-${clientData?.client?.clientNumber ?? "contract"}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

@@ -18,3 +18,21 @@ export function sendError(res, status, message, err = undefined, extras = undefi
   return res.status(status).json(body);
 }
 
+/**
+ * Read a numeric entity id from a body/query object, trying keys in order.
+ * Lets handlers accept both typed names (`propertyId`) and legacy `id`.
+ * @param {object} source
+ * @param {...string} keys
+ * @returns {number}
+ */
+export function parseEntityId(source, ...keys) {
+  if (!source || typeof source !== "object") return NaN;
+  for (const key of keys) {
+    const raw = source[key];
+    if (raw == null || raw === "") continue;
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n)) return n;
+  }
+  return NaN;
+}
+

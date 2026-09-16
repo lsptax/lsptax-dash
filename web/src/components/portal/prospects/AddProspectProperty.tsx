@@ -79,7 +79,7 @@ export default function AddProspectPropertyForm() {
       };
 
       const result = await addProspectProperty({
-        id: Number(id!),
+        prospectId: Number(id!),
         propertyData,
       });
 

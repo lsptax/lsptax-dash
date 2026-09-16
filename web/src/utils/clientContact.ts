@@ -1,6 +1,6 @@
 import { ClientData } from "@/types/types";
 
-function pickString(...values: unknown[]): string {
+export function pickString(...values: unknown[]): string {
   for (const value of values) {
     if (value == null) continue;
     const trimmed = String(value).trim();
@@ -18,6 +18,20 @@ export function getClientRecipientEmail(client: ClientData): string | undefined 
 export function getClientPhoneNumber(client: ClientData): string | undefined {
   const phone = pickString(client.phoneNumber, client.PHONENUMBER);
   return phone || undefined;
+}
+
+/** Staff-facing client number. Never pass the database id. */
+export function getStaffClientNumber(
+  ...values: Array<string | number | null | undefined>
+): string {
+  return pickString(...values);
+}
+
+export function formatClientNumberDisplay(
+  ...values: Array<string | number | null | undefined>
+): string {
+  const n = getStaffClientNumber(...values);
+  return n ? `#${n}` : "—";
 }
 
 /** Normalize client contact + display fields from invoice/property API payloads. */

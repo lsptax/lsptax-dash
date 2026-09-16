@@ -12,6 +12,7 @@ import {
   normalizeYearlyRow,
   normalizeYearlyDataInput,
 } from "../utils/invoiceYearlyData.js";
+import { parseEntityId } from "../utils/http.js";
 
 function logEditPropertyDebug(label, data) {
   console.log(`[edit-property] ${label}:`, JSON.stringify(data, null, 2));
@@ -37,8 +38,9 @@ export const addPropertyToClient = async (req, res) => {
 
 export const editProperty = async (req, res) => {
   try {
-    const { propertyId, propertyDetails, yearlyData, year, invoices } = req.body;
-    if (!propertyId) return sendError(res, 400, "Property ID is required");
+    const propertyId = parseEntityId(req.body, "propertyId", "id");
+    const { propertyDetails, yearlyData, year, invoices } = req.body;
+    if (Number.isNaN(propertyId)) return sendError(res, 400, "Property ID is required");
 
     logEditPropertyDebug("raw payload", {
       propertyId,
@@ -167,8 +169,9 @@ export const editProperty = async (req, res) => {
 
 export const editProspectProperty = async (req, res) => {
   try {
-    const { propertyId, propertyDetails } = req.body;
-    if (!propertyId) return sendError(res, 400, "Property ID is required");
+    const propertyId = parseEntityId(req.body, "propertyId", "id");
+    const { propertyDetails } = req.body;
+    if (Number.isNaN(propertyId)) return sendError(res, 400, "Property ID is required");
     const updatedProperty = await propertyService.updatePropertyMany(
       propertyId,
       propertyDetails,
@@ -183,8 +186,8 @@ export const editProspectProperty = async (req, res) => {
 
 export const deleteProperty = async (req, res) => {
   try {
-    const { propertyId } = req.body;
-    if (!propertyId) return sendError(res, 400, "Property ID is required");
+    const propertyId = parseEntityId(req.body, "propertyId", "id");
+    if (Number.isNaN(propertyId)) return sendError(res, 400, "Property ID is required");
     const property = await propertyService.deleteProperty(propertyId);
     if (!property) return sendError(res, 404, "Property not found");
     res.status(200).json({ message: "Property deleted successfully", property });
@@ -229,8 +232,8 @@ export const getPropertiesByClients = async (req, res) => {
 
 export const getPropertyDetails = async (req, res) => {
   try {
-    const { propertyId } = req.query;
-    if (!propertyId) return res.status(400).json({ message: "Property ID is required." });
+    const propertyId = parseEntityId(req.query, "propertyId", "id");
+    if (Number.isNaN(propertyId)) return res.status(400).json({ message: "Property ID is required." });
     const data = await propertyService.getPropertyDetails(propertyId);
     if (!data) return res.status(404).json({ message: "Property not found." });
     res.status(200).json(data);

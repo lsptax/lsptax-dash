@@ -203,7 +203,7 @@ List endpoints return a **paginated** object so the frontend can show "Load more
 | GET    | `/api/properties/bpp`     | Convenience: same as `/api/properties?accountType=bpp` |
 | GET    | `/api/archive_properties` | Archived properties. Query: `limit`, `offset`, `search`, `accountType` (optional: `real` or `bpp`) |
 | GET    | `/api/property`           | Property details. Query: `propertyId`            |
-| GET    | `/api/prospect-property`  | Prospect property details. Query: `id` (property ID) |
+| GET    | `/api/prospect-property`  | Prospect property details. Query: `propertyId` (legacy `id` also accepted) |
 
 #### GET `/api/property`
 
@@ -770,7 +770,7 @@ Update a client.
 
 #### POST `/action/delete-client`
 
-**Body:** `{ "id": 1 }` (client id)
+**Body:** `{ "clientId": 1 }` (legacy `{ "id": 1 }` also accepted)
 
 ---
 
@@ -805,7 +805,7 @@ Add a prospect.
 
 #### POST `/action/delete-prospect`
 
-**Body:** `{ "id": 1 }` (prospect id)
+**Body:** `{ "prospectId": 1 }` (legacy `{ "id": 1 }` also accepted)
 
 ---
 
@@ -813,7 +813,7 @@ Add a prospect.
 
 Convert prospect to client.
 
-**Body:** `{ "id": 1, "clientNumber": "100" }` – prospect id and user-entered client number (both required).
+**Body:** `{ "prospectId": 1, "clientNumber": "100" }` – prospect id and user-entered client number (both required). Legacy `{ "id": 1 }` is also accepted for the prospect id.
 
 ---
 
@@ -854,13 +854,13 @@ Add a property to a **prospect**.
 
 **Body:**
 
-| Field        | Type   | Required |
-|--------------|--------|----------|
-| id           | number | Yes      | Prospect ID |
+| Field        | Type   | Required | Description |
+|--------------|--------|----------|-------------|
+| prospectId   | number | Yes      | Prospect ID (legacy `id` also accepted) |
 | propertyData | object | Yes      | Same camelCase keys as above |
 
 **Example:**  
-`{ "id": 1, "propertyData": { "accountNumber": "R123", "nameOnCad": "", "propertyAddress": "", ... } }`
+`{ "prospectId": 1, "propertyData": { "accountNumber": "R123", "nameOnCad": "", "propertyAddress": "", ... } }`
 
 ---
 

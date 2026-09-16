@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import { getSingleProperty, generateInvoices } from "@/store/data";
 import { LoaderCircle, Mail, MapPin, Phone, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyData } from "@/types/types";
 import { deleteProperty } from "@/api/api";
@@ -10,9 +21,11 @@ import YearTable from "../yeardata/YearTable";
 import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
 import { PropertyLifecyclePanel } from "@/components/portal/properties/lifecycle/PropertyLifecyclePanel";
 import { useToast } from "@/hooks/use-toast";
-import { routes } from "@/routes/ROUTES";
+import { routes, resolveReturnTo } from "@/routes/ROUTES";
 import { BackToListLink } from "../../BackToListLink";
 import { ListDetailLink } from "../../ListDetailLink";
+import { formatClientNumberDisplay } from "@/utils/clientContact";
+import { EntityDetailRow } from "../../shared/EntityDetailRow";
 
 function clampToPropertyInvoiceYear(year: number): number {
   const min = Math.min(...PROPERTY_INVOICE_YEARS);
@@ -26,12 +39,13 @@ const ViewProperty = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false); // Track deletion state
-  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false); // Track invoice section state
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false); // Track invoice generation state
   const [selectedYear, setSelectedYear] = useState(() =>
     clampToPropertyInvoiceYear(new Date().getFullYear())
   ); // Track selected year (restricted to property invoice years)
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const propertyIdParam = searchParams.get("propertyId");
   const parsedPropertyId =
     propertyIdParam != null && propertyIdParam.trim() !== ""
@@ -41,9 +55,6 @@ const ViewProperty = () => {
     Number.isFinite(parsedPropertyId) && parsedPropertyId > 0
       ? parsedPropertyId
       : null;
-  const [isNavigating, setIsNavigating] = useState<"prev" | "next" | null>(
-    null
-  ); // Track navigation state
 
   /** Refetch after lifecycle updates without full-page loading spinner. */
   const refreshPropertySnapshot = useCallback(async () => {
@@ -65,14 +76,6 @@ const ViewProperty = () => {
       });
 
       if (!propertyData) {
-        toast({
-          variant: "destructive",
-          title: "Property Not Found",
-          description: `Property with ID ${id} not found. Fetching the next property...`,
-        });
-
-        // Automatically fetch the next property
-        setSearchParams({ propertyId: (id + 1).toString() });
         return;
       }
 
@@ -85,63 +88,28 @@ const ViewProperty = () => {
     }
   };
 
-const handleNavigation = async (newId: number, direction: "prev" | "next") => {
-  setIsNavigating(direction); // Set the navigation state
-  let currentId = newId;
-
-  try {
-    while (true) {
-      const propertyData = await getSingleProperty({
-        propertyId: currentId.toString(),
-      });
-
-      if (propertyData) {
-        setSearchParams({ propertyId: currentId.toString() });
-        break;
-      }
-
-      // Adjust the ID based on the direction
-      currentId = direction === "prev" ? currentId - 1 : currentId + 1;
-
-      // Prevent infinite loops
-      if (currentId <= 0) {
-        toast({
-          variant: "destructive",
-          title: "No more properties",
-          description: "You have reached the beginning of the property list.",
-        });
-        break;
-      }
-    }
-  } catch (error) {
-    console.error("Error navigating properties:", error);
-    toast({
-      variant: "destructive",
-      title: "Navigation Failed",
-      description: "Could not navigate to the property. Please try again.",
-    });
-  } finally {
-    setIsNavigating(null); // Reset the navigation state
-  }
-};
-
   const handleDelete = async () => {
     if (propertyId == null) return;
-    if (!confirm("Are you sure you want to delete this property?")) {
-      return;
-    }
 
     setIsDeleting(true);
     try {
       await deleteProperty(propertyId.toString());
 
       toast({
-        title: "✓ Property deleted successfully",
-        description: "The property has been deleted from the system.",
+        title: "Property deleted",
+        description: "The property has been removed from the system.",
       });
 
-      // Redirect to the next property
-      setSearchParams({ propertyId: (propertyId + 1).toString() });
+      setDeleteOpen(false);
+
+      const clientId = property?.client?.id;
+      const nextPath = resolveReturnTo(
+        searchParams.get("returnTo"),
+        clientId != null
+          ? routes.client.detail(clientId)
+          : routes.properties.list()
+      );
+      navigate(nextPath, { replace: true });
     } catch (error) {
       console.error("Error deleting property:", error);
       if (error instanceof Error) {
@@ -233,18 +201,21 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg font-semibold text-red-600">{error}</div>
+      <div className="flex flex-col items-center justify-center gap-4 min-h-[40vh] px-4 text-center">
+        <p className="text-lg font-semibold text-red-600">{error}</p>
+        <BackToListLink fallback={routes.properties.list()} label="Back to properties" />
       </div>
     );
   }
 
   if (!property) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg font-semibold text-gray-700">
-          No property details to display
-        </div>
+      <div className="flex flex-col items-center justify-center gap-4 min-h-[40vh] px-4 text-center">
+        <p className="text-lg font-semibold">Property not found</p>
+        <p className="text-muted-foreground max-w-md">
+          This property may have been deleted, or the link is no longer valid.
+        </p>
+        <BackToListLink fallback={routes.properties.list()} label="Back to properties" />
       </div>
     );
   }
@@ -256,7 +227,7 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
   const clientName = client?.clientName ?? "";
   const clientPhone = client?.phoneNumber ?? "";
   const clientEmail = client?.email ?? "";
-  const clientNumber = prop?.clientNumber ?? "";
+  const clientNumber = client?.clientNumber ?? prop?.clientNumber ?? "";
   const accountNumber = prop?.accountNumber ?? "";
   const nameOnCad = prop?.nameOnCad ?? "";
   const mailingAddress = prop?.mailingAddress ?? "";
@@ -329,98 +300,98 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
           {/* <NavLink to={"/editProperty"}>
             <Button className="w-full">Schedule Hearing Date</Button>
           </NavLink> */}
-          <Button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className={`w-full ${
-              isDeleting
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-red-600 hover:bg-red-700"
-            }`}
+          <AlertDialog
+            open={deleteOpen}
+            onOpenChange={(open) => {
+              if (isDeleting) return;
+              setDeleteOpen(open);
+            }}
           >
-            {isDeleting ? "Deleting..." : "Delete Property"}
-          </Button>
+            <AlertDialogTrigger asChild>
+              <Button
+                disabled={isDeleting}
+                className={`w-full ${
+                  isDeleting
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                {isDeleting ? "Deleting..." : "Delete Property"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this property?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently deletes property
+                  {accountNumber ? ` #${accountNumber}` : ""}
+                  {clientName ? ` for ${clientName}` : ""}. Invoices and related
+                  records for this property will be removed. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isDeleting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void handleDelete();
+                  }}
+                >
+                  {isDeleting ? "Deleting..." : "Delete property"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row align-center items-center justify-between items-center border rounded-xl bg-gray-100 my-2 p-4">
-        <h1 className="text-4xl font-bold text-center">
-          Lone Star Property Tax
-        </h1>
-        <div className="text-lg">
-          <h1 className="flex gap-2">
-            Property No:
-            <p className="font-bold">
-              #{accountNumber || "—"}
-            </p>
-          </h1>
-          <h2 className="flex gap-2">
-            Client No:
-            <p className="font-bold">
-              #{clientNumber || "—"}
-            </p>
-          </h2>
+      <div className="flex items-center justify-between gap-4 border rounded-xl bg-gray-100 my-2 p-4 text-lg">
+        <div className="flex gap-2">
+          <span>Client No:</span>
+          <span className="font-bold">{formatClientNumberDisplay(clientNumber)}</span>
+        </div>
+        <div className="flex gap-2">
+          <span>Property No:</span>
+          <span className="font-bold">#{accountNumber || "—"}</span>
         </div>
       </div>
 
       <div className="gap-2 flex flex-col md:flex-row justify-between ">
-        {/* Client Details Table */}
         <div className="border rounded-xl p-4 w-full">
           <h2 className="font-semibold text-lg mb-2">Client Details</h2>
           <table className="table-auto w-full">
             <tbody>
-              <tr>
-                <td className="font-medium">Client:</td>
-                <td>{clientName || "—"}</td>
-              </tr>
-              <tr>
-                <td className="font-medium">Phone:</td>
-                <td>
-                  <Phone size={18} className="inline text-indigo-600 mr-2" />
-                  {clientPhone || "—"}
-                </td>
-              </tr>
-              <tr>
-                <td className="font-medium">Email:</td>
-                <td>
-                  <Mail size={18} className="inline text-indigo-600 mr-2" />
-                  {clientEmail || "—"}
-                </td>
-              </tr>
-              <tr>
-                <td className="font-medium">Address:</td>
-                <td>
-                  <MapPin size={18} className="inline text-indigo-600 mr-2" />
-                  {[mailingAddress, mailingCityZip].filter(Boolean).join(", ") || "—"}
-                </td>
-              </tr>
+              <EntityDetailRow label="Client:">{clientName || "—"}</EntityDetailRow>
+              <EntityDetailRow label="Phone:">
+                <Phone size={16} className="inline text-primary mr-2" />
+                {clientPhone || "—"}
+              </EntityDetailRow>
+              <EntityDetailRow label="Email:">
+                <Mail size={16} className="inline text-primary mr-2" />
+                {clientEmail || "—"}
+              </EntityDetailRow>
+              <EntityDetailRow label="Address:">
+                <MapPin size={16} className="inline text-primary mr-2" />
+                {[mailingAddress, mailingCityZip].filter(Boolean).join(", ") || "—"}
+              </EntityDetailRow>
             </tbody>
           </table>
         </div>
 
-        {/* Property Details Table */}
         <div className="border rounded-xl p-4 w-full">
           <h2 className="font-semibold text-lg mb-2">Property Details</h2>
           <table className="table-auto w-full">
             <tbody>
-              <tr>
-                <td className="font-medium">Name on CAD:</td>
-                <td>{nameOnCad || "—"}</td>
-              </tr>
-              <tr>
-                <td className="font-medium">Property Address:</td>
-                <td>
-                  {propertyAddress || "—"}
-                </td>
-              </tr>
-              <tr>
-                <td className="font-medium">CAD Mailing Address:</td>
-                <td>{cadMailingDisplay || "—"}</td>
-              </tr>
-              <tr>
-                <td className="font-medium">County:</td>
-                <td>{cadCounty || "—"}</td>
-              </tr>
+              <EntityDetailRow label="Name on CAD:">{nameOnCad || "—"}</EntityDetailRow>
+              <EntityDetailRow label="Property Address:">
+                {propertyAddress || "—"}
+              </EntityDetailRow>
+              <EntityDetailRow label="CAD Mailing Address:">
+                {cadMailingDisplay || "—"}
+              </EntityDetailRow>
+              <EntityDetailRow label="County:">{cadCounty || "—"}</EntityDetailRow>
             </tbody>
           </table>
         </div>
@@ -433,64 +404,11 @@ const handleNavigation = async (newId: number, direction: "prev" | "next") => {
         onUpdated={() => void refreshPropertySnapshot()}
       />
 
-      {/* <div className="p-6 bg-gray-50 border rounded-lg my-2">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => setIsInvoiceOpen(!isInvoiceOpen)}
-        >
-          <h2 className="text-2xl font-bold">Invoice Details</h2>
-          <span>{isInvoiceOpen ? "▲" : "▼"}</span>
-        </div>
-        {isInvoiceOpen && (
-          <div className="mt-4">
-            <YearTable invoices={property.invoices} showBpp={showBpp} />
-          </div>
-        )}
-      </div> */}
-      <div
-        className="flex justify-between items-center cursor-pointer bg-muted hover:bg-accent p-4 rounded-lg my-2"
-        onClick={() => setIsInvoiceOpen(!isInvoiceOpen)}
-      >
-        <h2 className="text-xl font-semibold">Invoice Details</h2>
-        {/* <span className="text-blue-800">
-          {isInvoiceOpen ? <ChevronUp /> : <ChevronDown />}
-        </span> */}
-      </div>
-      <div>
-        <div className="mt-4">
-          <YearTable invoices={property.invoices} showBpp={showBpp} />
-        </div>
-      </div>
-
-      <div className="flex w-full justify-between mt-4">
-        <Button
-          onClick={() => handleNavigation(activePropertyId - 1, "prev")}
-          disabled={activePropertyId <= 1 || isNavigating === "prev"} // Disable while navigating
-          className="flex items-center justify-center"
-        >
-          {isNavigating === "prev" ? (
-            <>
-              <LoaderCircle className="animate-spin w-5 h-5 mr-2" />
-              Loading...
-            </>
-          ) : (
-            "Prev"
-          )}
-        </Button>
-        <Button
-          onClick={() => handleNavigation(activePropertyId + 1, "next")}
-          disabled={isNavigating === "next"} // Disable while navigating
-          className="flex items-center justify-center"
-        >
-          {isNavigating === "next" ? (
-            <>
-              <LoaderCircle className="animate-spin w-5 h-5 mr-2" />
-              Loading...
-            </>
-          ) : (
-            "Next"
-          )}
-        </Button>
+      <h2 className="text-xl font-semibold bg-muted p-4 rounded-lg my-2">
+        Invoice Details
+      </h2>
+      <div className="mt-4">
+        <YearTable invoices={property.invoices} showBpp={showBpp} />
       </div>
     </div>
   );

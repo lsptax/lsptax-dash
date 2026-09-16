@@ -5,6 +5,7 @@ import formatDate from "@/utils/formatDate";
 
 import { routes } from "@/routes/ROUTES";
 import { ListDetailLink } from "../ListDetailLink";
+import { formatClientNumberDisplay } from "@/utils/clientContact";
 
 export type PropertyDetails = {
   type: string;
@@ -38,11 +39,13 @@ export const propertiesColumn: ColumnDef<Properties>[] = [
     header: "Client #",
     cell: ({ row }) => {
       const clientId = row.original.clientId;
-      const clientNumber = row.original.clientNumber ?? clientId;
+      const clientNumber = row.original.clientNumber;
 
       return (
         <ListDetailLink to={routes.client.detail(clientId)}>
-          <div className="text-foreground font-semibold">#{clientNumber}</div>
+          <div className="text-foreground font-semibold">
+            {formatClientNumberDisplay(clientNumber)}
+          </div>
         </ListDetailLink>
       );
     },

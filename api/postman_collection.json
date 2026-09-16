@@ -208,14 +208,14 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/prospect-property",
+              "raw": "{{baseUrl}}/api/prospect-property?propertyId=1",
               "host": ["{{baseUrl}}"],
               "path": ["api", "prospect-property"],
               "query": [
-                { "key": "id", "value": "1", "description": "Property ID" }
+                { "key": "propertyId", "value": "1", "description": "Property ID" }
               ]
             },
-            "description": "Prospect property details. Requires id (property ID) query param."
+            "description": "Prospect property details. Requires propertyId (property ID) query param."
           }
         },
         {
@@ -532,7 +532,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": 1\n}"
+              "raw": "{\n  \"clientId\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/action/delete-client",
@@ -586,7 +586,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": 1,\n  \"propertyData\": {\n    \"accountNumber\": \"\",\n    \"nameOnCad\": \"\",\n    \"mailingAddress\": \"\",\n    \"mailingAddressCityTxZip\": \"\",\n    \"propertyAddress\": \"\",\n    \"statusNotes\": \"\",\n    \"otherNotes\": \"\",\n    \"cadMailingAddress\": \"\",\n    \"cadCity\": \"\",\n    \"cadZipCode\": \"\",\n    \"cadCounty\": \"\",\n    \"contactOwner\": \"\",\n    \"subcontractOwner\": \"\",\n    \"bppFee\": \"\",\n    \"contingencyFee\": \"\",\n    \"flatFee\": \"\",\n    \"aoaSigned\": \"\",\n    \"hearingDate\": \"\"\n  }\n}"
+              "raw": "{\n  \"prospectId\": 1,\n  \"propertyData\": {\n    \"accountNumber\": \"\",\n    \"nameOnCad\": \"\",\n    \"mailingAddress\": \"\",\n    \"mailingAddressCityTxZip\": \"\",\n    \"propertyAddress\": \"\",\n    \"statusNotes\": \"\",\n    \"otherNotes\": \"\",\n    \"cadMailingAddress\": \"\",\n    \"cadCity\": \"\",\n    \"cadZipCode\": \"\",\n    \"cadCounty\": \"\",\n    \"contactOwner\": \"\",\n    \"subcontractOwner\": \"\",\n    \"bppFee\": \"\",\n    \"contingencyFee\": \"\",\n    \"flatFee\": \"\",\n    \"aoaSigned\": \"\",\n    \"hearingDate\": \"\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/action/add-prospect-property",
@@ -622,14 +622,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": 1,\n  \"clientNumber\": \"100\"\n}"
+              "raw": "{\n  \"prospectId\": 1,\n  \"clientNumber\": \"100\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/action/move-to-client",
               "host": ["{{baseUrl}}"],
               "path": ["action", "move-to-client"]
             },
-            "description": "id = prospect id, clientNumber = user-entered client number (both required)."
+            "description": "prospectId = prospect id, clientNumber = user-entered client number (both required)."
           }
         },
         {
@@ -641,7 +641,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": 1\n}"
+              "raw": "{\n  \"prospectId\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/action/delete-prospect",

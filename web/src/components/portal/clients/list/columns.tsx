@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { routes } from "@/routes/ROUTES";
 import { ClientActionsCell } from "./ClientActionsCell";
 import { ListDetailLink } from "../../ListDetailLink";
+import { formatClientNumberDisplay } from "@/utils/clientContact";
 
 export type Clients = {
   isArchived: boolean;
@@ -21,11 +22,13 @@ export const clientsColumn: ColumnDef<Clients>[] = [
     header: "Client #",
     cell: ({ row }) => {
       const clientId = row.original.clientId;
-      const clientNumber = row.original.clientNumber ?? clientId;
+      const clientNumber = row.original.clientNumber;
 
       return (
         <ListDetailLink to={routes.client.detail(clientId)}>
-          <div className="text-foreground font-semibold">#{clientNumber}</div>
+          <div className="text-foreground font-semibold">
+            {formatClientNumberDisplay(clientNumber)}
+          </div>
         </ListDetailLink>
       );
     },

@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react"; // Add this import
+import { useEffect, useState } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +13,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { addProperty } from "@/api/api";
+import { getSingleClient } from "@/store/data";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle } from "lucide-react";
 import { routes } from "@/routes/ROUTES";
+import {
+  formatClientNumberDisplay,
+  getStaffClientNumber,
+} from "@/utils/clientContact";
 
 const formSchema = z.object({
   StatusNotes: z.string().optional(),
@@ -43,15 +48,48 @@ export default function AddPropertyForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const clientId = searchParams.get("clientId");
-  const [loading, setLoading] = useState(false); // Track loading state
+  const [loading, setLoading] = useState(false);
+  const [clientNumber, setClientNumber] = useState("");
+  const [clientLoading, setClientLoading] = useState(Boolean(clientId));
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       IsArchived: false,
-      CLIENTNumber: clientId || "", // Pre-fill client number from URL
+      CLIENTNumber: "",
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadClient() {
+      if (!clientId) {
+        setClientNumber("");
+        setClientLoading(false);
+        return;
+      }
+
+      setClientLoading(true);
+      const response = (await getSingleClient({ clientId })) as {
+        client?: { clientNumber?: string | null; CLIENTNumber?: string | null };
+      } | null;
+      if (cancelled) return;
+
+      const number = getStaffClientNumber(
+        response?.client?.clientNumber,
+        response?.client?.CLIENTNumber
+      );
+      setClientNumber(number);
+      form.setValue("CLIENTNumber", number);
+      setClientLoading(false);
+    }
+
+    void loadClient();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const numericClientId = clientId != null ? Number(clientId) : NaN;
@@ -122,7 +160,8 @@ export default function AddPropertyForm() {
         className="space-y-8 m-4 py-10 px-6 bg-card rounded-lg border border-border"
       >
         <h1 className="text-xl font-semibold text-gray-800 mb-6">
-          Add Property for Client : #{clientId}
+          Add Property for Client :{" "}
+          {clientLoading ? "…" : formatClientNumberDisplay(clientNumber)}
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -246,7 +285,8 @@ export default function AddPropertyForm() {
                 <Input
                   {...field}
                   readOnly
-                  value={clientId || ""}
+                  value={clientLoading ? "" : clientNumber}
+                  placeholder={clientLoading ? "Loading…" : "Client number"}
                   className="bg-gray-50"
                 />
                 <FormMessage />

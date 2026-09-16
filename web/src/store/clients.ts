@@ -124,7 +124,7 @@ export const downloadClientsCSV = async () => downloadClientsXlsx();
 
 export const downloadProspectsCSV = async () => {
   try {
-    await downloadCsv("/api/download-prospects-csv", "prospects");
+    await downloadCsv("/api/download-prospects-xlsx", "prospects");
   } catch {
     // Error surfaced via UI if needed
   }

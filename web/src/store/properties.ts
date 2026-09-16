@@ -72,7 +72,7 @@ export const getSingleProperty = async ({ propertyId }: { propertyId: string }) 
 
 export const getProspectProperty = async ({ propertyId }: { propertyId: string }) => {
   try {
-    const response = await authFetch(`${base()}/api/prospect-property?id=${propertyId}`);
+    const response = await authFetch(`${base()}/api/prospect-property?propertyId=${propertyId}`);
     if (!response.ok) throw new Error("Failed to fetch properties");
     return response.json();
   } catch {

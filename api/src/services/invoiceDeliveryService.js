@@ -1117,6 +1117,8 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
     if (client.type !== "CLIENT" || client.isArchived) {
       skipped.push({
         clientId,
+        clientNumber: client.clientNumber,
+        clientName,
         reason: "Client not found or archived",
       });
       continue;
@@ -1125,6 +1127,8 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
     if (!recipientEmail) {
       skipped.push({
         clientId,
+        clientNumber: client.clientNumber,
+        clientName,
         reason: "Client billing email or email is missing",
       });
       continue;
@@ -1173,6 +1177,8 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
 
       sent.push({
         clientId,
+        clientNumber: client.clientNumber,
+        clientName,
         recipientEmail,
         deliveryId: delivery.id,
         brevoEmailMessageId: emailResult.messageId,
@@ -1193,6 +1199,8 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
       });
       failed.push({
         clientId,
+        clientNumber: client.clientNumber,
+        clientName,
         recipientEmail,
         error: err.message,
         invoiceIds: entry.invoices.map((invoice) => invoice.id),

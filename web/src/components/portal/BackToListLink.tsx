@@ -1,10 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
-function isSafeReturnTo(path: string): boolean {
-  return path.startsWith("/portal/") && !path.includes("//");
-}
+import { isSafeReturnTo, resolveReturnTo } from "@/routes/ROUTES";
 
 function backLabelForPath(path: string, fallbackLabel: string): string {
   const pathname = path.split("?")[0];
@@ -36,7 +33,7 @@ export function BackToListLink({
 }: BackToListLinkProps) {
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
-  const to = returnTo && isSafeReturnTo(returnTo) ? returnTo : fallback;
+  const to = resolveReturnTo(returnTo, fallback);
   const displayLabel =
     returnTo && isSafeReturnTo(returnTo)
       ? backLabelForPath(returnTo, label)

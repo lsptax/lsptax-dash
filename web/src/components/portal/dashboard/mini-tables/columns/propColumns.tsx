@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import formatDate from "@/utils/formatDate";
 import { NavLink } from "react-router-dom";
 import { routes } from "@/routes/ROUTES";
+import { formatClientNumberDisplay } from "@/utils/clientContact";
 
 export type PropertyDetails = {
   type: string;
@@ -37,10 +38,12 @@ export const propertiesColumn: ColumnDef<Properties>[] = [
     header: "Client #",
     cell: ({ row }) => {
       const clientId = row.original.clientId;
-      const clientNumber = row.original.clientNumber ?? clientId;
+      const clientNumber = row.original.clientNumber;
       return (
         <NavLink to={routes.client.detail(clientId)}>
-          <div className="text-foreground font-semibold">#{clientNumber}</div>
+          <div className="text-foreground font-semibold">
+            {formatClientNumberDisplay(clientNumber)}
+          </div>
         </NavLink>
       );
     },
