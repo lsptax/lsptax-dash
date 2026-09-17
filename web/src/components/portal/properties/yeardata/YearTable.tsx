@@ -133,7 +133,7 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
                     }`}
                   >
                     <td className="px-6 py-3 text-sm font-medium text-gray-800">
-                      {key}
+                      {key === "Contingency Fee" ? "Contingency Fee %" : key}
                     </td>
                     {rowData.map((data) => (
                       <td
@@ -161,6 +161,11 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
                               
                               if (currencyFields.includes(key) && value !== "-" && value !== "N/A") {
                                 return formatUSD(String(value));
+                              }
+
+                              if (key === "Contingency Fee" && value !== "-" && value !== "N/A" && value !== "") {
+                                const pct = String(value).trim();
+                                return pct.endsWith("%") ? pct : `${pct}%`;
                               }
                               
                               return value;

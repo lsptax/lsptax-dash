@@ -22,19 +22,14 @@ Monorepo for LSPTax portal (frontend + API). Created for local testing before re
 
 From the **repo root** (after `npm run install:all` once):
 
-| Command | Web dev server | API target (via Vite proxy) |
-|---------|----------------|-----------------------------|
-| `npm run local` | `web/` | `http://localhost:3000` — start API separately (see below) |
-| `npm run prod` | `web/` | `https://lsptax-dash.fly.dev` — no local API needed |
+| Command | What it starts |
+|---------|----------------|
+| `pnpm dev` / `npm run dev` | API (`http://localhost:3000`) **and** web (Vite) together |
+| `npm run local` | Web only, proxied to `http://localhost:3000` (start API separately) |
+| `npm run prod` | Web only, proxied to `https://lsptax-dash.fly.dev` — no local API needed |
+| `npm run api:dev` | API only |
 
 In dev, the frontend uses relative URLs; Vite proxies `/api`, `/auth`, `/invoice`, etc. to whichever backend URL the script sets (see `web/vite.config.ts`).
-
-### API (only for `npm run local`)
-
-```bash
-npm run api:dev
-# or: cd api && npm run dev
-```
 
 Copy `.env` into `api/` from your existing backend if you have not already (`api/.env.example` is a template).
 

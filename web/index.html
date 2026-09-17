@@ -12,9 +12,11 @@
     <script>
       (function () {
         try {
+          var path = (location.pathname || "/").replace(/\/+$/, "") || "/";
+          var lightOnly = path === "/" || path === "/privacy" || path === "/terms";
           var stored = localStorage.getItem("lsptax-theme");
           var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var dark = stored === "dark" || (stored !== "light" && prefersDark);
+          var dark = !lightOnly && (stored === "dark" || (stored !== "light" && prefersDark));
           if (dark) document.documentElement.classList.add("dark");
           document.documentElement.style.colorScheme = dark ? "dark" : "light";
         } catch (e) {}

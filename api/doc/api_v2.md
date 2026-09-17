@@ -881,7 +881,7 @@ Update property fields and/or per-year invoice data. **Only `propertyId` is requ
 - Each year object accepts **camelCase** (`taxRate`, `marketReduction`, …) **or** legacy display labels (`"Tax Rate"`, `"Market Reduction"`, …).
 - **Partial updates:** only fields **present** in the year object are written; omitted fields keep their existing DB values.
 - **Upsert:** if no invoice row exists for `(propertyId, year)`, one is created on save (e.g. first save to **2026**).
-- **`contingencyFee`** — **percentage**, not dollars (`25` or `"25%"` → 25%). Allowed dropdown values: **`0`, `15`, `25`, `35`, `45`**. Defaults to **`client.contingencyFee`** when not sent and the existing row has no value.
+- **`contingencyFee`** — **percentage**, not dollars (`25` or `"25%"` → 25%). Dropdown presets: **`0`, `15`, `20`, `25`, `35`, `45`**. Type a percent to search; if it is not in the list, add it. Defaults to **`client.contingencyFee`** when not sent and the existing row has no value.
 - **`invoiceDate`**, **`generatedDate`**, **`dueDate`**, **`protestDate`**, **`hearingDate`**, **`paidDate`** — optional **strings**; normalized to **`MM/DD/YYYY`** on save (e.g. `7/1/2026` → `07/01/2026`). Display labels (`"Due Date"`, `"Generated Date"`, …) are accepted in `yearlyData`.
 - **`taxRate`** — up to **4 decimal places** (e.g. `2.3456`).
 - **Server-side calculations** (when the derived field is **not** explicitly sent in the request):
@@ -2156,7 +2156,7 @@ Per-year property values are stored on the **`Invoice`** table (one row per `pro
 
 | Field | Level | Type | Notes |
 |-------|-------|------|-------|
-| `contingencyFee` | Client (default) + Invoice (per-year override) | **Percent** | e.g. `25` = 25%. Display as `%`, never `$`. Dropdown: `0`, `15`, `25`, `35`, `45`. |
+| `contingencyFee` | Client (default) + Invoice (per-year override) | **Percent** | e.g. `25` = 25%. Display as `%`, never `$`. Dropdown presets: `0`, `15`, `20`, `25`, `35`, `45`. Type to search or add a percent. |
 | `flatFee` | Client + Property | **Dollars** (optional) | Not required to save. Property `flatFee` is a string; client `flatFee` is numeric. |
 
 ### Invoice date fields

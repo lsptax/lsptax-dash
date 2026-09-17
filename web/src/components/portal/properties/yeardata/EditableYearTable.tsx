@@ -166,7 +166,7 @@ const EditableYearTable: React.FC<{ invoices?: Invoice[] }> = ({
                   className="hover:bg-gray-100 even:bg-gray-50 odd:bg-white"
                 >
                   <td className="px-6 py-3 text-sm font-medium text-gray-800">
-                    {key}
+                    {key === "Contingency Fee" ? "Contingency Fee %" : key}
                   </td>
                   {tableData.map((row, rowIndex) => (
                     <td

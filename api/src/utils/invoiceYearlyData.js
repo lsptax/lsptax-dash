@@ -1,7 +1,7 @@
 import { parseContingencyFeePercent } from "../config/csvColumnMapping.js";
 
-/** Allowed contingency fee override values (percent). */
-export const ALLOWED_CONTINGENCY_PERCENTS = [0, 15, 25, 35, 45];
+/** Preset contingency fee override values (percent). Other numeric percents are also allowed. */
+export const ALLOWED_CONTINGENCY_PERCENTS = [0, 15, 20, 25, 35, 45];
 
 /**
  * Yearly invoice field aliases: camelCase schema key → display labels used by legacy UI.

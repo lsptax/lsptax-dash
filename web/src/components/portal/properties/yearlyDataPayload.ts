@@ -1,7 +1,7 @@
 import { cleanNumberInput } from "@/utils/formatCurrency";
 
-/** Allowed per-year contingency fee overrides (percent). */
-export const CONTINGENCY_FEE_OPTIONS = [0, 15, 25, 35, 45] as const;
+/** Preset per-year contingency fee overrides (percent). Other numeric percents can be added. */
+export const CONTINGENCY_FEE_OPTIONS = [0, 15, 20, 25, 35, 45] as const;
 
 const LABEL_TO_CAMEL: Record<string, string> = {
   "Protest Date": "protestDate",

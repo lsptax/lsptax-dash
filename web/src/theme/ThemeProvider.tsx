@@ -43,8 +43,14 @@ export function applyThemeClass(theme: Theme) {
   root.style.colorScheme = theme;
 }
 
-export function applyThemeForPath(theme: Theme, _pathname?: string) {
-  applyThemeClass(theme);
+export function isLightOnlyPath(pathname?: string) {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return path === "/" || path === "/privacy" || path === "/terms";
+}
+
+export function applyThemeForPath(theme: Theme, pathname?: string) {
+  applyThemeClass(isLightOnlyPath(pathname) ? "light" : theme);
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
