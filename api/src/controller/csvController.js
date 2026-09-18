@@ -8,6 +8,7 @@ import {
   getClientNumberFromRow,
   getClientDataFromRow,
   getPropertyDataFromRow,
+  parseContingencyFeePercent,
 } from "../config/csvColumnMapping.js";
 import { propertyImportIdentityKey } from "../utils/propertyImportKey.js";
 import {
@@ -380,25 +381,46 @@ function parseInvoiceRow(row) {
       `${spaced}${yearSuffix}`,
       `${spaced} ${year}`
     );
+    if (key === "contingencyFee") {
+      const parsedPct = parseContingencyFeePercent(raw);
+      if (parsedPct !== undefined) {
+        presentNumericFields.add(key);
+        data[key] = parsedPct;
+      } else {
+        data[key] = null;
+      }
+      continue;
+    }
+
     if (raw !== undefined && String(raw).trim() !== "") {
       presentNumericFields.add(key);
     }
-
-    if (key === "contingencyFee") {
-      const pct = String(raw ?? "").replace(/%/g, "").replace(/,/g, "").trim();
-      data[key] = pct === "" ? 0 : parseMoneyOrNumber(pct);
-    } else {
-      data[key] = parseMoneyOrNumber(raw);
-    }
+    data[key] = parseMoneyOrNumber(raw);
   }
   data._presentNumericFields = presentNumericFields;
   return data;
 }
 
+function csvHasExplicitContingencyFee(parsed) {
+  return (
+    parsed._presentNumericFields?.has("contingencyFee") &&
+    parsed.contingencyFee != null &&
+    Number.isFinite(Number(parsed.contingencyFee))
+  );
+}
+
 /** Build Prisma write payload from a parsed invoice CSV row (all CSV values persisted). */
 function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
   const numericFields = Object.fromEntries(
-    INVOICE_CSV_NUMERIC.map((key) => [key, parsed[key]])
+    INVOICE_CSV_NUMERIC.flatMap((key) => {
+      if (
+        key === "contingencyFee" &&
+        !parsed._presentNumericFields?.has("contingencyFee")
+      ) {
+        return [];
+      }
+      return [[key, parsed[key]]];
+    })
   );
 
   const payload = {
@@ -430,11 +452,8 @@ function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
   );
 
   const merged = normalizeInvoiceForMerge({ ...existing, ...payload });
-  if (
-    parsed._presentNumericFields?.has("contingencyFee") &&
-    parsed.contingencyFee !== 0
-  ) {
-    merged.contingencyFee = parsed.contingencyFee;
+  if (csvHasExplicitContingencyFee(parsed)) {
+    merged.contingencyFee = Number(parsed.contingencyFee);
   }
 
   const derived = derivedInvoicePatch(merged, clientPct, {
@@ -443,11 +462,8 @@ function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
 
   const data = { ...payload, ...derived };
 
-  if (
-    parsed._presentNumericFields?.has("contingencyFee") &&
-    parsed.contingencyFee !== 0
-  ) {
-    data.contingencyFee = parsed.contingencyFee;
+  if (csvHasExplicitContingencyFee(parsed)) {
+    data.contingencyFee = Number(parsed.contingencyFee);
   }
 
   // Always recompute total due so flat fee is included regardless of tax rate/reduction.

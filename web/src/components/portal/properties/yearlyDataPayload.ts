@@ -2,6 +2,27 @@ import { cleanNumberInput } from "@/utils/formatCurrency";
 
 /** Preset per-year contingency fee overrides (percent). Other numeric percents can be added. */
 export const CONTINGENCY_FEE_OPTIONS = [0, 15, 20, 25, 35, 45] as const;
+export const CONTINGENCY_FEE_CUSTOM_VALUE = "custom";
+
+export function isPresetContingencyFee(value: string | number | undefined): boolean {
+  if (value === undefined || value === null || String(value).trim() === "") return false;
+  const pct = Number(value);
+  return Number.isFinite(pct) && (CONTINGENCY_FEE_OPTIONS as readonly number[]).includes(pct);
+}
+
+/** Keep explicit 0% — do not treat 0 as missing. */
+export function resolveContingencyPercentString(
+  value: string | number | null | undefined,
+  fallback?: string | number | null,
+): string {
+  if (value !== undefined && value !== null && String(value).trim() !== "") {
+    return String(value);
+  }
+  if (fallback !== undefined && fallback !== null && String(fallback).trim() !== "") {
+    return String(fallback);
+  }
+  return "0";
+}
 
 const LABEL_TO_CAMEL: Record<string, string> = {
   "Protest Date": "protestDate",

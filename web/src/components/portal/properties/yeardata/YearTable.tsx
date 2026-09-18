@@ -72,7 +72,7 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
       "Under Arbitration": yearData?.underArbitration || false,
       "Tax Rate": yearData?.taxRate || "-",
       "Taxable Savings": yearData?.taxableSavings || "-",
-      "Contingency Fee": yearData?.contingencyFee || "N/A",
+      "Contingency Fee": yearData?.contingencyFee ?? "N/A",
       "Invoice Amount": yearData?.invoiceAmount || "N/A", 
       "Paid Date": yearData?.paidDate || "-",
       "Payment Notes": yearData?.paymentNotes || "-",

@@ -209,6 +209,10 @@ export function normalizeInvoiceForMerge(invoice) {
   if (!invoice) return {};
   const out = { ...invoice };
   for (const key of NUMERIC_INVOICE_FIELDS) {
+    if (key === "contingencyFee" && (out[key] == null || out[key] === "")) {
+      out[key] = null;
+      continue;
+    }
     if (out[key] != null) out[key] = Number(out[key]);
   }
   return out;
@@ -372,9 +376,9 @@ export function applyFullInvoiceCalculations(
   const merged = normalizeInvoiceForMerge(invoice);
 
   const rawContingency = merged.contingencyFee;
-  // Stored 0 means unset (schema default); explicit 0% is re-applied by CSV/API callers after calc.
+  // null / empty = unset (use client default). 0 is an explicit 0% override.
   merged.contingencyFee =
-    rawContingency != null && rawContingency !== "" && Number(rawContingency) !== 0
+    rawContingency != null && rawContingency !== ""
       ? normalizeContingencyPercent(rawContingency, clientContingencyFee)
       : normalizeContingencyPercent(null, clientContingencyFee);
 

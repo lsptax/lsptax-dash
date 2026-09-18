@@ -29,7 +29,7 @@ async function seeder() {
         appraisedReduction: 0,
         taxRate: 0,
         taxableSavings: 0,
-        contingencyFee: 0,
+        contingencyFee: null,
         invoiceAmount: 0,
         beginningMarket: 0,
         endingMarket: 0,

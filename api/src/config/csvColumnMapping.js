@@ -96,7 +96,7 @@ function getMapped(row, columnList) {
 export function parseContingencyFeePercent(value) {
   if (value == null || value === "") return undefined;
   const cleaned = String(value).replace(/%/g, "").replace(/,/g, "").trim();
-  if (cleaned === "") return undefined;
+  if (cleaned === "" || !/^-?\d+(\.\d+)?$/.test(cleaned)) return undefined;
   const n = parseFloat(cleaned);
   return Number.isNaN(n) ? undefined : n;
 }

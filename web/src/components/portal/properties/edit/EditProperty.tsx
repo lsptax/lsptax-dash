@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Check, ChevronDown, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,28 +24,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { routes } from "@/routes/ROUTES";
 import { getSingleProperty } from "@/store/data";
 import { PropertyData, Invoice } from "@/types/types";
 import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
 import {
   buildYearlyDataPayload,
+  CONTINGENCY_FEE_CUSTOM_VALUE,
   CONTINGENCY_FEE_OPTIONS,
+  isPresetContingencyFee,
+  resolveContingencyPercentString,
   type YearlyTableRow,
 } from "../yearlyDataPayload";
-import { cn } from "@/lib/utils";
 import { editProperty } from "@/api/api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { cleanNumberInput } from "@/utils/formatCurrency";
@@ -137,14 +133,12 @@ interface CompleteSubmission {
 
 function resolveContingencyFee(
   yearData: Invoice | undefined,
-  clientDefault: string | undefined,
+  clientDefault: string | number | undefined,
 ): string {
-  const fromInvoice =
-    yearData?.contingencyFee ?? yearData?.contingencyFeePercent;
-  if (fromInvoice != null) {
-    return String(fromInvoice);
-  }
-  return clientDefault || "0";
+  return resolveContingencyPercentString(
+    yearData?.contingencyFee ?? yearData?.contingencyFeePercent,
+    clientDefault,
+  );
 }
 
 function sanitizePercentInput(raw: string): string {
@@ -153,8 +147,18 @@ function sanitizePercentInput(raw: string): string {
   return fraction.length > 0 ? `${whole}.${fraction.join("")}` : whole;
 }
 
-function parsePercentNumber(value: string | number | undefined): number | undefined {
-  const n = Number(value);
+const CONTINGENCY_SELECT_PREFIX = "pct:";
+
+function toContingencySelectValue(pct: number) {
+  return `${CONTINGENCY_SELECT_PREFIX}${pct}`;
+}
+
+function parseContingencySelectValue(value: string): number | "custom" | undefined {
+  if (value === CONTINGENCY_FEE_CUSTOM_VALUE) return "custom";
+  const raw = value.startsWith(CONTINGENCY_SELECT_PREFIX)
+    ? value.slice(CONTINGENCY_SELECT_PREFIX.length)
+    : value;
+  const n = Number(raw);
   return Number.isFinite(n) ? n : undefined;
 }
 
@@ -165,141 +169,87 @@ function ContingencyFeeSelect({
   value: string;
   onChange: (pct: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [addedPercents, setAddedPercents] = useState<number[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const preset = isPresetContingencyFee(value);
+  const [customMode, setCustomMode] = useState(!preset && value !== "");
+  const [customDraft, setCustomDraft] = useState(preset ? "" : value);
+  const customInputRef = useRef<HTMLInputElement>(null);
 
-  const options = useMemo(() => {
-    const current = parsePercentNumber(value);
-    const unique = new Set<number>([...CONTINGENCY_FEE_OPTIONS, ...addedPercents]);
-    if (current != null) unique.add(current);
-    return [...unique].sort((a, b) => a - b);
-  }, [addedPercents, value]);
+  useEffect(() => {
+    // Stay in custom mode while typing so "0.5" is not snapped to preset 0%.
+    if (customMode) return;
+    if (isPresetContingencyFee(value)) return;
+    if (value !== "") {
+      setCustomMode(true);
+      setCustomDraft(value);
+    }
+  }, [value, customMode]);
 
-  const searchQuery = sanitizePercentInput(search.replace(/%/g, ""));
-  const searchNumber = parsePercentNumber(
-    searchQuery === "" || searchQuery === "." ? undefined : searchQuery,
-  );
-  const filteredOptions =
-    searchQuery === ""
-      ? options
-      : options.filter(
-          (pct) =>
-            String(pct).includes(searchQuery) ||
-            `${pct}%`.toLowerCase().includes(search.trim().toLowerCase()),
-        );
-  const canAdd =
-    searchNumber != null && !options.some((pct) => pct === searchNumber);
-
-  const selectPercent = (pct: number) => {
-    if (!Number.isFinite(pct)) return;
-    setAddedPercents((prev) => (prev.includes(pct) ? prev : [...prev, pct]));
-    onChange(String(pct));
-    setOpen(false);
-    setSearch("");
-  };
-
-  const displayValue = value === "" ? "Select %" : `${value}%`;
+  const selectedPercent = Number(value);
+  const selectValue = customMode
+    ? CONTINGENCY_FEE_CUSTOM_VALUE
+    : toContingencySelectValue(Number.isFinite(selectedPercent) ? selectedPercent : 0);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) setSearch("");
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="h-8 w-full min-w-[7.5rem] justify-between px-2 font-normal"
-        >
-          <span className="truncate">{displayValue}</span>
-          <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[12rem] p-0"
-        align="start"
-        side="bottom"
-        sideOffset={4}
-        collisionPadding={12}
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          searchInputRef.current?.focus({ preventScroll: true });
+    <div className="flex min-w-[7.5rem] flex-col gap-1">
+      <Select
+        value={selectValue}
+        onValueChange={(next) => {
+          const parsed = parseContingencySelectValue(next);
+          if (parsed === "custom") {
+            setCustomMode(true);
+            setCustomDraft(value);
+            requestAnimationFrame(() => customInputRef.current?.focus());
+            return;
+          }
+          if (parsed == null) return;
+          setCustomMode(false);
+          onChange(String(parsed));
         }}
-        onCloseAutoFocus={(event) => event.preventDefault()}
       >
-        <Command shouldFilter={false} className="h-auto">
-          <CommandInput
-            ref={searchInputRef}
-            value={search}
-            onValueChange={setSearch}
-            placeholder="Search or add %"
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
+        <SelectTrigger type="button" className="h-8 w-full px-2 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {CONTINGENCY_FEE_OPTIONS.map((pct) => (
+            <SelectItem key={pct} value={toContingencySelectValue(pct)}>
+              {pct}%
+            </SelectItem>
+          ))}
+          <SelectItem value={CONTINGENCY_FEE_CUSTOM_VALUE}>Custom</SelectItem>
+        </SelectContent>
+      </Select>
+      {customMode && (
+        <input
+          ref={customInputRef}
+          type="text"
+          inputMode="decimal"
+          value={customDraft}
+          placeholder="Enter %"
+          onChange={(event) => {
+            const next = sanitizePercentInput(event.target.value);
+            setCustomDraft(next);
+            if (next !== "" && !next.endsWith(".") && Number.isFinite(Number(next))) {
+              onChange(next);
+            }
+          }}
+          onBlur={() => {
+            if (customDraft === "" || !Number.isFinite(Number(customDraft))) return;
+            const committed = String(Number(customDraft));
+            onChange(committed);
+            if (isPresetContingencyFee(committed)) {
+              setCustomMode(false);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
               event.preventDefault();
-              event.stopPropagation();
-              const exact =
-                searchNumber != null
-                  ? options.find((pct) => pct === searchNumber)
-                  : undefined;
-              if (exact != null) {
-                selectPercent(exact);
-              } else if (canAdd && searchNumber != null) {
-                selectPercent(searchNumber);
-              } else if (filteredOptions.length > 0) {
-                selectPercent(filteredOptions[0]);
-              }
-            }}
-          />
-          <CommandList className="max-h-48">
-            {filteredOptions.length === 0 && !canAdd && (
-              <CommandEmpty>No matching percent</CommandEmpty>
-            )}
-            <CommandGroup>
-              {filteredOptions.map((pct) => (
-                <CommandItem
-                  key={pct}
-                  value={`${pct}%`}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    selectPercent(pct);
-                  }}
-                  onSelect={() => selectPercent(pct)}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      Number(value) === pct ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  {pct}%
-                </CommandItem>
-              ))}
-              {canAdd && searchNumber != null && (
-                <CommandItem
-                  value={`${searchNumber}%`}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    selectPercent(searchNumber);
-                  }}
-                  onSelect={() => selectPercent(searchNumber)}
-                >
-                  Add {searchNumber}%
-                </CommandItem>
-              )}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+              event.currentTarget.blur();
+            }
+          }}
+          className="block w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      )}
+    </div>
   );
 }
 
@@ -619,8 +569,12 @@ export default function EditProperty() {
         const endingMarket = parseCurrencyInput(row["Ending Market"]);
         const endingAppraised = parseCurrencyInput(row["Ending Appraised"]);
 
-        // Per-year contingency override (dropdown), defaulting to client settings
-        const contingencyFeeString = row["Contingency Fee"] || property?.client?.contingencyFee || "0";
+        // Per-year contingency override (dropdown), defaulting to client settings.
+        // Keep explicit 0% — do not treat 0 as missing.
+        const contingencyFeeString = resolveContingencyPercentString(
+          row["Contingency Fee"],
+          property?.client?.contingencyFee,
+        );
         const contingencyFeePercentage = parseFloat(contingencyFeeString);
         const contingencyFee = contingencyFeePercentage / 100;
 

@@ -192,7 +192,8 @@ model Invoice {
 
   taxRate                Decimal  @default(0) @db.Decimal(9, 4)
   taxableSavings         Decimal  @default(0) @db.Decimal(15, 2)
-  contingencyFee         Decimal  @default(0) @db.Decimal(15, 2)
+  // null = unset (use client contingency); 0 = explicit 0%
+  contingencyFee         Decimal? @db.Decimal(15, 2)
   flatFee                Decimal  @default(0) @db.Decimal(15, 2) // per-year flat fee in dollars
   invoiceAmount          Decimal  @default(0) @db.Decimal(15, 2)
 
