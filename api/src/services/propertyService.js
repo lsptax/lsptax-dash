@@ -10,7 +10,7 @@ import { paginate } from "../utils/pagination.js";
 import { sanitizeSearchTerm } from "../utils/search.js";
 import { propertySearchWhere } from "../utils/propertySearch.js";
 import { buildCadMailingAddressDisplay } from "../utils/propertyAddress.js";
-import { invoiceToApiDto } from "../utils/invoiceYearlyData.js";
+import { invoiceToApiDto, resolveClientContingencyDefault } from "../utils/invoiceYearlyData.js";
 
 const propertyToDto = (p) => {
   const cadMailing = buildCadMailingAddressDisplay(p);
@@ -171,10 +171,7 @@ export async function getPropertyDetails(propertyId) {
         }
       : client,
     invoices: invoices.map((inv) =>
-      invoiceToApiDto(
-        inv,
-        client?.contingencyFee != null ? Number(client.contingencyFee) : 25
-      )
+      invoiceToApiDto(inv, resolveClientContingencyDefault(client))
     ),
     lifecycle,
     hearings,

@@ -17,6 +17,7 @@ import {
   INVOICE_EXPLICIT_DERIVED_PRESERVE_FIELDS,
   normalizeInvoiceForMerge,
   normalizeInvoiceDateString,
+  resolveClientContingencyDefault,
 } from "../utils/invoiceYearlyData.js";
 import { parseClientFlatFee } from "../config/csvColumnMapping.js";
 import {
@@ -684,10 +685,7 @@ export async function uploadInvoiceCsv(req, res) {
         continue;
       }
 
-      const clientPct =
-        prop.client?.contingencyFee != null
-          ? Number(prop.client.contingencyFee)
-          : 25;
+      const clientPct = resolveClientContingencyDefault(prop.client);
 
       const key = `${prop.id}-${parsed.year}`;
       const existing = existingByKey.get(key);

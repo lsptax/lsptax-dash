@@ -10,7 +10,10 @@
  */
 import "dotenv/config";
 import prisma from "../prisma/prismaClient.js";
-import { buildRecalculatedInvoicePatch } from "../src/utils/invoiceYearlyData.js";
+import {
+  buildRecalculatedInvoicePatch,
+  resolveClientContingencyDefault,
+} from "../src/utils/invoiceYearlyData.js";
 
 function parseArgs(argv) {
   let dryRun = false;
@@ -74,10 +77,7 @@ async function main() {
   const samples = [];
 
   for (const invoice of invoices) {
-    const clientPct =
-      invoice.property?.client?.contingencyFee != null
-        ? Number(invoice.property.contingencyFee)
-        : 25;
+    const clientPct = resolveClientContingencyDefault(invoice.property?.client);
 
     const patch = buildRecalculatedInvoicePatch(invoice, clientPct);
     if (!patchChanged(invoice, patch)) {

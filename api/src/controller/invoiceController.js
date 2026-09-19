@@ -7,7 +7,7 @@ import {
   EXPORT_FIELDS,
 } from "../services/exportService.js";
 import * as invoiceDeliveryService from "../services/invoiceDeliveryService.js";
-import { resolveInvoiceDueAmount } from "../utils/invoiceYearlyData.js";
+import { resolveClientContingencyDefault, resolveInvoiceDueAmount } from "../utils/invoiceYearlyData.js";
 
 const BULK_INVOICE_FILTER_KEYS = [
   "invoiceIds",
@@ -281,26 +281,31 @@ export const getInvoiceGenerationStats = async (req, res) => {
 
     const existingInvoices = await prisma.invoice.findMany({
       where: whereClause,
+      include: {
+        property: {
+          select: {
+            client: { select: { contingencyFee: true } },
+          },
+        },
+      },
     });
 
     const totalInvoices = existingInvoices.length;
-    const totalAmount = existingInvoices.reduce((sum, inv) => {
-      const clientContingencyFee =
-        inv.contingencyFee != null ? Number(inv.contingencyFee) : 25;
-      return sum + resolveInvoiceDueAmount(inv, clientContingencyFee);
-    }, 0);
+    let totalAmount = 0;
     const uniqueProperties = new Set(existingInvoices.map((inv) => inv.accountNumber)).size;
 
     const invoicesByYear = {};
     for (const invoice of existingInvoices) {
+      const due = resolveInvoiceDueAmount(
+        invoice,
+        resolveClientContingencyDefault(invoice.property?.client)
+      );
+      totalAmount += due;
       if (!invoicesByYear[invoice.year]) {
         invoicesByYear[invoice.year] = { count: 0, amount: 0 };
       }
       invoicesByYear[invoice.year].count++;
-      invoicesByYear[invoice.year].amount += resolveInvoiceDueAmount(
-        invoice,
-        invoice.contingencyFee != null ? Number(invoice.contingencyFee) : 25
-      );
+      invoicesByYear[invoice.year].amount += due;
     }
 
     res.status(200).json({

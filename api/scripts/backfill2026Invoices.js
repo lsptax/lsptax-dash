@@ -7,6 +7,7 @@
  */
 import "dotenv/config";
 import prisma from "../prisma/prismaClient.js";
+import { resolveClientContingencyDefault } from "../src/utils/invoiceYearlyData.js";
 
 function parseArgs(argv) {
   let dryRun = false;
@@ -49,10 +50,7 @@ async function main() {
       });
       if (existing) continue;
 
-      const contingencyFee =
-        property.client?.contingencyFee != null
-          ? Number(property.client.contingencyFee)
-          : 25;
+      const contingencyFee = resolveClientContingencyDefault(property.client);
 
       if (!dryRun) {
         await prisma.invoice.create({

@@ -5,6 +5,7 @@ import { sanitizeSearchTerm } from "../utils/search.js";
 import {
   invoiceToApiDto,
   normalizeInvoiceDateString,
+  resolveClientContingencyDefault,
   resolveInvoiceDueAmount,
   todayInvoiceDateString,
 } from "../utils/invoiceYearlyData.js";
@@ -44,8 +45,7 @@ export async function getInvoiceByPropertyId(propertyId) {
 
   const { client, ...propertyOnly } = property;
 
-  const clientContingencyFee =
-    client?.contingencyFee != null ? Number(client.contingencyFee) : 25;
+  const clientContingencyFee = resolveClientContingencyDefault(client);
 
   const invoices = await prisma.invoice.findMany({
     where: { propertyId: property.id },
@@ -91,6 +91,7 @@ export async function getInvoicesByClientId(clientId, limit, offset, search) {
       phoneNumber: true,
       type: true,
       isArchived: true,
+      contingencyFee: true,
     },
   });
   if (!client || client.type !== "CLIENT" || client.isArchived) return null;
@@ -136,11 +137,10 @@ export async function getInvoicesByClientId(clientId, limit, offset, search) {
 
   const groupedByProperty = [];
   const groupsByPropertyId = new Map();
+  const clientContingencyFee = resolveClientContingencyDefault(client);
 
   for (const invoice of invoices) {
     const key = String(invoice.propertyId);
-    const clientContingencyFee =
-      invoice.contingencyFee != null ? Number(invoice.contingencyFee) : 25;
     const invoiceRow = invoiceToApiDto(invoice, clientContingencyFee);
     delete invoiceRow.property;
 
@@ -202,8 +202,9 @@ function buildPaidInvoiceDetail(invoice, feeDue) {
 function buildGroupedInvoices(invoices, useSet = true) {
   const grouped = invoices.reduce((acc, invoice) => {
     const groupKey = String(invoice.propertyId ?? invoice.accountNumber ?? invoice.id);
-    const clientContingencyFee =
-      invoice.contingencyFee != null ? Number(invoice.contingencyFee) : 25;
+    const clientContingencyFee = resolveClientContingencyDefault(
+      invoice.property?.client
+    );
     const feeDue = resolveInvoiceDueAmount(invoice, clientContingencyFee);
     const id = invoice.id;
     const invoicePaid = Boolean(invoice.isPaid);
@@ -394,6 +395,7 @@ export async function getAllInvoices(
               id: true,
               clientName: true,
               clientNumber: true,
+              contingencyFee: true,
             },
           },
         },
@@ -438,6 +440,7 @@ export async function getArchiveInvoices(
               id: true,
               clientName: true,
               clientNumber: true,
+              contingencyFee: true,
             },
           },
         },

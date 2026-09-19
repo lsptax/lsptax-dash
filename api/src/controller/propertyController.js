@@ -11,6 +11,7 @@ import {
   buildInvoicePatchFromYearlyData,
   normalizeYearlyRow,
   normalizeYearlyDataInput,
+  resolveClientContingencyDefault,
 } from "../utils/invoiceYearlyData.js";
 import { parseEntityId } from "../utils/http.js";
 
@@ -57,10 +58,9 @@ export const editProperty = async (req, res) => {
     });
     if (!existingProperty) return sendError(res, 404, "Property not found");
 
-    const clientContingencyFee =
-      existingProperty.client?.contingencyFee != null
-        ? Number(existingProperty.client.contingencyFee)
-        : 25;
+    const clientContingencyFee = resolveClientContingencyDefault(
+      existingProperty.client
+    );
 
     const updatedProperty = await propertyService.updateProperty(
       propertyId,

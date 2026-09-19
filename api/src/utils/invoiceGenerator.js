@@ -2,7 +2,7 @@ import prisma from "../../prisma/prismaClient.js";
 import {
   DERIVED_INVOICE_FIELDS,
   derivedInvoicePatch,
-  normalizeContingencyPercent,
+  resolveClientContingencyDefault,
   INVOICE_DATE_STRING_FIELDS,
   normalizeInvoiceDateString,
   todayInvoiceDateString,
@@ -124,12 +124,7 @@ export async function generateInvoices(options) {
     const updatedInvoices = [];
 
     for (const property of properties) {
-      const clientPct = normalizeContingencyPercent(
-        null,
-        property.client?.contingencyFee != null
-          ? Number(property.client.contingencyFee)
-          : 25
-      );
+      const clientPct = resolveClientContingencyDefault(property.client);
 
       for (const year of years) {
         const invoiceKey = `${property.id}-${year}`;

@@ -276,15 +276,30 @@ export function parseOptionalDecimal(value) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/**
+ * Client default contingency % for invoice amount calc.
+ * `0` is an explicit 0% (flat-fee clients). Null/empty falls back to 25.
+ * Accepts a client `{ contingencyFee }` or a raw fee value (including Prisma Decimal).
+ */
+export function resolveClientContingencyDefault(clientOrFee) {
+  const raw =
+    clientOrFee != null &&
+    typeof clientOrFee === "object" &&
+    clientOrFee.contingencyFee !== undefined
+      ? clientOrFee.contingencyFee
+      : clientOrFee;
+  if (raw === undefined || raw === null || raw === "") return 25;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 25;
+}
+
 export function normalizeContingencyPercent(value, clientDefault = 25) {
   if (value === undefined || value === null || value === "") {
-    const fallback = Number(clientDefault);
-    return Number.isFinite(fallback) ? fallback : 25;
+    return resolveClientContingencyDefault(clientDefault);
   }
   const parsed = parseContingencyFeePercent(value);
   if (parsed === undefined) {
-    const fallback = Number(clientDefault);
-    return Number.isFinite(fallback) ? fallback : 25;
+    return resolveClientContingencyDefault(clientDefault);
   }
   const allowed = ALLOWED_CONTINGENCY_PERCENTS.find((p) => Math.abs(p - parsed) < 0.01);
   return allowed !== undefined ? allowed : parsed;

@@ -1,5 +1,9 @@
 import prisma from "../../prisma/prismaClient.js";
-import { parseBppInvoiceAmount, resolveInvoiceDueAmount } from "../utils/invoiceYearlyData.js";
+import {
+  parseBppInvoiceAmount,
+  resolveClientContingencyDefault,
+  resolveInvoiceDueAmount,
+} from "../utils/invoiceYearlyData.js";
 import { sendTransactionalEmail, sendTransactionalSms, getTransactionalEmailEvents } from "./brevoService.js";
 import {
   getInvoiceEmailHtml,
@@ -1051,8 +1055,7 @@ function groupInvoicesByClient(invoices = []) {
     const address = invoice.property?.propertyAddress?.trim();
     if (address) entry.propertyAddresses.add(address);
 
-    const clientContingencyFee =
-      client.contingencyFee != null ? Number(client.contingencyFee) : 25;
+    const clientContingencyFee = resolveClientContingencyDefault(client);
     entry.totalPaymentAmount += resolveInvoiceDueAmount(invoice, clientContingencyFee);
   }
 
@@ -1248,6 +1251,7 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
               phoneNumber: true,
               type: true,
               isArchived: true,
+              contingencyFee: true,
             },
           },
         },
@@ -1282,8 +1286,7 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
     }
 
     const row = clientsById.get(client.id);
-    const clientContingencyFee =
-      invoice.contingencyFee != null ? Number(invoice.contingencyFee) : 25;
+    const clientContingencyFee = resolveClientContingencyDefault(client);
     const dueAmount = resolveInvoiceDueAmount(invoice, clientContingencyFee);
     row.invoiceCount += 1;
     row.totalInvoiceAmount += dueAmount;
