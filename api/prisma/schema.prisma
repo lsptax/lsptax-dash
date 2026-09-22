@@ -285,3 +285,16 @@ model AppSetting {
   updatedAt DateTime @updatedAt
   updatedBy Int?
 }
+
+/// Owner-editable outbound email copy. Placeholders such as {{clientName}} are filled in at send time.
+model EmailTemplate {
+  key       String   @id
+  name      String
+  /// invoice | payment_acknowledgement | unassigned
+  purpose   String
+  isBuiltin Boolean  @default(false)
+  subject   String
+  bodyHtml  String
+  updatedAt DateTime @updatedAt
+  updatedBy Int?
+}

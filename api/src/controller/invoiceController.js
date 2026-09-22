@@ -351,36 +351,81 @@ export const getInvoicesByClient = async (req, res) => {
   }
 };
 
+export const getInvoiceIds = async (req, res) => {
+  try {
+    const { search, sendStatus, paymentStatus, minAmount, maxAmount, years, archived } = req.query;
+    const ids = await invoiceService.listFilteredInvoiceIds({
+      archived: archived === "true",
+      search,
+      sendStatus,
+      paymentStatus,
+      minAmount,
+      maxAmount,
+      years,
+    });
+    res.status(200).json({ ids, total: ids.length });
+  } catch (error) {
+    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
+    res.status(status).json({ message: error.message || "Failed to list invoice ids." });
+  }
+};
+
+export const expandInvoiceIds = async (req, res) => {
+  try {
+    const { ids, search, sendStatus, paymentStatus, minAmount, maxAmount, years, archived } = req.body || {};
+    const invoiceIds = await invoiceService.expandGroupedInvoiceIds({
+      ids,
+      archived: archived === true || archived === "true",
+      search,
+      sendStatus,
+      paymentStatus,
+      minAmount,
+      maxAmount,
+      years,
+    });
+    res.status(200).json({ ids: invoiceIds, total: invoiceIds.length });
+  } catch (error) {
+    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
+    res.status(status).json({ message: error.message || "Failed to expand invoice ids." });
+  }
+};
+
 export const getAllInvoices = async (req, res) => {
   try {
-    const { limit, offset, search, sendStatus, paymentStatus } = req.query;
+    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years } = req.query;
     const result = await invoiceService.getAllInvoices(
       limit,
       offset,
       search,
       sendStatus,
-      paymentStatus
+      paymentStatus,
+      minAmount,
+      maxAmount,
+      years
     );
     res.status(200).json(result);
   } catch (error) {
-    const status = /paymentStatus must be/i.test(error.message) ? 400 : 500;
+    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
     res.status(status).json({ message: error.message || "Failed to fetch all invoices." });
   }
 };
 
 export const getArchiveInvoices = async (req, res) => {
   try {
-    const { limit, offset, search, sendStatus, paymentStatus } = req.query;
+    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years } = req.query;
     const result = await invoiceService.getArchiveInvoices(
       limit,
       offset,
       search,
       sendStatus,
-      paymentStatus
+      paymentStatus,
+      minAmount,
+      maxAmount,
+      years
     );
     res.status(200).json(result);
   } catch (error) {
-    const status = /paymentStatus must be/i.test(error.message) ? 400 : 500;
+    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
     res.status(status).json({ message: error.message || "Failed to fetch all invoices." });
   }
 };
@@ -405,6 +450,7 @@ export const updateInvoicePaymentStatus = async (req, res) => {
       paymentNotes,
       sendAcknowledgementEmail,
       customMessage,
+      templateKey,
     } = req.body || {};
     const result = await invoiceService.updateInvoicePaymentStatus({
       invoiceIds,
@@ -413,6 +459,7 @@ export const updateInvoicePaymentStatus = async (req, res) => {
       paymentNotes,
       sendAcknowledgementEmail: Boolean(sendAcknowledgementEmail),
       customMessage,
+      templateKey,
     });
     const acknowledgement = result.acknowledgementEmail;
     let message = isPaid ? "Invoice(s) marked as paid" : "Invoice(s) marked as unpaid";
@@ -440,6 +487,55 @@ export const updateInvoicePaymentStatus = async (req, res) => {
         ? 400
         : 500;
     sendError(res, status, error.message || "Failed to update invoice payment status", error);
+  }
+};
+
+export const previewPaymentAcknowledgementRecipients = async (req, res) => {
+  try {
+    const { clientId, invoiceIds } = req.body || {};
+    const data = await invoiceDeliveryService.previewPaymentAcknowledgementRecipients({
+      clientId,
+      invoiceIds,
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Error previewing payment acknowledgement recipients:", error);
+    sendError(res, 500, error.message || "Failed to preview payment acknowledgement recipients", error);
+  }
+};
+
+export const sendClientPaymentAcknowledgement = async (req, res) => {
+  try {
+    const { clientId, invoiceIds, templateKey } = req.body || {};
+    const hasInvoiceIds = Array.isArray(invoiceIds) && invoiceIds.length > 0;
+    if (!clientId && !hasInvoiceIds) {
+      return sendError(res, 400, "clientId or invoiceIds is required");
+    }
+    const result = hasInvoiceIds
+      ? await invoiceDeliveryService.sendPaymentAcknowledgementEmailsForInvoices({
+          invoiceIds,
+          templateKey,
+          paidOnly: true,
+        })
+      : await invoiceDeliveryService.sendPaymentAcknowledgementForClient({
+          clientId,
+          templateKey,
+        });
+    res.status(200).json({
+      success: true,
+      message:
+        result.sentCount > 0
+          ? `Payment acknowledgement sent to ${result.sentCount} client${result.sentCount === 1 ? "" : "s"}`
+          : "Payment acknowledgement was not sent",
+      data: result,
+    });
+  } catch (error) {
+    const status = /No paid invoices|clientId or invoiceIds is required|not assigned|Unknown email template/i.test(
+      error.message
+    )
+      ? 400
+      : 500;
+    sendError(res, status, error.message || "Failed to send payment acknowledgement", error);
   }
 };
 
@@ -494,6 +590,7 @@ export const sendInvoiceToClient = async (req, res) => {
       propertyAddresses,
       invoiceIds,
       propertyIds,
+      templateKey,
     } = req.body;
 
     if (!clientId) {
@@ -509,6 +606,7 @@ export const sendInvoiceToClient = async (req, res) => {
       propertyAddresses,
       invoiceIds,
       propertyIds,
+      templateKey,
     });
 
     const message =
@@ -544,9 +642,10 @@ export const sendInvoiceToClient = async (req, res) => {
  */
 export const getBulkInvoiceRecipients = async (req, res) => {
   try {
+    const source = req.method === "GET" ? req.query : req.body || {};
     const result = await invoiceDeliveryService.getBulkInvoiceRecipients({
-      filters: pickBulkInvoiceFilters(req.query),
-      limit: req.query.limit,
+      filters: pickBulkInvoiceFilters(source),
+      limit: source.limit,
     });
 
     res.status(200).json({
@@ -583,6 +682,7 @@ export const sendBulkInvoicesToClients = async (req, res) => {
       year,
       sendSms,
       customMessage,
+      templateKey,
       limit,
     } = req.body;
 
@@ -596,6 +696,7 @@ export const sendBulkInvoicesToClients = async (req, res) => {
       year,
       sendSms,
       customMessage,
+      templateKey,
       limit,
     });
 

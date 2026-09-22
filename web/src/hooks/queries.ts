@@ -1,4 +1,4 @@
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueries } from "@tanstack/react-query";
 import {
   getClients,
   getArchiveClients,
@@ -91,6 +91,9 @@ export function useInvoicesQuery({
   archived = false,
   sendStatus = "all",
   paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = [],
 }: {
   limit?: number;
   offset?: number;
@@ -98,9 +101,12 @@ export function useInvoicesQuery({
   archived?: boolean;
   sendStatus?: import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
   paymentStatus?: import("@/store/invoices").InvoicePaymentStatusFilter;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  years?: number[];
 }) {
   return useQuery({
-    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus],
+    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus, minAmount, maxAmount, years],
     queryFn: () =>
       archived
         ? getArchiveInvoices(
@@ -108,15 +114,22 @@ export function useInvoicesQuery({
             offset,
             search || undefined,
             sendStatus,
-            paymentStatus
+            paymentStatus,
+            minAmount,
+            maxAmount,
+            years
           )
         : getAllInvoices(
             limit,
             offset,
             search || undefined,
             sendStatus,
-            paymentStatus
+            paymentStatus,
+            minAmount,
+            maxAmount,
+            years
           ),
+    placeholderData: keepPreviousData,
     ...queryClientDefaults,
   });
 }

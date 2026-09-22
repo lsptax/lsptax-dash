@@ -1,12 +1,10 @@
-const TITLE_PREFIX = /^(?:Mr\.?|Mrs\.?|Ms\.?|Miss|Dr\.?|Prof\.?)\s+/i;
+import {
+  INVOICE_EMAIL_TEMPLATE_KEY,
+  escapeHtml,
+  renderEmailTemplate,
+} from "./emailTemplateCatalog.js";
 
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+const TITLE_PREFIX = /^(?:Mr\.?|Mrs\.?|Ms\.?|Miss|Dr\.?|Prof\.?)\s+/i;
 
 /** Strip honorifics (Mr./Mrs./etc.) for invoice salutations. */
 export function formatInvoiceClientName(clientName) {
@@ -32,45 +30,65 @@ export function getInvoiceEmailLogoUrl() {
   return (process.env.INVOICE_EMAIL_LOGO_URL || "").trim();
 }
 
-export function getInvoiceEmailSubject({ year, propertyAddresses = [] }) {
+export function buildInvoiceEmailLogoHtml(logoUrl = getInvoiceEmailLogoUrl()) {
+  const url = String(logoUrl || "").trim();
+  if (!url) return "";
+  return `<p style="margin:8px 0 12px;"><img src="${escapeHtml(url)}" alt="Lone Star Property Tax" style="display:block;max-width:220px;width:100%;height:auto;" /></p>`;
+}
+
+export function renderInvoiceEmailSubject(subjectTemplate, { year, propertyAddresses = [] } = {}) {
   const yearLabel = year || new Date().getFullYear();
-  return `${yearLabel} Protest Completed- Invoice and Results Attached${formatPropertyHeadlineSuffix(propertyAddresses)}`;
+  return renderEmailTemplate(
+    subjectTemplate,
+    {
+      year: String(yearLabel),
+      propertySuffix: formatPropertyHeadlineSuffix(propertyAddresses),
+    },
+    { escape: false }
+  );
+}
+
+export function renderInvoiceEmailHtml(
+  bodyTemplate,
+  { clientName, year, propertyAddresses = [], logoUrl } = {}
+) {
+  const yearLabel = year || new Date().getFullYear();
+  return renderEmailTemplate(bodyTemplate, {
+    clientName: formatInvoiceClientName(clientName),
+    year: String(yearLabel),
+    propertySuffix: formatPropertyHeadlineSuffix(propertyAddresses),
+    logo: buildInvoiceEmailLogoHtml(logoUrl),
+  }, { rawKeys: ["logo"] });
+}
+
+export async function getInvoiceEmailSubject({ year, propertyAddresses = [], templateKey } = {}) {
+  const { getStoredEmailTemplate } = await import("../services/emailTemplateService.js");
+  const template = await getStoredEmailTemplate(templateKey || INVOICE_EMAIL_TEMPLATE_KEY, {
+    purpose: "invoice",
+  });
+  return renderInvoiceEmailSubject(template.subject, { year, propertyAddresses });
 }
 
 /**
  * HTML body for invoice delivery emails (Brevo transactional).
  */
-export function getInvoiceEmailHtml({ clientName, year, propertyAddresses = [] }) {
-  const displayName = escapeHtml(formatInvoiceClientName(clientName));
-  const yearLabel = year || new Date().getFullYear();
-  const propertySuffix = escapeHtml(formatPropertyHeadlineSuffix(propertyAddresses));
-  const logoUrl = escapeHtml(getInvoiceEmailLogoUrl());
-  const logoBlock = logoUrl
-    ? `<p style="margin:8px 0 12px;"><img src="${logoUrl}" alt="Lone Star Property Tax" style="display:block;max-width:220px;width:100%;height:auto;" /></p>`
-    : "";
-
-  return `
-<p>Dear ${displayName},</p>
-<p><strong>${yearLabel} Protest Completed- Invoice and Results Attached${propertySuffix}</strong></p>
-<p><strong>Payment Options:</strong><br/>
-<strong>Zelle:</strong> 713-505-6806 (Lone Star Property Tax)<br/>
-Kindly include the invoice number for reference.</p>
-<p><strong>Mail Check:</strong><br/>
-Lone Star Property Tax<br/>
-16107 Kensington Drive, Ste #194<br/>
-Sugar Land, TX 77479</p>
-<p>Thank you for choosing Lone Star Property Tax. If you have any questions, please do not hesitate to contact us. We appreciate your business and look forward to serving you again next year.</p>
-<p>Best regards,<br/>
-Lavanya Sharma<br/>
-Administrative Assistant<br/>
-832-847-3911<br/>
-info@lsptax.com<br/>
-results@lsptax.com</p>
-<p style="margin:8px 0 4px;">Thank you,</p>
-${logoBlock}
-<p style="margin:8px 0 0;font-size:10px;line-height:1.35;color:#555;">CONFIDENTIALITY NOTICE: The information contained in this e-mail message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and privileged information. Any unauthorized review, use, disclosure or distribution is prohibited. If you are not the intended recipient, and have received this communication in error, please contact the sender by reply e-mail and destroy all copies of the original message.<br/>
-Thank you.</p>
-`.trim();
+export async function getInvoiceEmailHtml({
+  clientName,
+  year,
+  propertyAddresses = [],
+  logoUrl,
+  templateKey,
+} = {}) {
+  const { getStoredEmailTemplate } = await import("../services/emailTemplateService.js");
+  const template = await getStoredEmailTemplate(templateKey || INVOICE_EMAIL_TEMPLATE_KEY, {
+    purpose: "invoice",
+  });
+  return renderInvoiceEmailHtml(template.bodyHtml, {
+    clientName,
+    year,
+    propertyAddresses,
+    logoUrl,
+  });
 }
 
 /**

@@ -24,6 +24,8 @@ import {
   getInvoiceByProperty,
   getAllInvoices,
   getArchiveInvoices,
+  getInvoiceIds,
+  expandInvoiceIds,
   getCounts,
   downloadInvoicesXLSX,
 } from "../controller/invoiceController.js";
@@ -35,6 +37,13 @@ import {
 import { requireOwner } from "../middleware/requireOwner.js";
 import { getProfile, updateProfile, updatePassword } from "../controller/profileController.js";
 import { getInfraSettings, updateInfraSettings } from "../controller/settingsController.js";
+import {
+  getEmailTemplates,
+  patchEmailTemplate,
+  postEmailTemplate,
+  postResetEmailTemplate,
+  removeEmailTemplate,
+} from "../controller/emailTemplateController.js";
 
 const router = Router();
 
@@ -90,6 +99,8 @@ router.get("/property", getPropertyDetails);
 
 router.get("/invoice/clientid=:id", getInvoicesByClient);
 router.get("/invoice/:id", getInvoiceByProperty);
+router.get("/invoices/ids", getInvoiceIds);
+router.post("/invoices/expand-ids", expandInvoiceIds);
 router.get("/invoices", getAllInvoices);
 router.get("/archive-invoices", getArchiveInvoices);
 
@@ -101,6 +112,11 @@ router.patch("/profile", updateProfile);
 router.patch("/profile/password", updatePassword);
 router.get("/settings", requireOwner, getInfraSettings);
 router.patch("/settings", requireOwner, updateInfraSettings);
+router.get("/email-templates", getEmailTemplates);
+router.post("/email-templates", requireOwner, postEmailTemplate);
+router.patch("/email-templates/:key", requireOwner, patchEmailTemplate);
+router.delete("/email-templates/:key", requireOwner, removeEmailTemplate);
+router.post("/email-templates/:key/reset", requireOwner, postResetEmailTemplate);
 router.get("/hearings", listHearings);
 
 export default router;

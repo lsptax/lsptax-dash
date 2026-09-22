@@ -80,7 +80,7 @@ const headerEntries: { prefix: string; label: string; desc: string }[] = [
   {
     prefix: "settings",
     label: "Settings",
-    desc: "Brevo, Supabase, and DocuSign.",
+    desc: "Email templates, Brevo, Supabase, and DocuSign.",
   },
   {
     prefix: "owner",

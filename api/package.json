@@ -21,6 +21,8 @@
     "backfill-account-leading-zero:dry-run": "node scripts/backfillAccountNumberLeadingZeroFromCsv.js --dry-run",
     "backfill-2026-invoices": "node scripts/backfill2026Invoices.js",
     "backfill-2026-invoices:dry-run": "node scripts/backfill2026Invoices.js --dry-run",
+    "backfill-email-templates": "node scripts/backfillEmailTemplates.js",
+    "backfill-email-templates:dry-run": "node scripts/backfillEmailTemplates.js --dry-run",
     "recalculate-invoice-values": "node scripts/recalculateInvoiceValues.js",
     "recalculate-invoice-values:dry-run": "node scripts/recalculateInvoiceValues.js --dry-run",
     "sync-invoice-delivery-tracking": "node scripts/syncInvoiceDeliveryTracking.js",

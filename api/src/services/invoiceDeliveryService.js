@@ -824,6 +824,7 @@ export async function sendInvoiceToClient({
   propertyAddresses = null,
   invoiceIds = null,
   propertyIds = null,
+  templateKey = null,
 }) {
   const idNum = parseInt(clientId, 10);
   if (Number.isNaN(idNum)) {
@@ -897,17 +898,19 @@ export async function sendInvoiceToClient({
         invoiceIds: scopedInvoiceIds,
         propertyIds: scopedPropertyIds,
       });
-  const subject = getInvoiceEmailSubject({
+  const subject = await getInvoiceEmailSubject({
     year: parsedYear,
     propertyAddresses: resolvedPropertyAddresses,
+    templateKey,
   });
   const htmlContent =
     customMessage?.trim() ||
-    getInvoiceEmailHtml({
+    (await getInvoiceEmailHtml({
       clientName,
       year: parsedYear,
       propertyAddresses: resolvedPropertyAddresses,
-    });
+      templateKey,
+    }));
 
   const deliveryBase = {
     clientId: client.id,
@@ -1062,12 +1065,102 @@ function groupInvoicesByClient(invoices = []) {
   return grouped;
 }
 
+const paymentAcknowledgementInvoiceInclude = {
+  property: {
+    select: {
+      propertyAddress: true,
+      client: {
+        select: {
+          id: true,
+          clientName: true,
+          clientNumber: true,
+          email: true,
+          billingEmail: true,
+          type: true,
+          isArchived: true,
+          contingencyFee: true,
+        },
+      },
+    },
+  },
+};
+
+function parseInvoiceIdList(invoiceIds) {
+  return [...new Set(
+    (Array.isArray(invoiceIds) ? invoiceIds : invoiceIds == null ? [] : [invoiceIds])
+      .map((id) => parseInt(id, 10))
+      .filter((id) => Number.isFinite(id))
+  )];
+}
+
+function paymentAcknowledgementContactsFromInvoices(invoices = []) {
+  const grouped = groupInvoicesByClient(invoices.filter((invoice) => invoice.isPaid));
+  const contacts = [];
+
+  for (const [clientId, entry] of grouped) {
+    const { client } = entry;
+    const recipientEmail = (client.billingEmail || client.email || "").trim();
+    let skipReason = null;
+    if (client.type !== "CLIENT" || client.isArchived) {
+      skipReason = "Client not found or archived";
+    } else if (!recipientEmail) {
+      skipReason = "No email on file";
+    }
+
+    contacts.push({
+      clientId,
+      clientName: client.clientName || "Client",
+      clientNumber: client.clientNumber || null,
+      recipientEmail: recipientEmail || null,
+      invoiceCount: entry.invoices.length,
+      invoiceIds: entry.invoices.map((invoice) => invoice.id),
+      totalPaymentAmount: entry.totalPaymentAmount,
+      propertyAddresses: [...entry.propertyAddresses],
+      years: [...entry.years].sort((a, b) => a - b),
+      canSend: !skipReason,
+      skipReason,
+    });
+  }
+
+  contacts.sort((a, b) => a.clientName.localeCompare(b.clientName));
+  return contacts;
+}
+
+/**
+ * Contacts who would receive a payment acknowledgement for the given paid invoices.
+ */
+export async function previewPaymentAcknowledgementRecipients({
+  invoiceIds,
+  clientId,
+} = {}) {
+  const ids = parseInvoiceIdList(invoiceIds);
+  const idNum = parseInt(clientId, 10);
+  if (!ids.length && !Number.isFinite(idNum)) {
+    return { contacts: [], unpaidCount: 0, selectedCount: 0 };
+  }
+
+  const invoices = await prisma.invoice.findMany({
+    where: ids.length
+      ? { id: { in: ids } }
+      : { isPaid: true, property: { clientId: idNum } },
+    include: paymentAcknowledgementInvoiceInclude,
+  });
+
+  return {
+    contacts: paymentAcknowledgementContactsFromInvoices(invoices),
+    unpaidCount: invoices.filter((invoice) => !invoice.isPaid).length,
+    selectedCount: ids.length || invoices.length,
+  };
+}
+
 /**
  * Send payment acknowledgement emails via Brevo for paid invoices, grouped by client.
  */
 export async function sendPaymentAcknowledgementEmailsForInvoices({
   invoiceIds,
   customMessage = null,
+  templateKey = null,
+  paidOnly = false,
 }) {
   const ids = [...new Set(
     (Array.isArray(invoiceIds) ? invoiceIds : [invoiceIds])
@@ -1080,7 +1173,10 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
   }
 
   const invoices = await prisma.invoice.findMany({
-    where: { id: { in: ids } },
+    where: {
+      id: { in: ids },
+      ...(paidOnly ? { isPaid: true } : {}),
+    },
     include: {
       property: {
         select: {
@@ -1102,7 +1198,11 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
   });
 
   if (!invoices.length) {
-    throw new Error("No matching invoices found for the provided invoiceIds");
+    throw new Error(
+      paidOnly
+        ? "No paid invoices found for the selected rows"
+        : "No matching invoices found for the provided invoiceIds"
+    );
   }
 
   const grouped = groupInvoicesByClient(invoices);
@@ -1137,14 +1237,15 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
       continue;
     }
 
-    const subject = getPaymentAcknowledgementSubject();
+    const subject = await getPaymentAcknowledgementSubject(templateKey);
     const htmlContent =
       customMessage?.trim() ||
-      getPaymentAcknowledgementHtml({
+      (await getPaymentAcknowledgementHtml({
         clientName,
         paymentAmount: entry.totalPaymentAmount,
         propertyAddresses,
-      });
+        templateKey,
+      }));
 
     const logPrefix = `[PaymentAck clientId=${clientId}]`;
 
@@ -1220,6 +1321,33 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
     skipped,
     failed,
   };
+}
+
+/**
+ * Send a payment acknowledgement for one client's paid invoices.
+ */
+export async function sendPaymentAcknowledgementForClient({
+  clientId,
+  templateKey = null,
+}) {
+  const idNum = parseInt(clientId, 10);
+  if (!Number.isFinite(idNum)) throw new Error("clientId is required");
+
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      isPaid: true,
+      property: { clientId: idNum },
+    },
+    select: { id: true },
+  });
+  if (!invoices.length) {
+    throw new Error("No paid invoices found for this client");
+  }
+
+  return sendPaymentAcknowledgementEmailsForInvoices({
+    invoiceIds: invoices.map((invoice) => invoice.id),
+    templateKey,
+  });
 }
 
 /**
@@ -1423,6 +1551,7 @@ export async function sendInvoicesToClientsBulk({
   year = null,
   sendSms = true,
   customMessage = null,
+  templateKey = null,
   limit = MAX_BULK_RECIPIENTS,
 } = {}) {
   const attachmentMap = normalizeBulkAttachmentMap(attachmentsByClient, recipients);
@@ -1492,6 +1621,7 @@ export async function sendInvoicesToClientsBulk({
         propertyAddresses,
         invoiceIds: recipient.invoiceIds,
         propertyIds: recipient.propertyIds,
+        templateKey,
       });
       results.push({
         clientId: recipient.clientId,

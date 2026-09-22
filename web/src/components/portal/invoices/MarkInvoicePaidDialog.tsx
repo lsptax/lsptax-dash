@@ -14,11 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { EmailTemplateSelect } from "@/components/portal/account/EmailTemplateSelect";
 
 export type MarkInvoicePaidPayload = {
   paidDate: string;
   paymentNotes: string;
   sendAcknowledgementEmail: boolean;
+  templateKey?: string;
 };
 
 type MarkInvoicePaidDialogProps = {
@@ -39,6 +41,7 @@ export function MarkInvoicePaidDialog({
   const [paidDate, setPaidDate] = useState<Date | undefined>(new Date());
   const [paymentNotes, setPaymentNotes] = useState("");
   const [sendAcknowledgementEmail, setSendAcknowledgementEmail] = useState(false);
+  const [templateKey, setTemplateKey] = useState("payment_acknowledgement");
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +58,7 @@ export function MarkInvoicePaidDialog({
       paidDate: format(paidDate, "MM/dd/yyyy"),
       paymentNotes: paymentNotes.trim(),
       sendAcknowledgementEmail,
+      templateKey: sendAcknowledgementEmail ? templateKey : undefined,
     });
   };
 
@@ -127,6 +131,15 @@ export function MarkInvoicePaidDialog({
                 Emails the client billing address after marking paid. Payment status is saved even if
                 email delivery fails.
               </p>
+              {sendAcknowledgementEmail ? (
+                <EmailTemplateSelect
+                  id="paid-ack-template"
+                  purpose="payment_acknowledgement"
+                  value={templateKey}
+                  onChange={setTemplateKey}
+                  disabled={submitting}
+                />
+              ) : null}
             </div>
           </div>
         </div>

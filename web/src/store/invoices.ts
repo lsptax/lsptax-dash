@@ -35,13 +35,19 @@ export const getAllInvoices = async (
   offset = 0,
   search?: string,
   sendStatus: InvoiceSendStatusFilter = "all",
-  paymentStatus: InvoicePaymentStatusFilter = "any"
+  paymentStatus: InvoicePaymentStatusFilter = "any",
+  minAmount: number | null = null,
+  maxAmount: number | null = null,
+  years: number[] = []
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (search?.trim()) params.set("search", search.trim());
     if (sendStatus && sendStatus !== "all") params.set("sendStatus", sendStatus);
     if (paymentStatus && paymentStatus !== "any") params.set("paymentStatus", paymentStatus);
+    if (minAmount != null) params.set("minAmount", String(minAmount));
+    if (maxAmount != null) params.set("maxAmount", String(maxAmount));
+    if (years.length > 0) params.set("years", years.join(","));
     const response = await authFetch(`${base()}/api/invoices?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch Invoices");
     const json = await response.json();
@@ -57,18 +63,105 @@ export const getAllInvoices = async (
   }
 };
 
+export const getFilteredInvoiceIds = async ({
+  archived = false,
+  search,
+  sendStatus = "all",
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = [],
+}: {
+  archived?: boolean;
+  search?: string;
+  sendStatus?: InvoiceSendStatusFilter;
+  paymentStatus?: InvoicePaymentStatusFilter;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  years?: number[];
+} = {}): Promise<number[]> => {
+  const params = new URLSearchParams();
+  if (archived) params.set("archived", "true");
+  if (search?.trim()) params.set("search", search.trim());
+  if (sendStatus && sendStatus !== "all") params.set("sendStatus", sendStatus);
+  if (paymentStatus && paymentStatus !== "any") params.set("paymentStatus", paymentStatus);
+  if (minAmount != null) params.set("minAmount", String(minAmount));
+  if (maxAmount != null) params.set("maxAmount", String(maxAmount));
+  if (years.length > 0) params.set("years", years.join(","));
+  const query = params.toString();
+  const response = await authFetch(`${base()}/api/invoices/ids${query ? `?${query}` : ""}`);
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || "Failed to list invoice ids");
+  }
+  return (json.ids ?? [])
+    .map((id: unknown) => Number(id))
+    .filter((id: number) => Number.isFinite(id));
+};
+
+export const expandGroupedInvoiceIds = async ({
+  ids,
+  archived = false,
+  search,
+  sendStatus = "all",
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = [],
+}: {
+  ids: number[];
+  archived?: boolean;
+  search?: string;
+  sendStatus?: InvoiceSendStatusFilter;
+  paymentStatus?: InvoicePaymentStatusFilter;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  years?: number[];
+}): Promise<number[]> => {
+  const response = await authFetch(`${base()}/api/invoices/expand-ids`, {
+    method: "POST",
+    headers: {
+      ...(getAuthHeaders() as Record<string, string>),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ids,
+      archived,
+      search,
+      sendStatus,
+      paymentStatus,
+      minAmount,
+      maxAmount,
+      years,
+    }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || "Failed to expand invoice ids");
+  }
+  return (json.ids ?? [])
+    .map((id: unknown) => Number(id))
+    .filter((id: number) => Number.isFinite(id));
+};
+
 export const getArchiveInvoices = async (
   limit = DEFAULT_PAGE_SIZE,
   offset = 0,
   search?: string,
   sendStatus: InvoiceSendStatusFilter = "all",
-  paymentStatus: InvoicePaymentStatusFilter = "any"
+  paymentStatus: InvoicePaymentStatusFilter = "any",
+  minAmount: number | null = null,
+  maxAmount: number | null = null,
+  years: number[] = []
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (search?.trim()) params.set("search", search.trim());
     if (sendStatus && sendStatus !== "all") params.set("sendStatus", sendStatus);
     if (paymentStatus && paymentStatus !== "any") params.set("paymentStatus", paymentStatus);
+    if (minAmount != null) params.set("minAmount", String(minAmount));
+    if (maxAmount != null) params.set("maxAmount", String(maxAmount));
+    if (years.length > 0) params.set("years", years.join(","));
     const response = await authFetch(`${base()}/api/archive-invoices?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch Invoices");
     const json = await response.json();
@@ -127,6 +220,7 @@ export const updateInvoicePaymentStatus = async (options: {
   paidDate?: string;
   paymentNotes?: string;
   sendAcknowledgementEmail?: boolean;
+  templateKey?: string;
 }): Promise<UpdateInvoicePaymentStatusResponse> => {
   const response = await authFetch(`${base()}/invoice/payment`, {
     method: "PATCH",
@@ -327,6 +421,7 @@ export const sendInvoice = async (options: {
   year?: number;
   sendSms?: boolean;
   customMessage?: string;
+  templateKey?: string;
   /** Addresses for invoices being sent — scopes email subject/body */
   propertyAddresses?: string[];
   invoiceIds?: number[];
@@ -347,36 +442,17 @@ export const sendInvoice = async (options: {
   return json;
 };
 
-const appendBulkInvoiceFilter = (
-  params: URLSearchParams,
-  key: string,
-  value: string | number | boolean | Array<string | number> | undefined
-) => {
-  if (value === undefined) return;
-  if (Array.isArray(value)) {
-    if (value.length > 0) params.set(key, value.join(","));
-    return;
-  }
-  if (typeof value === "string" && value.trim() === "") return;
-  params.set(key, String(value));
-};
-
 export const getBulkInvoiceRecipients = async (
   filters: BulkInvoiceSendFilters = {}
 ): Promise<BulkInvoiceRecipientsResponse> => {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    appendBulkInvoiceFilter(
-      params,
-      key,
-      value as string | number | boolean | Array<string | number> | undefined
-    );
+  const response = await authFetch(`${base()}/invoice/bulk-send/recipients`, {
+    method: "POST",
+    headers: {
+      ...(getAuthHeaders() as Record<string, string>),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(filters),
   });
-
-  const queryString = params.toString();
-  const response = await authFetch(
-    `${base()}/invoice/bulk-send/recipients${queryString ? `?${queryString}` : ""}`
-  );
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(json.message || "Failed to preview bulk invoice recipients");
@@ -389,12 +465,77 @@ export const getBulkInvoiceRecipients = async (
   };
 };
 
+export type PaymentAcknowledgementContact = {
+  clientId: number;
+  clientName: string;
+  clientNumber?: string | null;
+  recipientEmail?: string | null;
+  invoiceCount: number;
+  invoiceIds: number[];
+  totalPaymentAmount: number;
+  propertyAddresses: string[];
+  years: number[];
+  canSend: boolean;
+  skipReason?: string | null;
+};
+
+export const previewPaymentAcknowledgementContacts = async (options: {
+  invoiceIds?: number[];
+  clientId?: number;
+}): Promise<{
+  contacts: PaymentAcknowledgementContact[];
+  unpaidCount: number;
+  selectedCount: number;
+}> => {
+  const response = await authFetch(`${base()}/invoice/payment-acknowledgement/preview`, {
+    method: "POST",
+    headers: {
+      ...(getAuthHeaders() as Record<string, string>),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(options),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || "Failed to preview payment acknowledgement contacts");
+  }
+  return {
+    contacts: json.data?.contacts ?? [],
+    unpaidCount: json.data?.unpaidCount ?? 0,
+    selectedCount: json.data?.selectedCount ?? 0,
+  };
+};
+
+export const sendPaymentAcknowledgementEmails = async (options: {
+  invoiceIds?: number[];
+  clientId?: number;
+  templateKey?: string;
+}): Promise<{ message: string; data: PaymentAcknowledgementEmailResult }> => {
+  const response = await authFetch(`${base()}/invoice/payment-acknowledgement`, {
+    method: "POST",
+    headers: {
+      ...(getAuthHeaders() as Record<string, string>),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(options),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || "Failed to send payment acknowledgement");
+  }
+  return {
+    message: json.message || "Payment acknowledgement sent",
+    data: json.data,
+  };
+};
+
 export const bulkSendInvoices = async (options: {
   filters?: BulkInvoiceSendFilters;
   attachmentsByClient: BulkInvoiceAttachmentGroup[];
   year?: number;
   sendSms?: boolean;
   customMessage?: string;
+  templateKey?: string;
   limit?: number;
 }): Promise<BulkInvoiceSendResponse> => {
   const response = await authFetch(`${base()}/invoice/bulk-send`, {

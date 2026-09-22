@@ -288,3 +288,63 @@ html.dark input[type="datetime-local"] {
   color-scheme: dark;
   color: hsl(var(--foreground));
 }
+
+.email-body-editor .ProseMirror {
+  min-height: 18rem;
+  max-height: min(52vh, 28rem);
+  overflow-y: auto;
+  padding: 0.75rem 0.85rem;
+  outline: none;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.email-body-editor .ProseMirror p {
+  margin: 0 0 0.75em;
+}
+.email-body-editor .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+.email-body-editor .ProseMirror ul,
+.email-body-editor .ProseMirror ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.25rem;
+}
+.email-body-editor .ProseMirror ul {
+  list-style: disc;
+}
+.email-body-editor .ProseMirror ol {
+  list-style: decimal;
+}
+.email-body-editor .ProseMirror a {
+  color: #14add6;
+  text-decoration: underline;
+}
+.email-body-editor .template-token {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #14add6 18%, transparent);
+  color: #0c7ea3;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+  vertical-align: baseline;
+}
+html.dark .email-body-editor .template-token,
+html.dark .email-body-editor .template-logo {
+  color: #8adcf0;
+}
+.email-body-editor .template-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.35rem 0 0.75rem;
+  min-height: 4.25rem;
+  border: 1px dashed color-mix(in srgb, #14add6 55%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #14add6 8%, transparent);
+  color: #0c7ea3;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

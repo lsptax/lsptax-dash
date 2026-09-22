@@ -71,6 +71,9 @@ export async function resolveInvoiceListRange(
     search?: string;
     sendStatus?: import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
     paymentStatus?: import("@/store/invoices").InvoicePaymentStatusFilter;
+    minAmount?: number | null;
+    maxAmount?: number | null;
+    years?: number[];
   }
 ): Promise<{ start: number; end: number }> {
   if (selectedInvoiceIds.length === 0) {
@@ -84,11 +87,23 @@ export async function resolveInvoiceListRange(
   const search = options?.search?.trim() || undefined;
   const sendStatus = options?.sendStatus ?? "all";
   const paymentStatus = options?.paymentStatus ?? "any";
+  const minAmount = options?.minAmount ?? null;
+  const maxAmount = options?.maxAmount ?? null;
+  const years = options?.years ?? [];
   const fetchPage = options?.archived ? getArchiveInvoices : getAllInvoices;
   const targetCount = selectedSet.size;
 
   while (true) {
-    const page = await fetchPage(pageSize, offset, search, sendStatus, paymentStatus);
+    const page = await fetchPage(
+      pageSize,
+      offset,
+      search,
+      sendStatus,
+      paymentStatus,
+      minAmount,
+      maxAmount,
+      years
+    );
     (page.data as InvoiceSummary[]).forEach((row, index) => {
       const id = Number(row.id);
       if (selectedSet.has(id)) {

@@ -12,6 +12,8 @@ import {
   syncInvoiceDeliveryTracking,
   syncInvoiceDeliveriesTracking,
   updateInvoicePaymentStatus,
+  sendClientPaymentAcknowledgement,
+  previewPaymentAcknowledgementRecipients,
 } from "../controller/invoiceController.js";
 
 const router = Router();
@@ -21,12 +23,15 @@ router.post("/generate", generateInvoicesForClients);
 
 // Mark invoice(s) paid / unpaid
 router.patch("/payment", updateInvoicePaymentStatus);
+router.post("/payment-acknowledgement/preview", previewPaymentAcknowledgementRecipients);
+router.post("/payment-acknowledgement", sendClientPaymentAcknowledgement);
 
 // Send client-generated invoice PDF(s) via Brevo email + SMS
 router.post("/send", sendInvoiceToClient);
 
 // Preview/send filtered invoice recipients in bulk
 router.get("/bulk-send/recipients", getBulkInvoiceRecipients);
+router.post("/bulk-send/recipients", getBulkInvoiceRecipients);
 router.post("/bulk-send", sendBulkInvoicesToClients);
 
 // Delivery history for a client

@@ -114,6 +114,7 @@ export function InvoicePaidCell({
               paidDate: extras?.paidDate,
               paymentNotes: extras?.paymentNotes,
               sendAcknowledgementEmail: extras?.sendAcknowledgementEmail ?? false,
+              templateKey: extras?.templateKey,
             }
           : {}),
       });

@@ -280,6 +280,32 @@ function filterGroupedByPaymentStatus(grouped, paymentStatus) {
   return grouped.filter((item) => !item.isPaid);
 }
 
+function parseOptionalAmount(value, label) {
+  if (value == null || String(value).trim() === "") return null;
+  const amount = Number(String(value).replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error(`${label} must be zero or greater`);
+  }
+  return Math.round(amount * 100) / 100;
+}
+
+function filterGroupedByAmount(grouped, minAmount, maxAmount) {
+  const min = parseOptionalAmount(minAmount, "Minimum amount");
+  const max = parseOptionalAmount(maxAmount, "Maximum amount");
+  if (min != null && max != null && min > max) {
+    throw new Error("Minimum amount cannot be greater than maximum amount");
+  }
+  if (min == null && max == null) return grouped;
+  const minCents = min == null ? null : Math.round(min * 100);
+  const maxCents = max == null ? null : Math.round(max * 100);
+  return grouped.filter((item) => {
+    const cents = Math.round((Number(item.totalInvoiceAmount) || 0) * 100);
+    if (minCents != null && cents < minCents) return false;
+    if (maxCents != null && cents > maxCents) return false;
+    return true;
+  });
+}
+
 /** Build OR filter for invoice search.
  * - If search starts with "#<number>", treat it as clientNumber (e.g. "#4324" → clientNumber = "4324").
  * - Otherwise, account number (leading-zero tolerant).
@@ -370,14 +396,27 @@ function invoiceSearchWhere(searchTerm) {
   return { OR: orConditions };
 }
 
-export async function getAllInvoices(
-  limit,
-  offset,
+function parseInvoiceYears(value) {
+  if (value == null || value === "") return [];
+  const parts = Array.isArray(value) ? value : String(value).split(",");
+  return [...new Set(
+    parts
+      .map((part) => parseInt(String(part).trim(), 10))
+      .filter((year) => Number.isFinite(year) && year >= 1900 && year <= 2100)
+  )];
+}
+
+async function loadGroupedInvoices({
+  archived = false,
   search,
   sendStatus = "all",
-  paymentStatus = "any"
-) {
-  const baseWhere = { isArchived: false };
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = null,
+  includeSendStatus = true,
+}) {
+  const baseWhere = { isArchived: Boolean(archived) };
   const searchWhere = invoiceSearchWhere(search);
   const where =
     Object.keys(searchWhere).length === 0
@@ -404,14 +443,50 @@ export async function getAllInvoices(
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
   });
 
-  let grouped = buildGroupedInvoices(invoices);
-  const clientIds = grouped.map((item) => item.clientId).filter((id) => id != null);
-  const deliveriesByClient = await getSentInvoiceDeliveriesByClientIds(clientIds);
-  grouped = enrichGroupedWithSendStatus(grouped, deliveriesByClient);
-  if (normalizeSendStatus(sendStatus) !== "all") {
-    grouped = filterGroupedBySendStatus(grouped, sendStatus);
+  const yearList = parseInvoiceYears(years);
+  const invoiceRows = yearList.length
+    ? invoices.filter((invoice) => yearList.includes(Number(invoice.year)))
+    : invoices;
+
+  let grouped = buildGroupedInvoices(invoiceRows, !archived);
+  if (archived) {
+    grouped = grouped.filter((item) => item.totalInvoiceAmount > -1);
   }
+
+  const sendFilterActive = normalizeSendStatus(sendStatus) !== "all";
+  if (includeSendStatus || sendFilterActive) {
+    const clientIds = grouped.map((item) => item.clientId).filter((id) => id != null);
+    const deliveriesByClient = await getSentInvoiceDeliveriesByClientIds(clientIds);
+    grouped = enrichGroupedWithSendStatus(grouped, deliveriesByClient);
+    if (sendFilterActive) {
+      grouped = filterGroupedBySendStatus(grouped, sendStatus);
+    }
+  }
+
   grouped = filterGroupedByPaymentStatus(grouped, paymentStatus);
+  return filterGroupedByAmount(grouped, minAmount, maxAmount);
+}
+
+export async function getAllInvoices(
+  limit,
+  offset,
+  search,
+  sendStatus = "all",
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = null
+) {
+  const grouped = await loadGroupedInvoices({
+    archived: false,
+    search,
+    sendStatus,
+    paymentStatus,
+    minAmount,
+    maxAmount,
+    years,
+    includeSendStatus: true,
+  });
   return paginateResult(grouped, limit, offset);
 }
 
@@ -420,46 +495,91 @@ export async function getArchiveInvoices(
   offset,
   search,
   sendStatus = "all",
-  paymentStatus = "any"
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = null
 ) {
-  const baseWhere = { isArchived: true };
-  const searchWhere = invoiceSearchWhere(search);
-  const where =
-    Object.keys(searchWhere).length === 0
-      ? baseWhere
-      : { ...baseWhere, AND: [searchWhere] };
+  const grouped = await loadGroupedInvoices({
+    archived: true,
+    search,
+    sendStatus,
+    paymentStatus,
+    minAmount,
+    maxAmount,
+    years,
+    includeSendStatus: true,
+  });
+  return paginateResult(grouped, limit, offset);
+}
 
-  const invoices = await prisma.invoice.findMany({
-    where,
-    include: {
-      property: {
-        select: {
-          clientId: true,
-          client: {
-            select: {
-              id: true,
-              clientName: true,
-              clientNumber: true,
-              contingencyFee: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+/** Representative invoice ids for the current filtered list, without row payloads. */
+export async function listFilteredInvoiceIds({
+  archived = false,
+  search,
+  sendStatus = "all",
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = null,
+} = {}) {
+  const grouped = await loadGroupedInvoices({
+    archived,
+    search,
+    sendStatus,
+    paymentStatus,
+    minAmount,
+    maxAmount,
+    years,
+    includeSendStatus: false,
+  });
+  return grouped
+    .map((item) => Number(item.id))
+    .filter((id) => Number.isFinite(id));
+}
+
+/**
+ * All invoice ids that belong to the grouped rows identified by representative ids.
+ * The invoice table selects one id per property group; mark-paid and download need the rest.
+ */
+export async function expandGroupedInvoiceIds({
+  ids,
+  archived = false,
+  search,
+  sendStatus = "all",
+  paymentStatus = "any",
+  minAmount = null,
+  maxAmount = null,
+  years = null,
+} = {}) {
+  const wanted = new Set(
+    (Array.isArray(ids) ? ids : [])
+      .map((id) => parseInt(id, 10))
+      .filter((id) => Number.isFinite(id))
+  );
+  if (!wanted.size) return [];
+
+  const grouped = await loadGroupedInvoices({
+    archived,
+    search,
+    sendStatus,
+    paymentStatus,
+    minAmount,
+    maxAmount,
+    years,
+    includeSendStatus: false,
   });
 
-  let grouped = buildGroupedInvoices(invoices, false).filter(
-    (item) => item.totalInvoiceAmount > -1
-  );
-  const clientIds = grouped.map((item) => item.clientId).filter((id) => id != null);
-  const deliveriesByClient = await getSentInvoiceDeliveriesByClientIds(clientIds);
-  grouped = enrichGroupedWithSendStatus(grouped, deliveriesByClient);
-  if (normalizeSendStatus(sendStatus) !== "all") {
-    grouped = filterGroupedBySendStatus(grouped, sendStatus);
+  const expanded = [];
+  for (const item of grouped) {
+    if (!wanted.has(Number(item.id))) continue;
+    const members = item.invoiceIds?.length ? item.invoiceIds : [item.id];
+    for (const id of members) {
+      const numericId = Number(id);
+      if (Number.isFinite(numericId)) expanded.push(numericId);
+    }
   }
-  grouped = filterGroupedByPaymentStatus(grouped, paymentStatus);
-  return paginateResult(grouped, limit, offset);
+  return [...new Set(expanded)];
 }
 
 /**
@@ -475,6 +595,7 @@ export async function updateInvoicePaymentStatus({
   paymentNotes,
   sendAcknowledgementEmail = false,
   customMessage = null,
+  templateKey = null,
 }) {
   const ids = [...new Set(
     (Array.isArray(invoiceIds) ? invoiceIds : [invoiceIds])
@@ -534,6 +655,7 @@ export async function updateInvoicePaymentStatus({
       await sendPaymentAcknowledgementEmailsForInvoices({
         invoiceIds: ids,
         customMessage,
+        templateKey,
       });
   }
 

@@ -32,6 +32,7 @@ import InvoiceSheet2025, {
 import { getClientPhoneNumber, getClientRecipientEmail } from "@/utils/clientContact";
 import InvoiceSendHistory from "./InvoiceSendHistory";
 import { InvoiceEmailStatusBadge } from "@/components/portal/invoices/InvoiceEmailStatusBadge";
+import { EmailTemplateSelect } from "@/components/portal/account/EmailTemplateSelect";
 import { getInvoiceEmailStatusDisplay, latestDeliveryTrackingForYear } from "@/utils/invoiceEmailStatus";
 import { routes } from "@/routes/ROUTES";
 
@@ -58,6 +59,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
 
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [sendSms, setSendSms] = useState(true);
+  const [templateKey, setTemplateKey] = useState("invoice_delivery");
   const [isSending, setIsSending] = useState(false);
   const [deliveries, setDeliveries] = useState<InvoiceDelivery[]>([]);
   const [loadingDeliveries, setLoadingDeliveries] = useState(false);
@@ -232,6 +234,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
         propertyAddresses,
         propertyIds,
         invoiceIds: invoiceIds.length ? invoiceIds : undefined,
+        templateKey,
       });
 
       toast({
@@ -377,6 +380,13 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
                   {propertiesWithInvoice.length} PDF
                   {propertiesWithInvoice.length === 1 ? "" : "s"} for tax year {selectedYear}.
                 </p>
+                <EmailTemplateSelect
+                  id="client-invoice-template"
+                  purpose="invoice"
+                  value={templateKey}
+                  onChange={setTemplateKey}
+                  disabled={isSending}
+                />
                 {recipientPhone && (
                   <div className="flex items-center gap-2">
                     <Checkbox

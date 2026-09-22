@@ -1,12 +1,8 @@
 import { formatInvoiceClientName } from "./invoiceEmailTemplate.js";
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import {
+  PAYMENT_ACKNOWLEDGEMENT_TEMPLATE_KEY,
+  renderEmailTemplate,
+} from "./emailTemplateCatalog.js";
 
 function uniquePropertyAddresses(propertyAddresses = []) {
   return [
@@ -28,30 +24,38 @@ export function formatPaymentPropertyAddress(propertyAddresses = []) {
   return unique.join("; ");
 }
 
-export function getPaymentAcknowledgementSubject() {
-  return "Payment Received -Thank You";
+export function renderPaymentAcknowledgementSubject(subjectTemplate) {
+  return renderEmailTemplate(subjectTemplate, {}, { escape: false });
 }
 
 /**
  * HTML body for payment acknowledgement emails (Brevo transactional).
  */
-export function getPaymentAcknowledgementHtml({
-  clientName,
-  paymentAmount,
-  propertyAddresses = [],
-}) {
-  const displayName = escapeHtml(formatInvoiceClientName(clientName));
-  const amountLabel = escapeHtml(formatPaymentAmount(paymentAmount));
-  const propertyAddressLabel = escapeHtml(formatPaymentPropertyAddress(propertyAddresses));
+export function renderPaymentAcknowledgementHtml(
+  bodyTemplate,
+  { clientName, paymentAmount, propertyAddresses = [] } = {}
+) {
+  return renderEmailTemplate(bodyTemplate, {
+    clientName: formatInvoiceClientName(clientName),
+    paymentAmount: formatPaymentAmount(paymentAmount),
+    propertyAddress: formatPaymentPropertyAddress(propertyAddresses),
+  });
+}
 
-  return `
-<p>Dear ${displayName},</p>
-<p>We have received your payment of ${amountLabel} for ${propertyAddressLabel}.</p>
-<p>Thank you for your payment. We appreciate your business and the opportunity to assist you with your property tax needs. We look forward to working with you again next year.</p>
-<p>Best regards,<br/>
-Lone Star Property Tax<br/>
-832-847-3911<br/>
-Info@lsptax.com<br/>
-Results@lsptax.com</p>
-`.trim();
+export async function getPaymentAcknowledgementSubject(templateKey) {
+  const { getStoredEmailTemplate } = await import("../services/emailTemplateService.js");
+  const template = await getStoredEmailTemplate(
+    templateKey || PAYMENT_ACKNOWLEDGEMENT_TEMPLATE_KEY,
+    { purpose: "payment_acknowledgement" }
+  );
+  return renderPaymentAcknowledgementSubject(template.subject);
+}
+
+export async function getPaymentAcknowledgementHtml(args = {}) {
+  const { getStoredEmailTemplate } = await import("../services/emailTemplateService.js");
+  const template = await getStoredEmailTemplate(
+    args.templateKey || PAYMENT_ACKNOWLEDGEMENT_TEMPLATE_KEY,
+    { purpose: "payment_acknowledgement" }
+  );
+  return renderPaymentAcknowledgementHtml(template.bodyHtml, args);
 }

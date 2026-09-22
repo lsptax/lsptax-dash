@@ -12,6 +12,7 @@ import { AssociatedPropertiesSection } from "../shared/AssociatedPropertiesSecti
 import { ContractsAoasSection } from "../shared/ContractsAoasSection";
 import { EntityDetailRow, EntityDetailsCard } from "../shared/EntityDetailRow";
 import { SendEnvelopeDialog } from "../shared/SendEnvelopeDialog";
+import { SendClientEmailDialog } from "./SendClientEmailDialog";
 import { useEntityContracts } from "@/hooks/useEntityContracts";
 
 interface Client {
@@ -95,6 +96,7 @@ const ClientPage = () => {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BackToListLink fallback={routes.clients.list()} label="Back to clients" />
         <div className="flex flex-wrap items-center gap-2">
+          <SendClientEmailDialog clientId={client.id} clientName={client.clientName ?? ""} />
           <SendEnvelopeDialog
             kind="docs"
             entityId={client.id}
