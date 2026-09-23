@@ -109,8 +109,6 @@ export interface Invoice {
   taxableSavings?: number;
   contingencyFee?: number;
   contingencyFeePercent?: number;
-  /** Per-year flat fee in dollars (added to total due). */
-  flatFee?: number;
   invoiceAmount?: number;
   paidDate?: string;
   isPaid?: boolean;

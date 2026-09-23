@@ -1069,6 +1069,7 @@ const paymentAcknowledgementInvoiceInclude = {
   property: {
     select: {
       propertyAddress: true,
+      flatFee: true,
       client: {
         select: {
           id: true,
@@ -1369,6 +1370,7 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
           accountNumber: true,
           cadCounty: true,
           propertyAddress: true,
+          flatFee: true,
           client: {
             select: {
               id: true,

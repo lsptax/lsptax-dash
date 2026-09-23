@@ -28,7 +28,6 @@ export const YEARLY_INVOICE_FIELD_ALIASES = {
   taxRate: ["Tax Rate", "Overall Tax Rate"],
   taxableSavings: ["Taxable Savings", "Client Tax Savings"],
   contingencyFee: ["Contingency Fee"],
-  flatFee: ["Flat Fee"],
   invoiceAmount: ["Invoice Amount", "Due", "Total Fee Due"],
   paidDate: ["Paid Date"],
   isPaid: ["Is Paid", "Paid"],
@@ -53,7 +52,6 @@ const NUMERIC_INVOICE_FIELDS = new Set([
   "taxRate",
   "taxableSavings",
   "contingencyFee",
-  "flatFee",
   "invoiceAmount",
   "beginningMarket",
   "endingMarket",
@@ -359,10 +357,37 @@ export function computeInvoiceAmount(
   return roundMoney(savings * (pct / 100) + bppAmount + flat);
 }
 
+/** Property flat fee is a dollar string (legacy). Zero/blank means unset. */
+export function parsePropertyFlatFee(value) {
+  if (isEmptyYearlyInput(value)) return 0;
+  const parsed = parseOptionalDecimal(value);
+  if (parsed == null || parsed <= 0) return 0;
+  return roundMoney(parsed);
+}
+
+/**
+ * Property flat fee is the only flat fee. It is included on the current billing
+ * year invoice. Older year rows stay without it.
+ */
+export function flatFeeForInvoiceYear(
+  propertyFlatFee,
+  year,
+  billingYear = new Date().getFullYear()
+) {
+  if (Number(year) !== Number(billingYear)) return 0;
+  return parsePropertyFlatFee(propertyFlatFee);
+}
+
+function propertyFlatFeeSource(invoice, propertyFlatFee) {
+  if (propertyFlatFee !== undefined) return propertyFlatFee;
+  return invoice?.property?.flatFee;
+}
+
 /** Total due including BPP invoice amount; always recomputes invoiceAmount from stored inputs. */
-export function resolveInvoiceDueAmount(invoice, clientContingencyFee = 25) {
+export function resolveInvoiceDueAmount(invoice, clientContingencyFee = 25, propertyFlatFee) {
   return applyFullInvoiceCalculations(invoice, clientContingencyFee, {
     preserveDerivedFields: DERIVED_PRESERVE_EXCEPT_INVOICE_AMOUNT,
+    propertyFlatFee: propertyFlatFeeSource(invoice, propertyFlatFee),
   }).invoiceAmount;
 }
 
@@ -386,9 +411,14 @@ function chooseCalculatedOrProvided(merged, field, calculated, preserveDerivedFi
 export function applyFullInvoiceCalculations(
   invoice,
   clientContingencyFee = 25,
-  { preserveDerivedFields = false } = {}
+  { preserveDerivedFields = false, propertyFlatFee, billingYear } = {}
 ) {
   const merged = normalizeInvoiceForMerge(invoice);
+  const flatFee = flatFeeForInvoiceYear(
+    propertyFlatFeeSource(invoice, propertyFlatFee),
+    merged.year,
+    billingYear
+  );
 
   const rawContingency = merged.contingencyFee;
   // null / empty = unset (use client default). 0 is an explicit 0% override.
@@ -419,7 +449,7 @@ export function applyFullInvoiceCalculations(
     taxableSavings,
     merged.contingencyFee,
     merged.bppInvoice,
-    merged.flatFee
+    flatFee
   );
 
   return {
@@ -429,6 +459,7 @@ export function applyFullInvoiceCalculations(
     marketReduction,
     appraisedReduction,
     taxableSavings,
+    flatFee,
     invoiceAmount,
   };
 }
@@ -444,7 +475,12 @@ export function applyInvoiceCalculations(merged, options = {}) {
 /**
  * Build Prisma invoice patch from yearly row + existing invoice (partial update).
  */
-export function buildInvoicePatchFromYearlyData(yearlyRow, existingInvoice, clientContingencyFee) {
+export function buildInvoicePatchFromYearlyData(
+  yearlyRow,
+  existingInvoice,
+  clientContingencyFee,
+  propertyFlatFee
+) {
   const patch = {};
   const row = normalizeYearlyRow(yearlyRow);
   const existing = normalizeInvoiceForMerge(existingInvoice);
@@ -501,6 +537,7 @@ export function buildInvoicePatchFromYearlyData(yearlyRow, existingInvoice, clie
   const merged = { ...existing, ...patch };
   const calculated = applyFullInvoiceCalculations(merged, clientContingencyFee, {
     preserveDerivedFields: explicitDerivedFields,
+    propertyFlatFee,
   });
 
   const out = { ...patch };
@@ -514,7 +551,7 @@ export function buildInvoicePatchFromYearlyData(yearlyRow, existingInvoice, clie
     out.taxableSavings ?? calculated.taxableSavings,
     out.contingencyFee ?? calculated.contingencyFee,
     out.bppInvoice ?? merged.bppInvoice,
-    out.flatFee ?? calculated.flatFee ?? merged.flatFee
+    calculated.flatFee
   );
 
   return out;
@@ -543,10 +580,11 @@ export function buildRecalculatedInvoicePatch(invoice, clientContingencyFee = 25
 export function derivedInvoicePatch(
   invoice,
   clientContingencyFee = 25,
-  { preserveDerivedFields = false } = {}
+  { preserveDerivedFields = false, propertyFlatFee } = {}
 ) {
   const calculated = applyFullInvoiceCalculations(invoice, clientContingencyFee, {
     preserveDerivedFields,
+    propertyFlatFee,
   });
   const out = {};
   for (const field of DERIVED_INVOICE_FIELDS) {
@@ -559,11 +597,12 @@ export function derivedInvoicePatch(
 /**
  * API DTO: coerce numerics and apply full calculations for display (even if DB is stale).
  */
-export function invoiceToApiDto(invoice, clientContingencyFee = 25) {
+export function invoiceToApiDto(invoice, clientContingencyFee = 25, propertyFlatFee) {
   if (!invoice) return invoice;
   const bppInvoiceAmount = parseBppInvoiceAmount(invoice.bppInvoice);
   const calculated = applyFullInvoiceCalculations(invoice, clientContingencyFee, {
     preserveDerivedFields: DERIVED_PRESERVE_EXCEPT_INVOICE_AMOUNT,
+    propertyFlatFee: propertyFlatFeeSource(invoice, propertyFlatFee),
   });
   const dto = { ...invoice };
   for (const key of NUMERIC_INVOICE_FIELDS) {
@@ -571,5 +610,6 @@ export function invoiceToApiDto(invoice, clientContingencyFee = 25) {
   }
   dto.contingencyFeePercent = Number(calculated.contingencyFee);
   dto.bppInvoiceAmount = bppInvoiceAmount;
+  delete dto.flatFee;
   return dto;
 }

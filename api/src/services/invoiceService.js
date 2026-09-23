@@ -71,7 +71,9 @@ export async function getInvoiceByPropertyId(propertyId) {
           flatFee: client.flatFee != null ? Number(client.flatFee) : null,
         }
       : null,
-    invoices: invoices.map((inv) => invoiceToApiDto(inv, clientContingencyFee)),
+    invoices: invoices.map((inv) =>
+      invoiceToApiDto(inv, clientContingencyFee, property.flatFee)
+    ),
   };
 }
 
@@ -129,6 +131,7 @@ export async function getInvoicesByClientId(clientId, limit, offset, search) {
           clientNumber: true,
           cadCounty: true,
           propertyAddress: true,
+          flatFee: true,
         },
       },
     },
@@ -429,6 +432,7 @@ async function loadGroupedInvoices({
       property: {
         select: {
           clientId: true,
+          flatFee: true,
           client: {
             select: {
               id: true,

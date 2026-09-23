@@ -10,7 +10,12 @@ import { paginate } from "../utils/pagination.js";
 import { sanitizeSearchTerm } from "../utils/search.js";
 import { propertySearchWhere } from "../utils/propertySearch.js";
 import { buildCadMailingAddressDisplay } from "../utils/propertyAddress.js";
-import { invoiceToApiDto, resolveClientContingencyDefault } from "../utils/invoiceYearlyData.js";
+import {
+  computeInvoiceAmount,
+  flatFeeForInvoiceYear,
+  invoiceToApiDto,
+  resolveClientContingencyDefault,
+} from "../utils/invoiceYearlyData.js";
 
 const propertyToDto = (p) => {
   const cadMailing = buildCadMailingAddressDisplay(p);
@@ -171,7 +176,11 @@ export async function getPropertyDetails(propertyId) {
         }
       : client,
     invoices: invoices.map((inv) =>
-      invoiceToApiDto(inv, resolveClientContingencyDefault(client))
+      invoiceToApiDto(
+        inv,
+        resolveClientContingencyDefault(client),
+        propertyOnly.flatFee
+      )
     ),
     lifecycle,
     hearings,
@@ -298,13 +307,17 @@ export async function addPropertyToClient(clientId, propertyData) {
 
   const currentYear = new Date().getFullYear();
   const startYear = currentYear - 4;
+  const clientPct = resolveClientContingencyDefault(client);
   for (let year = startYear; year <= currentYear + 1; year++) {
+    const flatFee = flatFeeForInvoiceYear(newProperty.flatFee, year, currentYear);
     await prisma.invoice.create({
       data: {
         propertyId: newProperty.id,
         accountNumber: newProperty.accountNumber,
         clientNumber: client.clientNumber,
         year,
+        contingencyFee: clientPct,
+        invoiceAmount: computeInvoiceAmount(0, clientPct, 0, flatFee),
       },
     });
   }

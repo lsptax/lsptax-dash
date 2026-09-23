@@ -14,6 +14,7 @@ import { propertyImportIdentityKey } from "../utils/propertyImportKey.js";
 import {
   computeInvoiceAmount,
   derivedInvoicePatch,
+  flatFeeForInvoiceYear,
   INVOICE_EXPLICIT_DERIVED_PRESERVE_FIELDS,
   normalizeInvoiceForMerge,
   normalizeInvoiceDateString,
@@ -368,7 +369,7 @@ function parseInvoiceRow(row) {
       String(getByHeaders(row, "underArbitration", "Under Arbitration") ?? "").toLowerCase() === "true",
     paidDate: normalizeInvoiceDateString(getByHeaders(row, "paidDate", "Paid Date") ?? ""),
     paymentNotes: getByHeaders(row, "paymentNotes", "Payment Notes") ?? "",
-    flatFee: parseClientFlatFee(getByHeaders(row, "flatFee", "Flat Fee")) ?? 0,
+    propertyFlatFee: parseClientFlatFee(getByHeaders(row, "flatFee", "Flat Fee")),
   };
   for (const key of INVOICE_CSV_NUMERIC) {
     const spaced = key.replace(/([A-Z])/g, " $1").trim();
@@ -442,7 +443,6 @@ function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
     paidDate: parsed.paidDate,
     isPaid: Boolean(String(parsed.paidDate || "").trim()),
     paymentNotes: parsed.paymentNotes,
-    flatFee: parsed.flatFee,
     ...numericFields,
   };
 
@@ -468,11 +468,13 @@ function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
   }
 
   // Always recompute total due so flat fee is included regardless of tax rate/reduction.
+  const csvFlat = Number(parsed.propertyFlatFee);
+  const propertyFlatFee = csvFlat > 0 ? csvFlat : prop.flatFee;
   data.invoiceAmount = computeInvoiceAmount(
     data.taxableSavings,
     data.contingencyFee,
     data.bppInvoice,
-    data.flatFee
+    flatFeeForInvoiceYear(propertyFlatFee, parsed.year)
   );
 
   return data;
@@ -686,6 +688,17 @@ export async function uploadInvoiceCsv(req, res) {
       }
 
       const clientPct = resolveClientContingencyDefault(prop.client);
+      const csvFlat = Number(parsed.propertyFlatFee);
+      if (csvFlat > 0) {
+        const formatted = (Math.round(csvFlat * 100) / 100).toFixed(2);
+        if (String(prop.flatFee ?? "") !== formatted) {
+          await prisma.property.update({
+            where: { id: prop.id },
+            data: { flatFee: formatted },
+          });
+          prop.flatFee = formatted;
+        }
+      }
 
       const key = `${prop.id}-${parsed.year}`;
       const existing = existingByKey.get(key);

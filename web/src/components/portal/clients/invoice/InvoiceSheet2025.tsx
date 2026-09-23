@@ -121,7 +121,14 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
               );
             })()}
             {(() => {
-              const flatFeeAmount = getFlatFeeAmount(yearInvoice);
+              const flatFeeAmount =
+                selectedYear === new Date().getFullYear()
+                  ? getFlatFeeAmount({
+                      flatFee:
+                        property.propertyDetails.flatFee ??
+                        property.propertyDetails.FlatFee,
+                    })
+                  : 0;
               if (flatFeeAmount <= 0) return null;
               return (
                 <>

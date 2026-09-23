@@ -284,6 +284,7 @@ export const getInvoiceGenerationStats = async (req, res) => {
       include: {
         property: {
           select: {
+            flatFee: true,
             client: { select: { contingencyFee: true } },
           },
         },

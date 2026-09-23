@@ -20,20 +20,42 @@ describe("resolveClientContingencyDefault", () => {
 });
 
 describe("resolveInvoiceDueAmount", () => {
-  const flatFeeInvoice = {
+  const savingsInvoice = {
+    year: 2026,
     noticeAppraisedValue: 100000,
     finalAppraisedValue: 84669.93,
     taxRate: 2.3864,
     contingencyFee: null,
-    flatFee: 150,
     bppInvoice: "$0",
   };
 
-  it("uses the client 0% default plus flat fee when invoice contingency is unset", () => {
-    assert.equal(resolveInvoiceDueAmount(flatFeeInvoice, 0), 150);
+  it("uses the client 0% default plus the property flat fee on the billing year", () => {
+    assert.equal(resolveInvoiceDueAmount(savingsInvoice, 0, "150"), 150);
   });
 
-  it("does not treat unset invoice contingency as 25% when the client default is 0", () => {
-    assert.equal(resolveInvoiceDueAmount(flatFeeInvoice, 25), 241.46);
+  it("adds 25% contingency on top of the property flat fee when that is the client default", () => {
+    assert.equal(resolveInvoiceDueAmount(savingsInvoice, 25, "150"), 241.46);
+  });
+
+  it("uses the property flat fee even when an invoice flat fee is still present", () => {
+    assert.equal(
+      resolveInvoiceDueAmount(
+        { ...savingsInvoice, flatFee: 999, contingencyFee: 0, taxableSavings: 0 },
+        0,
+        "150.00"
+      ),
+      150
+    );
+  });
+
+  it("does not add the property flat fee to older year invoices", () => {
+    assert.equal(
+      resolveInvoiceDueAmount(
+        { year: 2025, flatFee: 999, contingencyFee: 0, taxableSavings: 0 },
+        0,
+        "150.00"
+      ),
+      0
+    );
   });
 });

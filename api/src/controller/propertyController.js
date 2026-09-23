@@ -101,8 +101,9 @@ export const editProperty = async (req, res) => {
         const normalizedRow = normalizeYearlyRow(row);
         const patch = buildInvoicePatchFromYearlyData(
           normalizedRow,
-          existing,
-          clientContingencyFee
+          existing ? { ...existing, year: existing.year ?? yearInt } : { year: yearInt },
+          clientContingencyFee,
+          updatedProperty.flatFee
         );
 
         logEditPropertyDebug(`year ${yearInt}`, {

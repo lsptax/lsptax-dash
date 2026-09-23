@@ -3,6 +3,7 @@ import {
   DERIVED_INVOICE_FIELDS,
   derivedInvoicePatch,
   resolveClientContingencyDefault,
+  flatFeeForInvoiceYear,
   INVOICE_DATE_STRING_FIELDS,
   normalizeInvoiceDateString,
   todayInvoiceDateString,
@@ -138,6 +139,7 @@ export async function generateInvoices(options) {
           };
           const derived = derivedInvoicePatch(merged, clientPct, {
             preserveDerivedFields: getStoredDerivedFields(existing),
+            propertyFlatFee: property.flatFee,
           });
 
           updateData.push({
@@ -160,9 +162,10 @@ export async function generateInvoices(options) {
             accountNumber: property.accountNumber,
             clientNumber: property.clientNumber,
             year,
-            invoiceDate: metadataDefaults.invoiceDate ?? today,
             contingencyFee: clientPct,
             ...metadataDefaults,
+            invoiceDate: metadataDefaults.invoiceDate ?? today,
+            invoiceAmount: flatFeeForInvoiceYear(property.flatFee, year),
           };
           invoiceData.push(shell);
           createdInvoices.push({

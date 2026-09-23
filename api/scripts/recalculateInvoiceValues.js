@@ -59,6 +59,7 @@ async function main() {
       property: {
         select: {
           accountNumber: true,
+          flatFee: true,
           client: { select: { contingencyFee: true } },
         },
       },
