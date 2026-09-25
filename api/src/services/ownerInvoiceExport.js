@@ -1,5 +1,6 @@
 import {
   applyFullInvoiceCalculations,
+  INVOICE_EXPLICIT_DERIVED_PRESERVE_FIELDS,
   parseBppInvoiceAmount,
 } from "../utils/invoiceYearlyData.js";
 
@@ -51,6 +52,7 @@ export function toInvoiceExportRow(row) {
   const property = row?.property || {};
   const client = property.client || {};
   const calculated = applyFullInvoiceCalculations(row, client.contingencyFee, {
+    preserveDerivedFields: INVOICE_EXPLICIT_DERIVED_PRESERVE_FIELDS,
     propertyFlatFee: property.flatFee,
   });
 

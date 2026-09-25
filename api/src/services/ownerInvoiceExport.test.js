@@ -70,6 +70,18 @@ describe("toInvoiceExportRow", () => {
     assert.equal(exported.paid, "No");
   });
 
+  it("keeps stored market values when they differ from land plus improvement", () => {
+    const exported = toInvoiceExportRow({
+      ...row,
+      noticeMarketValue: 110000,
+      finalMarketValue: 90000,
+    });
+    assert.equal(exported.noticeMarketValue, 110000);
+    assert.equal(exported.finalMarketValue, 90000);
+    assert.equal(exported.marketReduction, 20000);
+    assert.equal(exported.invoiceAmount, 266.46);
+  });
+
   it("marks a paid invoice", () => {
     const exported = toInvoiceExportRow({
       ...row,
