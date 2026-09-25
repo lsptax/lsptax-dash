@@ -19,15 +19,26 @@ export default function OwnerExports({ filters }: { filters: OwnerFilters }) {
   const [busy, setBusy] = useState(false);
   const [clients, setClients] = useState(true);
   const [properties, setProperties] = useState(true);
+  const [invoices, setInvoices] = useState(true);
+  const selectedCount = [clients, properties, invoices].filter(Boolean).length;
+  const downloadLabel =
+    selectedCount === 3
+      ? "Download all sheets"
+      : selectedCount === 2
+        ? "Download both sheets"
+        : "Download";
 
   async function exportSelected() {
-    if (!clients && !properties) {
-      toast({ title: "Pick client details, property details, or both.", variant: "destructive" });
+    if (!selectedCount) {
+      toast({
+        title: "Pick client details, property details, invoice details, or a combination.",
+        variant: "destructive",
+      });
       return;
     }
     setBusy(true);
     try {
-      await downloadFilteredRosterXlsx(filters, { clients, properties });
+      await downloadFilteredRosterXlsx(filters, { clients, properties, invoices });
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : "Download failed",
@@ -69,9 +80,16 @@ export default function OwnerExports({ filters }: { filters: OwnerFilters }) {
         >
           Property details
         </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={invoices}
+          onCheckedChange={(checked) => setInvoices(Boolean(checked))}
+          onSelect={(event) => event.preventDefault()}
+        >
+          Invoice details
+        </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={!clients && !properties} onSelect={() => exportSelected()}>
-          Download{clients && properties ? " both sheets" : ""}
+        <DropdownMenuItem disabled={!selectedCount} onSelect={() => exportSelected()}>
+          {downloadLabel}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

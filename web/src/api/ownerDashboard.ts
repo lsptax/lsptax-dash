@@ -137,13 +137,20 @@ function filenameFromDisposition(header: string | null, fallback: string): strin
 
 export async function downloadFilteredRosterXlsx(
   filters: OwnerFilters = {},
-  sheets: { clients?: boolean; properties?: boolean } = { clients: true, properties: true }
+  sheets: { clients?: boolean; properties?: boolean; invoices?: boolean } = {
+    clients: true,
+    properties: true,
+    invoices: true,
+  }
 ): Promise<void> {
   const selected = [
     sheets.clients ? "clients" : "",
     sheets.properties ? "properties" : "",
+    sheets.invoices ? "invoices" : "",
   ].filter(Boolean);
-  if (!selected.length) throw new Error("Pick client details, property details, or both.");
+  if (!selected.length) {
+    throw new Error("Pick client details, property details, invoice details, or a combination.");
+  }
   const res = await authFetch(withFilters("/report/properties", filters, { sheets: selected.join(",") }));
   if (res.status === 403) throw new Error("You do not have access to owner reports.");
   if (!res.ok) throw new Error(`Failed to download export (${res.status})`);

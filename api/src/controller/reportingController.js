@@ -8,6 +8,7 @@ import {
   csvForUnpaidReport,
   sendCsv,
 } from "../services/ownerReportCsv.js";
+import { INVOICE_EXPORT_FIELDS } from "../services/ownerInvoiceExport.js";
 import { parseReportFilters } from "../utils/reportFilters.js";
 
 function firstQuery(value) {
@@ -54,6 +55,7 @@ function parseSheetList(value) {
   return {
     clients: wanted.has("clients") || wanted.has("client"),
     properties: wanted.has("properties") || wanted.has("property"),
+    invoices: wanted.has("invoices") || wanted.has("invoice"),
   };
 }
 
@@ -82,9 +84,12 @@ export const downloadReportPropertiesCSV = async (req, res) => {
   try {
     const filters = queryFilters(req);
     const wanted = parseSheetList(req.query.sheets);
-    const roster = await dashboardService.getFilteredRosterExport(filters);
+    const roster =
+      wanted.clients || wanted.properties
+        ? await dashboardService.getFilteredRosterExport(filters)
+        : { clients: [], properties: [] };
 
-    if (wanted.clients || wanted.properties) {
+    if (wanted.clients || wanted.properties || wanted.invoices) {
       const sheets = [];
       if (wanted.clients) {
         sheets.push({ name: "Clients", data: roster.clients, fields: CLIENT_EXPORT_FIELDS });
@@ -95,6 +100,10 @@ export const downloadReportPropertiesCSV = async (req, res) => {
           data: roster.properties,
           fields: PROPERTY_EXPORT_FIELDS,
         });
+      }
+      if (wanted.invoices) {
+        const invoices = await dashboardService.getFilteredInvoiceExport(filters);
+        sheets.push({ name: "Invoices", data: invoices, fields: INVOICE_EXPORT_FIELDS });
       }
       const buffer = convertSheetsToXLSX(sheets);
       res.setHeader(

@@ -7,6 +7,7 @@ import {
   referenceDateFromFilters,
   taxYearsFromFilters,
 } from "../utils/reportFilters.js";
+import { toInvoiceExportRow } from "./ownerInvoiceExport.js";
 import {
   BILLED_GROUP_BY,
   COLLECTED_DEFINITION_V1,
@@ -423,4 +424,67 @@ export async function getFilteredRosterExport(filters = {}) {
   );
 
   return { clients, properties: propertyRows };
+}
+
+const INVOICE_EXPORT_SELECT = {
+  id: true,
+  year: true,
+  accountNumber: true,
+  clientNumber: true,
+  bppInvoice: true,
+  noticeLandValue: true,
+  noticeImprovementValue: true,
+  noticeMarketValue: true,
+  noticeAppraisedValue: true,
+  finalLandValue: true,
+  finalImprovementValue: true,
+  finalMarketValue: true,
+  finalAppraisedValue: true,
+  hearingDate: true,
+  invoiceDate: true,
+  dueDate: true,
+  generatedDate: true,
+  underLitigation: true,
+  underArbitration: true,
+  taxRate: true,
+  contingencyFee: true,
+  paidDate: true,
+  isPaid: true,
+  paymentNotes: true,
+  property: {
+    select: {
+      accountNumber: true,
+      nameOnCad: true,
+      propertyAddress: true,
+      cadCounty: true,
+      flatFee: true,
+      client: {
+        select: {
+          clientNumber: true,
+          clientName: true,
+          contingencyFee: true,
+        },
+      },
+    },
+  },
+};
+
+/** Invoice rows for the owner workbook. Tax year limits the years; other entity filters still apply. */
+export async function getFilteredInvoiceExport(filters = {}) {
+  const rows = await prisma.invoice.findMany({
+    where: prismaEntityWhere(filters),
+    select: INVOICE_EXPORT_SELECT,
+  });
+
+  return rows
+    .map(toInvoiceExportRow)
+    .sort((a, b) => {
+      const yearDiff = Number(b.taxYear) - Number(a.taxYear);
+      if (yearDiff) return yearDiff;
+      const name = String(a.clientName).localeCompare(String(b.clientName));
+      if (name) return name;
+      return String(a.accountNumber).localeCompare(String(b.accountNumber), undefined, {
+        numeric: true,
+      });
+    });
 }
