@@ -1,5 +1,6 @@
 import {
   INVOICE_EMAIL_TEMPLATE_KEY,
+  ZERO_SAVINGS_INVOICE_TEMPLATE_KEY,
   escapeHtml,
   renderEmailTemplate,
 } from "./emailTemplateCatalog.js";
@@ -61,11 +62,26 @@ export function renderInvoiceEmailHtml(
   }, { rawKeys: ["logo"] });
 }
 
-export async function getInvoiceEmailSubject({ year, propertyAddresses = [], templateKey } = {}) {
+function invoiceTemplatePurpose(templateKey) {
+  return templateKey === ZERO_SAVINGS_INVOICE_TEMPLATE_KEY
+    ? "invoice_zero_savings"
+    : "invoice";
+}
+
+async function getStoredInvoiceTemplate(templateKey) {
   const { getStoredEmailTemplate } = await import("../services/emailTemplateService.js");
-  const template = await getStoredEmailTemplate(templateKey || INVOICE_EMAIL_TEMPLATE_KEY, {
-    purpose: "invoice",
-  });
+  const key = templateKey || INVOICE_EMAIL_TEMPLATE_KEY;
+  const purpose = invoiceTemplatePurpose(key);
+  try {
+    return await getStoredEmailTemplate(key, { purpose });
+  } catch (error) {
+    if (purpose === "invoice_zero_savings") throw error;
+    return getStoredEmailTemplate(key, { purpose: "invoice_zero_savings" });
+  }
+}
+
+export async function getInvoiceEmailSubject({ year, propertyAddresses = [], templateKey } = {}) {
+  const template = await getStoredInvoiceTemplate(templateKey);
   return renderInvoiceEmailSubject(template.subject, { year, propertyAddresses });
 }
 
@@ -79,10 +95,7 @@ export async function getInvoiceEmailHtml({
   logoUrl,
   templateKey,
 } = {}) {
-  const { getStoredEmailTemplate } = await import("../services/emailTemplateService.js");
-  const template = await getStoredEmailTemplate(templateKey || INVOICE_EMAIL_TEMPLATE_KEY, {
-    purpose: "invoice",
-  });
+  const template = await getStoredInvoiceTemplate(templateKey);
   return renderInvoiceEmailHtml(template.bodyHtml, {
     clientName,
     year,

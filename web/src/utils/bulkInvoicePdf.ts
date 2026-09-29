@@ -13,6 +13,7 @@ import { elementToPdfBase64 } from "@/utils/elementToPdfBase64";
 import { normalizeInvoiceData } from "@/utils/invoiceDataNormalization";
 import { toSafeFilenamePart } from "@/components/portal/clients/invoice/InvoiceSheet2025";
 import { getInvoiceSheetDates } from "@/utils/invoiceDates";
+import { resolveInvoiceTemplate, type InvoiceTemplate } from "@/utils/invoiceTemplate";
 
 export const MAX_BULK_INVOICE_DOWNLOAD = 400;
 
@@ -26,6 +27,7 @@ export type InvoicePdfRenderJob = {
   selectedYear: number;
   invoiceDate: string;
   dueDate: string;
+  variant: InvoiceTemplate;
 };
 
 export const nextFrame = () =>
@@ -163,6 +165,7 @@ const buildJobsFromInvoiceData = (
           selectedYear,
           invoiceDate,
           dueDate: dueDate,
+          variant: resolveInvoiceTemplate(yearInvoice),
         };
       });
   });

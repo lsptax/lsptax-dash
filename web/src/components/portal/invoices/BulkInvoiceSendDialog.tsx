@@ -35,6 +35,7 @@ import { formatUSD } from "@/utils/formatCurrency";
 import { InvoicePdfRenderSheets } from "./InvoicePdfRenderSheets";
 import { InvoiceEmailStatusBadge } from "./InvoiceEmailStatusBadge";
 import { EmailTemplateSelect } from "@/components/portal/account/EmailTemplateSelect";
+import { ZERO_SAVINGS_INVOICE_TEMPLATE_KEY } from "@/utils/zeroSavingsInvoice";
 import { PROPERTY_INVOICE_YEARS } from "@/components/portal/properties/propertyInvoiceYears";
 import {
   Select,
@@ -48,6 +49,10 @@ import { Label } from "@/components/ui/label";
 function initialSendYear(years?: number[]) {
   const selected = (years ?? []).map(Number).filter((value) => Number.isFinite(value));
   return selected.length === 1 ? String(selected[0]) : "all";
+}
+
+function recipientGroupKey(recipient: BulkInvoiceRecipient) {
+  return recipient.groupKey || `${recipient.clientId}:${recipient.savingsKind || "savings"}`;
 }
 
 type BulkInvoiceSendDialogProps = {
@@ -68,7 +73,7 @@ export function BulkInvoiceSendDialog({
   const { toast } = useToast();
   const sheetRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [recipients, setRecipients] = useState<BulkInvoiceRecipient[]>([]);
-  const [selectedClientIds, setSelectedClientIds] = useState<Set<number>>(new Set());
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
   const [renderJobs, setRenderJobs] = useState<InvoicePdfRenderJob[]>([]);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -79,6 +84,9 @@ export function BulkInvoiceSendDialog({
   const [loadingPaymentContacts, setLoadingPaymentContacts] = useState(false);
   const [unpaidSkippedCount, setUnpaidSkippedCount] = useState(0);
   const [templateKey, setTemplateKey] = useState(initialTemplateKey || "invoice_delivery");
+  const [zeroSavingsTemplateKey, setZeroSavingsTemplateKey] = useState(
+    ZERO_SAVINGS_INVOICE_TEMPLATE_KEY
+  );
   const [sendMode, setSendMode] = useState<"invoice" | "payment_acknowledgement">("invoice");
   const [year, setYear] = useState(() => initialSendYear(filters.years));
 
@@ -102,9 +110,20 @@ export function BulkInvoiceSendDialog({
   }, [filters, year]);
 
   const selectedRecipients = useMemo(
-    () => recipients.filter((recipient) => selectedClientIds.has(recipient.clientId) && recipient.canSend),
-    [recipients, selectedClientIds]
+    () =>
+      recipients.filter(
+        (recipient) => selectedGroupKeys.has(recipientGroupKey(recipient)) && recipient.canSend
+      ),
+    [recipients, selectedGroupKeys]
   );
+  const selectionMix = useMemo<"zero" | "savings" | "mixed" | "none">(() => {
+    const hasZero = selectedRecipients.some((recipient) => recipient.savingsKind === "zero_savings");
+    const hasSavings = selectedRecipients.some((recipient) => recipient.savingsKind !== "zero_savings");
+    if (hasZero && hasSavings) return "mixed";
+    if (hasZero) return "zero";
+    if (hasSavings) return "savings";
+    return "none";
+  }, [selectedRecipients]);
   const matchedInvoiceCount = useMemo(
     () => recipients.reduce((sum, recipient) => sum + recipient.invoiceCount, 0),
     [recipients]
@@ -119,9 +138,11 @@ export function BulkInvoiceSendDialog({
   );
   const singleClientId = filters.clientIds?.length === 1 ? filters.clientIds[0] : undefined;
   const paymentInvoiceKey = selectedInvoiceIds.join(",");
+  const appliedMixRef = useRef<string | null>(null);
 
   const loadRecipients = async () => {
     setLoadingRecipients(true);
+    setRecipients([]);
     setRenderJobs([]);
     try {
       const result = await getBulkInvoiceRecipients({
@@ -129,9 +150,24 @@ export function BulkInvoiceSendDialog({
         hasEmail: true,
         limit: effectiveFilters.limit ?? 500,
       });
+      const selectable = result.recipients.filter((recipient) => recipient.canSend);
+      const hasZero = selectable.some((recipient) => recipient.savingsKind === "zero_savings");
+      const hasSavings = selectable.some((recipient) => recipient.savingsKind !== "zero_savings");
+      const mix = hasZero && hasSavings ? "mixed" : hasZero ? "zero" : hasSavings ? "savings" : "none";
+      const savingsDefault =
+        initialTemplateKey && initialTemplateKey !== ZERO_SAVINGS_INVOICE_TEMPLATE_KEY
+          ? initialTemplateKey
+          : "invoice_delivery";
+      if (mix === "zero") {
+        setTemplateKey(ZERO_SAVINGS_INVOICE_TEMPLATE_KEY);
+      } else if (mix === "savings" || mix === "mixed") {
+        setTemplateKey(savingsDefault);
+        if (mix === "mixed") setZeroSavingsTemplateKey(ZERO_SAVINGS_INVOICE_TEMPLATE_KEY);
+      }
+      appliedMixRef.current = mix === "none" ? null : mix;
       setRecipients(result.recipients);
-      setSelectedClientIds(
-        new Set(result.recipients.filter((recipient) => recipient.canSend).map((recipient) => recipient.clientId))
+      setSelectedGroupKeys(
+        new Set(selectable.map((recipient) => recipientGroupKey(recipient)))
       );
       setTruncated(result.truncated);
     } catch (error) {
@@ -147,8 +183,10 @@ export function BulkInvoiceSendDialog({
 
   useEffect(() => {
     const purpose = selectedTemplate?.purpose;
-    if (purpose === "invoice" || purpose === "payment_acknowledgement") {
-      setSendMode(purpose);
+    if (purpose === "invoice" || purpose === "invoice_zero_savings") {
+      setSendMode("invoice");
+    } else if (purpose === "payment_acknowledgement") {
+      setSendMode("payment_acknowledgement");
     }
   }, [selectedTemplate?.purpose]);
 
@@ -158,9 +196,30 @@ export function BulkInvoiceSendDialog({
     if (open && !wasOpenRef.current) {
       setYear(initialSendYear(filters.years));
       if (initialTemplateKey) setTemplateKey(initialTemplateKey);
+      setZeroSavingsTemplateKey(ZERO_SAVINGS_INVOICE_TEMPLATE_KEY);
+      appliedMixRef.current = null;
     }
+    if (!open) appliedMixRef.current = null;
     wasOpenRef.current = open;
   }, [open, filters.years, initialTemplateKey]);
+
+  useEffect(() => {
+    if (!open || !isInvoiceTemplate || loadingRecipients || selectionMix === "none") return;
+    if (appliedMixRef.current === selectionMix) return;
+    appliedMixRef.current = selectionMix;
+    const savingsDefault =
+      initialTemplateKey && initialTemplateKey !== ZERO_SAVINGS_INVOICE_TEMPLATE_KEY
+        ? initialTemplateKey
+        : "invoice_delivery";
+    if (selectionMix === "zero") {
+      setTemplateKey(ZERO_SAVINGS_INVOICE_TEMPLATE_KEY);
+      return;
+    }
+    setTemplateKey(savingsDefault);
+    if (selectionMix === "mixed") {
+      setZeroSavingsTemplateKey(ZERO_SAVINGS_INVOICE_TEMPLATE_KEY);
+    }
+  }, [open, isInvoiceTemplate, loadingRecipients, selectionMix, initialTemplateKey]);
 
   useEffect(() => {
     if (open && isInvoiceTemplate) {
@@ -204,11 +263,11 @@ export function BulkInvoiceSendDialog({
     }
   };
 
-  const toggleRecipient = (clientId: number, checked: boolean) => {
-    setSelectedClientIds((current) => {
+  const toggleRecipient = (groupKey: string, checked: boolean) => {
+    setSelectedGroupKeys((current) => {
       const next = new Set(current);
-      if (checked) next.add(clientId);
-      else next.delete(clientId);
+      if (checked) next.add(groupKey);
+      else next.delete(groupKey);
       return next;
     });
   };
@@ -235,7 +294,12 @@ export function BulkInvoiceSendDialog({
 
       const attachmentsByClient = [];
       for (const recipient of selectedRecipients) {
-        const clientJobs = jobs.filter((job) => job.clientId === recipient.clientId);
+        const invoiceIds = new Set(recipient.invoiceIds.map(Number));
+        const clientJobs = jobs.filter(
+          (job) =>
+            job.clientId === recipient.clientId &&
+            (invoiceIds.size === 0 || invoiceIds.has(Number(job.yearInvoice.id)))
+        );
         const captureElements = clientJobs.map((job) => {
           const element = sheetRefs.current.get(job.key);
           if (!element) {
@@ -246,7 +310,14 @@ export function BulkInvoiceSendDialog({
 
         attachmentsByClient.push({
           clientId: recipient.clientId,
+          groupKey: recipientGroupKey(recipient),
           year: recipient.years.length === 1 ? recipient.years[0] : undefined,
+          templateKey:
+            recipient.savingsKind === "zero_savings"
+              ? selectionMix === "mixed"
+                ? zeroSavingsTemplateKey
+                : templateKey
+              : templateKey,
           attachments: await elementsToPdfAttachments(captureElements),
         });
       }
@@ -254,7 +325,8 @@ export function BulkInvoiceSendDialog({
       const result = await bulkSendInvoices({
         filters: {
           ...effectiveFilters,
-          clientIds: selectedRecipients.map((recipient) => recipient.clientId),
+          invoiceIds: selectedRecipients.flatMap((recipient) => recipient.invoiceIds),
+          clientIds: [...new Set(selectedRecipients.map((recipient) => recipient.clientId))],
           hasEmail: true,
         },
         attachmentsByClient,
@@ -345,19 +417,75 @@ export function BulkInvoiceSendDialog({
             <DialogTitle>{isInvoiceTemplate ? "Send invoice email" : "Send payment acknowledgement"}</DialogTitle>
             <DialogDescription>
               {isInvoiceTemplate
-                ? "Each contact gets one email. Invoices for the same person are combined."
+                ? selectionMix === "zero"
+                  ? "All selected invoices have $0 tax savings. Each contact gets one email using the 0 Savings template."
+                  : selectionMix === "mixed"
+                    ? "This selection has tax savings and $0 savings. Each contact gets one email for each, and you choose both templates."
+                    : selectionMix === "savings"
+                      ? "These invoices have tax savings. Each contact gets one email using the invoice template."
+                      : "Each contact gets one email. Invoices for the same person are combined."
                 : "Choose a payment acknowledgement template, then pick the contacts who should receive it. Unpaid invoices are left out."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className={isInvoiceTemplate ? "grid gap-3 sm:grid-cols-2" : "grid gap-3"}>
-              <EmailTemplateSelect
-                id="bulk-invoice-template"
-                value={templateKey}
-                onChange={setTemplateKey}
-                disabled={isSending}
-              />
+              {isInvoiceTemplate && loadingRecipients ? (
+                <p className="text-sm text-muted-foreground sm:col-span-2">Checking savings on the selected invoices…</p>
+              ) : null}
+              {isInvoiceTemplate && !loadingRecipients && selectionMix === "mixed" ? (
+                <>
+                  <p className="text-sm text-muted-foreground sm:col-span-2">
+                    Some invoices have tax savings and some have $0 savings. Pick a template for each email.
+                  </p>
+                  <EmailTemplateSelect
+                    id="bulk-savings-template"
+                    label="Tax savings template"
+                    purpose="invoice"
+                    value={templateKey}
+                    onChange={setTemplateKey}
+                    disabled={isSending}
+                  />
+                  <EmailTemplateSelect
+                    id="bulk-zero-template"
+                    label="0 savings template"
+                    purpose="invoice_zero_savings"
+                    value={zeroSavingsTemplateKey}
+                    onChange={setZeroSavingsTemplateKey}
+                    disabled={isSending}
+                  />
+                </>
+              ) : null}
+              {isInvoiceTemplate && !loadingRecipients && selectionMix !== "mixed" ? (
+                <div className="space-y-1.5">
+                  {selectionMix === "zero" ? (
+                    <p className="text-sm text-muted-foreground">
+                      All selected invoices have $0 tax savings, so the 0 Savings template is selected.
+                    </p>
+                  ) : null}
+                  {selectionMix === "savings" ? (
+                    <p className="text-sm text-muted-foreground">
+                      These invoices have tax savings, so the invoice email template is selected.
+                    </p>
+                  ) : null}
+                  <EmailTemplateSelect
+                    id="bulk-invoice-template"
+                    purpose={selectionMix === "zero" ? "invoice_zero_savings" : "invoice"}
+                    extraPurposes={["payment_acknowledgement"]}
+                    value={templateKey}
+                    onChange={setTemplateKey}
+                    disabled={isSending}
+                  />
+                </div>
+              ) : null}
+              {!isInvoiceTemplate ? (
+                <EmailTemplateSelect
+                  id="bulk-invoice-template"
+                  value={templateKey}
+                  onChange={setTemplateKey}
+                  disabled={isSending}
+                />
+              ) : null}
               {isInvoiceTemplate ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="bulk-invoice-year">Tax year</Label>
@@ -388,12 +516,22 @@ export function BulkInvoiceSendDialog({
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {loadingRecipients
-                    ? "Invoices for the same contact are combined into one email."
+                    ? "Invoices for the same contact are combined. $0 savings invoices are split into their own email."
                     : selectedInvoiceIds.length > 0
                       ? omittedInvoiceCount > 0 && year !== "all"
                         ? `${selectedInvoiceIds.length} invoices selected. ${matchedInvoiceCount} are for ${year} and go out as ${recipients.length} ${recipients.length === 1 ? "email" : "emails"}. ${omittedInvoiceCount} ${omittedInvoiceCount === 1 ? "is" : "are"} a different year, so ${omittedInvoiceCount === 1 ? "it is" : "they are"} left out.`
-                        : `${selectedInvoiceIds.length} invoices${year === "all" ? "" : ` for ${year}`}, combined into ${recipients.length} ${recipients.length === 1 ? "email" : "emails"}. Same contact, one email.`
-                      : `One email per contact${year === "all" ? "" : ` for ${year}`}. Invoices for the same contact go together.`}
+                        : `${selectedInvoiceIds.length} invoices${year === "all" ? "" : ` for ${year}`}, combined into ${recipients.length} ${recipients.length === 1 ? "email" : "emails"}. ${
+                            selectionMix === "zero"
+                              ? "Same contact, one email, using the 0 Savings template."
+                              : selectionMix === "savings"
+                                ? "Same contact, one email."
+                                : "Same contact, one email for savings and a separate email for $0 savings."
+                          }`
+                      : selectionMix === "zero"
+                        ? `One email per contact${year === "all" ? "" : ` for ${year}`}, using the 0 Savings template.`
+                        : selectionMix === "savings"
+                          ? `One email per contact${year === "all" ? "" : ` for ${year}`}. Invoices for the same contact go together.`
+                          : `One savings email per contact${year === "all" ? "" : ` for ${year}`}, plus a separate email when that contact has $0 savings invoices.`}
                   {!loadingRecipients && truncated ? " List truncated at the API limit." : ""}
                 </p>
               </div>
@@ -422,18 +560,25 @@ export function BulkInvoiceSendDialog({
               ) : (
                 recipients.map((recipient) => (
                   <div
-                    key={recipient.clientId}
+                    key={recipientGroupKey(recipient)}
                     className="flex items-start gap-3 border-b p-3 last:border-b-0"
                   >
                     <Checkbox
-                      checked={selectedClientIds.has(recipient.clientId)}
+                      checked={selectedGroupKeys.has(recipientGroupKey(recipient))}
                       disabled={!recipient.canSend || isSending}
-                      onCheckedChange={(checked) => toggleRecipient(recipient.clientId, checked === true)}
+                      onCheckedChange={(checked) =>
+                        toggleRecipient(recipientGroupKey(recipient), checked === true)
+                      }
                       aria-label={`Select ${recipient.clientName}`}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{recipient.clientName}</p>
+                        {recipient.savingsKind === "zero_savings" ? (
+                          <Badge variant="secondary">$0 savings</Badge>
+                        ) : (
+                          <Badge variant="outline">Tax savings</Badge>
+                        )}
                         {recipient.clientNumber && (
                           <Badge variant="outline">{recipient.clientNumber}</Badge>
                         )}

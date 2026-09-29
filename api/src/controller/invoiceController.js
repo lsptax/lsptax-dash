@@ -442,6 +442,26 @@ export const getArchiveInvoices = async (req, res) => {
  *   customMessage?: string
  * }
  */
+export const updateInvoiceTemplate = async (req, res) => {
+  try {
+    const { invoiceId, invoiceTemplate } = req.body || {};
+    const invoice = await invoiceService.updateInvoiceTemplate({ invoiceId, invoiceTemplate });
+    res.status(200).json({
+      success: true,
+      message: "Invoice template updated",
+      data: invoice,
+    });
+  } catch (error) {
+    const status =
+      error.message === "Invoice not found"
+        ? 404
+        : /required|must be/i.test(error.message)
+          ? 400
+          : 500;
+    sendError(res, status, error.message || "Failed to update invoice template", error);
+  }
+};
+
 export const updateInvoicePaymentStatus = async (req, res) => {
   try {
     const {

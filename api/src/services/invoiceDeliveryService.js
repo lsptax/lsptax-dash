@@ -1,5 +1,6 @@
 import prisma from "../../prisma/prismaClient.js";
 import {
+  invoiceToApiDto,
   parseBppInvoiceAmount,
   resolveClientContingencyDefault,
   resolveInvoiceDueAmount,
@@ -22,6 +23,16 @@ import {
   invoiceDeliveryStoragePath,
   getInvoiceSignedDownloadUrl,
 } from "../utils/supabaseStorage.js";
+import {
+  INVOICE_EMAIL_TEMPLATE_KEY,
+  ZERO_SAVINGS_INVOICE_TEMPLATE_KEY,
+} from "../utils/emailTemplateCatalog.js";
+import {
+  SAVINGS_KIND,
+  ZERO_SAVINGS_KIND,
+  bulkRecipientGroupKey,
+  savingsKindForInvoice,
+} from "../utils/zeroSavingsInvoice.js";
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB per file
 const MAX_BULK_RECIPIENTS = 500;
@@ -1396,8 +1407,14 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
     const client = invoice.property?.client;
     if (!client || (normalizedFilters.hasEmail && !hasUsableEmail(client))) continue;
 
-    if (!clientsById.has(client.id)) {
-      clientsById.set(client.id, {
+    const clientContingencyFee = resolveClientContingencyDefault(client);
+    const calculated = invoiceToApiDto(invoice, clientContingencyFee);
+    const savingsKind = savingsKindForInvoice(calculated);
+    const groupKey = bulkRecipientGroupKey(client.id, savingsKind);
+    if (!clientsById.has(groupKey)) {
+      clientsById.set(groupKey, {
+        groupKey,
+        savingsKind,
         clientId: client.id,
         clientNumber: client.clientNumber,
         clientName: client.clientName,
@@ -1415,9 +1432,8 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
       });
     }
 
-    const row = clientsById.get(client.id);
-    const clientContingencyFee = resolveClientContingencyDefault(client);
-    const dueAmount = resolveInvoiceDueAmount(invoice, clientContingencyFee);
+    const row = clientsById.get(groupKey);
+    const dueAmount = Number(calculated.invoiceAmount) || 0;
     row.invoiceCount += 1;
     row.totalInvoiceAmount += dueAmount;
     row.invoiceIds.push(invoice.id);
@@ -1432,6 +1448,7 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
       propertyId: invoice.propertyId,
       accountNumber: invoice.accountNumber,
       year: invoice.year,
+      taxableSavings: calculated.taxableSavings ?? null,
       bppInvoice: invoice.bppInvoice ?? null,
       bppInvoiceAmount: parseBppInvoiceAmount(invoice.bppInvoice),
       invoiceAmount: dueAmount,
@@ -1442,6 +1459,19 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
   }
 
   const allRecipients = Array.from(clientsById.values());
+  const clientOrder = [];
+  const seenClientIds = new Set();
+  for (const recipient of allRecipients) {
+    if (seenClientIds.has(recipient.clientId)) continue;
+    seenClientIds.add(recipient.clientId);
+    clientOrder.push(recipient.clientId);
+  }
+  const savingsKindRank = { [SAVINGS_KIND]: 0, [ZERO_SAVINGS_KIND]: 1 };
+  allRecipients.sort((a, b) => {
+    const clientDiff = clientOrder.indexOf(a.clientId) - clientOrder.indexOf(b.clientId);
+    if (clientDiff !== 0) return clientDiff;
+    return (savingsKindRank[a.savingsKind] ?? 0) - (savingsKindRank[b.savingsKind] ?? 0);
+  });
   const returnedRecipients = allRecipients.slice(0, recipientLimit);
   const deliveryClientIds = returnedRecipients.map((recipient) => recipient.clientId);
 
@@ -1490,11 +1520,17 @@ export async function getBulkInvoiceRecipients({ filters = {}, limit = MAX_BULK_
 
 function normalizeBulkAttachmentMap(attachmentsByClient, recipients) {
   const map = new Map();
+  const clientIds = new Set();
 
-  const addEntry = (clientId, entry) => {
-    const idNum = parseInt(clientId, 10);
+  const addEntry = (fallbackClientId, entry) => {
+    const idNum = parseInt(entry?.clientId ?? fallbackClientId, 10);
     if (Number.isNaN(idNum) || entry == null) return;
-    map.set(idNum, Array.isArray(entry) ? { attachments: entry } : entry);
+    const normalized = Array.isArray(entry)
+      ? { clientId: idNum, attachments: entry }
+      : { ...entry, clientId: idNum };
+    const key = normalized.groupKey ? String(normalized.groupKey) : String(idNum);
+    map.set(key, normalized);
+    clientIds.add(idNum);
   };
 
   if (Array.isArray(recipients)) {
@@ -1513,7 +1549,28 @@ function normalizeBulkAttachmentMap(attachmentsByClient, recipients) {
     }
   }
 
-  return map;
+  return { map, clientIds: [...clientIds] };
+}
+
+function attachmentEntryForRecipient(recipient, attachmentMap, groupCountByClient) {
+  if (recipient.groupKey && attachmentMap.has(String(recipient.groupKey))) {
+    return attachmentMap.get(String(recipient.groupKey));
+  }
+  const clientKey = String(recipient.clientId);
+  if ((groupCountByClient.get(recipient.clientId) || 0) <= 1 && attachmentMap.has(clientKey)) {
+    return attachmentMap.get(clientKey);
+  }
+  return null;
+}
+
+function templateKeyForRecipient(recipient, requestedTemplateKey) {
+  if (recipient.savingsKind === ZERO_SAVINGS_KIND) {
+    return ZERO_SAVINGS_INVOICE_TEMPLATE_KEY;
+  }
+  if (!requestedTemplateKey || requestedTemplateKey === ZERO_SAVINGS_INVOICE_TEMPLATE_KEY) {
+    return INVOICE_EMAIL_TEMPLATE_KEY;
+  }
+  return requestedTemplateKey;
 }
 
 function parseBulkYear(year, fieldName = "year") {
@@ -1542,9 +1599,12 @@ function hasBulkSelection(filters, attachmentClientIds) {
  * Send invoice PDFs to all clients matching the provided invoice-page filters.
  *
  * attachmentsByClient can be either:
- * - [{ clientId, attachments, year?, customMessage? }]
+ * - [{ clientId, groupKey?, attachments, year?, customMessage? }]
  * - { "123": { attachments, year?, customMessage? } }
  * - { "123": [{ filename, contentBase64 }] }
+ *
+ * $0 tax-savings invoices are a separate email per contact and always use
+ * the 0 Savings template. Other invoices keep templateKey.
  */
 export async function sendInvoicesToClientsBulk({
   filters = {},
@@ -1556,8 +1616,10 @@ export async function sendInvoicesToClientsBulk({
   templateKey = null,
   limit = MAX_BULK_RECIPIENTS,
 } = {}) {
-  const attachmentMap = normalizeBulkAttachmentMap(attachmentsByClient, recipients);
-  const attachmentClientIds = Array.from(attachmentMap.keys());
+  const { map: attachmentMap, clientIds: attachmentClientIds } = normalizeBulkAttachmentMap(
+    attachmentsByClient,
+    recipients
+  );
   const requestedFilters = { ...filters };
   if (!toList(requestedFilters.clientIds).length && attachmentClientIds.length) {
     requestedFilters.clientIds = attachmentClientIds;
@@ -1575,19 +1637,50 @@ export async function sendInvoicesToClientsBulk({
   const fallbackYear =
     parseBulkYear(year) ||
     (normalizedFilters.years.length === 1 ? normalizedFilters.years[0] : null);
+  const groupCountByClient = new Map();
+  for (const recipient of recipientPreview.recipients) {
+    groupCountByClient.set(
+      recipient.clientId,
+      (groupCountByClient.get(recipient.clientId) || 0) + 1
+    );
+  }
+  const savingsClientsWithAttachments = new Set(
+    recipientPreview.recipients
+      .filter((recipient) => recipient.savingsKind !== ZERO_SAVINGS_KIND)
+      .filter((recipient) => {
+        const entry = attachmentEntryForRecipient(recipient, attachmentMap, groupCountByClient);
+        return Array.isArray(entry?.attachments) && entry.attachments.length > 0;
+      })
+      .map((recipient) => recipient.clientId)
+  );
 
   const results = [];
-  const matchedClientIds = new Set();
+  const matchedAttachmentKeys = new Set();
 
   for (const recipient of recipientPreview.recipients) {
-    matchedClientIds.add(recipient.clientId);
-    const attachmentEntry = attachmentMap.get(recipient.clientId);
+    const attachmentEntry = attachmentEntryForRecipient(
+      recipient,
+      attachmentMap,
+      groupCountByClient
+    );
+    if (attachmentEntry) {
+      const matchedKey = attachmentEntry.groupKey
+        ? String(attachmentEntry.groupKey)
+        : String(attachmentEntry.clientId);
+      matchedAttachmentKeys.add(matchedKey);
+    }
     const attachments = attachmentEntry?.attachments;
+    const includeSms =
+      sendSms !== false &&
+      (recipient.savingsKind !== ZERO_SAVINGS_KIND ||
+        !savingsClientsWithAttachments.has(recipient.clientId));
 
     if (!recipient.canSend) {
       results.push({
         clientId: recipient.clientId,
         clientName: recipient.clientName,
+        groupKey: recipient.groupKey,
+        savingsKind: recipient.savingsKind,
         success: false,
         status: "SKIPPED",
         error: recipient.skipReason,
@@ -1599,6 +1692,8 @@ export async function sendInvoicesToClientsBulk({
       results.push({
         clientId: recipient.clientId,
         clientName: recipient.clientName,
+        groupKey: recipient.groupKey,
+        savingsKind: recipient.savingsKind,
         success: false,
         status: "SKIPPED",
         error: "No PDF attachments were provided for this client",
@@ -1617,17 +1712,20 @@ export async function sendInvoicesToClientsBulk({
       const sent = await sendInvoiceToClient({
         clientId: recipient.clientId,
         year: parseBulkYear(attachmentEntry.year, "recipient.year") || fallbackYear,
-        sendSms,
+        sendSms: includeSms,
         attachments,
         customMessage: attachmentEntry.customMessage ?? customMessage,
         propertyAddresses,
         invoiceIds: recipient.invoiceIds,
         propertyIds: recipient.propertyIds,
-        templateKey,
+        templateKey:
+          attachmentEntry.templateKey || templateKeyForRecipient(recipient, templateKey),
       });
       results.push({
         clientId: recipient.clientId,
         clientName: recipient.clientName,
+        groupKey: recipient.groupKey,
+        savingsKind: recipient.savingsKind,
         success: true,
         status: "SENT",
         data: sent,
@@ -1636,6 +1734,8 @@ export async function sendInvoicesToClientsBulk({
       results.push({
         clientId: recipient.clientId,
         clientName: recipient.clientName,
+        groupKey: recipient.groupKey,
+        savingsKind: recipient.savingsKind,
         success: false,
         status: "FAILED",
         error: err.message,
@@ -1643,10 +1743,11 @@ export async function sendInvoicesToClientsBulk({
     }
   }
 
-  for (const clientId of attachmentClientIds) {
-    if (matchedClientIds.has(clientId)) continue;
+  for (const [key, entry] of attachmentMap) {
+    if (matchedAttachmentKeys.has(key)) continue;
     results.push({
-      clientId,
+      clientId: entry.clientId,
+      groupKey: entry.groupKey || null,
       success: false,
       status: "SKIPPED",
       error: "Client did not match the bulk filters or has no matching invoices",

@@ -1,8 +1,16 @@
 import type { ReactNode } from "react";
 
-export function EntityDetailsCard({ children }: { children: ReactNode }) {
+import { cn } from "@/lib/utils";
+
+export function EntityDetailsCard({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="mb-8 rounded-xl border border-border bg-card p-4 sm:p-5">
+    <div className={cn("mb-8 rounded-xl border border-border bg-card p-4 sm:p-5", className)}>
       <table className="table-auto w-full max-w-3xl">
         <tbody>{children}</tbody>
       </table>

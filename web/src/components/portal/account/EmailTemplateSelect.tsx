@@ -17,12 +17,16 @@ import {
 export function EmailTemplateSelect({
   id,
   purpose,
+  extraPurposes = [],
+  label = "Email template",
   value,
   onChange,
   disabled,
 }: {
   id: string;
   purpose?: EmailTemplatePurpose;
+  extraPurposes?: EmailTemplatePurpose[];
+  label?: string;
   value: string;
   onChange: (key: string) => void;
   disabled?: boolean;
@@ -32,13 +36,17 @@ export function EmailTemplateSelect({
     queryFn: getEmailTemplates,
     meta: QUERY_META_SUPPRESS_GLOBAL_ERROR_TOAST,
   });
-  const templates = (templatesQuery.data ?? []).filter((template) =>
-    purpose ? template.purpose === purpose || template.purpose === "unassigned" : true
+  const allowedPurposes = new Set(
+    purpose ? [purpose, "unassigned" as const, ...extraPurposes] : null
   );
+  const templates = (templatesQuery.data ?? []).filter((template) => {
+    if (!purpose) return true;
+    return allowedPurposes.has(template.purpose);
+  });
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>Email template</Label>
+      <Label htmlFor={id}>{label}</Label>
       <Select value={value || undefined} onValueChange={onChange} disabled={disabled || templatesQuery.isPending}>
         <SelectTrigger id={id}>
           <SelectValue placeholder={templatesQuery.isPending ? "Loading templates…" : "Choose a template"} />

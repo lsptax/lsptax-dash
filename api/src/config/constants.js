@@ -20,6 +20,7 @@ export const CLIENT_UPDATE_FIELDS = [
   "contingencyFee",
   "flatFee",
   "envelopeId",
+  "notes",
   "isArchived",
 ];
 
@@ -46,6 +47,7 @@ export const PROPERTY_UPDATE_FIELDS = [
   "lifecyclePhase",
   "lifecycleStep",
   "lifecycleNotes",
+  "notes",
 ];
 
 /** Pick only allowed keys from obj. */

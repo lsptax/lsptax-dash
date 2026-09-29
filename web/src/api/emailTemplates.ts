@@ -7,17 +7,23 @@ export type EmailTemplatePlaceholder = {
   raw?: boolean;
 };
 
-export type EmailTemplatePurpose = "unassigned" | "invoice" | "payment_acknowledgement";
+export type EmailTemplatePurpose =
+  | "unassigned"
+  | "invoice"
+  | "invoice_zero_savings"
+  | "payment_acknowledgement";
 
 export const EMAIL_TEMPLATE_PURPOSE_OPTIONS: EmailTemplatePurpose[] = [
   "unassigned",
   "invoice",
+  "invoice_zero_savings",
   "payment_acknowledgement",
 ];
 
 export const EMAIL_TEMPLATE_PURPOSE_LABELS: Record<EmailTemplatePurpose, string> = {
   unassigned: "Unassigned",
   invoice: "Invoice sending",
+  invoice_zero_savings: "0 savings invoice",
   payment_acknowledgement: "Payment acknowledgement",
 };
 

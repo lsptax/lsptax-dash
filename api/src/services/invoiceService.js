@@ -666,6 +666,25 @@ export async function updateInvoicePaymentStatus({
   return response;
 }
 
+const INVOICE_TEMPLATES = new Set(["current", "arbitration", "homestead"]);
+
+export async function updateInvoiceTemplate({ invoiceId, invoiceTemplate }) {
+  const id = parseInt(invoiceId, 10);
+  if (!Number.isFinite(id)) throw new Error("invoiceId is required");
+  if (!INVOICE_TEMPLATES.has(invoiceTemplate)) {
+    throw new Error("invoiceTemplate must be current, arbitration, or homestead");
+  }
+
+  const existing = await prisma.invoice.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new Error("Invoice not found");
+
+  return prisma.invoice.update({
+    where: { id },
+    data: { invoiceTemplate },
+    select: { id: true, invoiceTemplate: true },
+  });
+}
+
 /** Dashboard stats: client/prospect counts + hearing schedule summary. */
 export async function getCounts() {
   const [rows, hearings] = await Promise.all([

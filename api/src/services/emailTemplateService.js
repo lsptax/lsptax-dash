@@ -141,7 +141,10 @@ export async function updateEmailTemplate(key, input, updatedBy = null) {
     if (isBuiltin) return { error: "Built-in templates keep their assignment", status: 400 };
     const nextPurpose = resolveEmailTemplatePurpose(input.purpose);
     if (!nextPurpose) {
-      return { error: "Choose unassigned, invoice sending, or payment acknowledgement", status: 400 };
+      return {
+        error: "Choose unassigned, invoice sending, 0 savings invoice, or payment acknowledgement",
+        status: 400,
+      };
     }
     purpose = nextPurpose;
   }
@@ -160,7 +163,10 @@ export async function updateEmailTemplate(key, input, updatedBy = null) {
 export async function createEmailTemplate(input, updatedBy = null) {
   const purpose = resolveEmailTemplatePurpose(input?.purpose, { allowMissing: true });
   if (!purpose) {
-    return { error: "Choose unassigned, invoice sending, or payment acknowledgement", status: 400 };
+    return {
+      error: "Choose unassigned, invoice sending, 0 savings invoice, or payment acknowledgement",
+      status: 400,
+    };
   }
   const nameResult = validateName(input?.name);
   if (nameResult.error) return { error: nameResult.error, status: 400 };

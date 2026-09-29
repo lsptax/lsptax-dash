@@ -214,6 +214,25 @@ export type UpdateInvoicePaymentStatusResponse = {
   data: UpdateInvoicePaymentStatusData;
 };
 
+export const updateInvoiceTemplate = async (
+  invoiceId: number,
+  invoiceTemplate: "current" | "arbitration" | "homestead"
+) => {
+  const response = await authFetch(`${base()}/invoice/template`, {
+    method: "PATCH",
+    headers: {
+      ...(getAuthHeaders() as Record<string, string>),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ invoiceId, invoiceTemplate }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || "Failed to update invoice template");
+  }
+  return json;
+};
+
 export const updateInvoicePaymentStatus = async (options: {
   invoiceIds: number | number[];
   isPaid: boolean;
@@ -329,6 +348,9 @@ import type { InvoiceEmailTracking } from "@/utils/invoiceEmailStatus";
 
 export type BulkInvoiceRecipient = {
   clientId: number;
+  /** Distinguishes the tax-savings email from the $0 savings email for one contact. */
+  groupKey?: string;
+  savingsKind?: "savings" | "zero_savings";
   clientNumber?: string | null;
   clientName: string;
   recipientEmail?: string | null;
@@ -354,9 +376,11 @@ export type BulkInvoiceRecipientsResponse = {
 
 export type BulkInvoiceAttachmentGroup = {
   clientId: number;
+  groupKey?: string;
   year?: number;
   attachments: InvoiceSendAttachment[];
   customMessage?: string;
+  templateKey?: string;
 };
 
 export type BulkInvoiceSendResult = {

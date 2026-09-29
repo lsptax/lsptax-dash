@@ -4,7 +4,6 @@ import type { InvoiceEmailTracking } from "@/utils/invoiceEmailStatus";
 
 export type InvoiceNormalizationResult = {
   invoiceData?: InvoiceData;
-  debug: Record<string, unknown>;
 };
 
 function extractLastDelivery(raw: unknown): InvoiceEmailTracking | null | undefined {
@@ -145,22 +144,14 @@ const mapCandidateToInvoice = (candidate: unknown): InvoiceData | undefined => {
 };
 
 export const normalizeInvoiceData = (raw: unknown): InvoiceNormalizationResult => {
-  if (!raw) return { debug: { reason: "empty raw payload", rawType: typeof raw } };
+  if (!raw) return {};
 
   const source = (raw as { data?: unknown }).data ?? raw;
   const sourceArray = Array.isArray(source) ? source : [source];
 
   const propertyOnly = mapPropertyOnlyPayload(source);
   if (propertyOnly) {
-    return {
-      invoiceData: attachLastDelivery(propertyOnly, raw, source),
-      debug: {
-        sourceType: Array.isArray(source) ? "array" : "single",
-        sourceLength: sourceArray.length,
-        normalizedAs: "property-only-payload",
-        mappedProperties: propertyOnly.properties.length,
-      },
-    };
+    return { invoiceData: attachLastDelivery(propertyOnly, raw, source) };
   }
 
   if (sourceArray.length > 0 && sourceArray.every((item) => item && typeof item === "object")) {
@@ -193,38 +184,14 @@ export const normalizeInvoiceData = (raw: unknown): InvoiceNormalizationResult =
           raw,
           source
         ),
-        debug: {
-          sourceType: Array.isArray(source) ? "array" : "single",
-          sourceLength: sourceArray.length,
-          normalizedAs: "property-payload-array",
-          mappedProperties: properties.length,
-        },
       };
     }
   }
 
   const mapped = sourceArray.map(mapCandidateToInvoice).find(Boolean);
   if (mapped) {
-    return {
-      invoiceData: attachLastDelivery(mapped, raw, source),
-      debug: {
-        sourceType: Array.isArray(source) ? "array" : "single",
-        sourceLength: sourceArray.length,
-        normalizedAs: "single-candidate",
-        propertyCount: mapped.properties.length,
-      },
-    };
+    return { invoiceData: attachLastDelivery(mapped, raw, source) };
   }
 
-  const firstObject = sourceArray.find((item) => item && typeof item === "object") as
-    | Record<string, unknown>
-    | undefined;
-  return {
-    debug: {
-      sourceType: Array.isArray(source) ? "array" : "single",
-      sourceLength: sourceArray.length,
-      firstObjectKeys: firstObject ? Object.keys(firstObject) : [],
-      reason: "Could not map payload to InvoiceData",
-    },
-  };
+  return {};
 };

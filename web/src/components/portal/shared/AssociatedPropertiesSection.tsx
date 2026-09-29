@@ -10,10 +10,12 @@ export function AssociatedPropertiesSection({
   properties,
   addHref,
   propertyHref,
+  gridClassName = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
 }: {
   properties: Property[];
   addHref: string;
   propertyHref: (property: Property) => string;
+  gridClassName?: string;
 }) {
   const [selectedCounty, setSelectedCounty] = useState("All");
 
@@ -67,7 +69,7 @@ export function AssociatedPropertiesSection({
       )}
 
       {filteredProperties.length ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className={gridClassName}>
           {filteredProperties.map((property) => (
             <AssociatedPropertyCard
               key={property.id}

@@ -26,6 +26,7 @@ export function InvoicePdfRenderSheets({ jobs, sheetRefs }: InvoicePdfRenderShee
           selectedYear={job.selectedYear}
           invoiceDate={job.invoiceDate}
           dueDate={job.dueDate}
+          variant={job.variant}
         />
       ))}
     </div>

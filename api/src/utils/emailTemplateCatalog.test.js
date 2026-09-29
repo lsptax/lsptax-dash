@@ -43,6 +43,29 @@ describe("email template rendering", () => {
     assert.equal(html.includes("<img"), false);
   });
 
+  it("uses a separate subject for the $0 savings invoice email", () => {
+    const definition = getEmailTemplateDefinition("invoice_zero_savings");
+    const subject = renderInvoiceEmailSubject(definition.subject, {
+      year: 2026,
+      propertyAddresses: ["123 Main St", "9 Oak Ave"],
+    });
+    const html = renderInvoiceEmailHtml(definition.bodyHtml, {
+      clientName: "Mr. Jane Smith",
+      year: 2026,
+      propertyAddresses: ["123 Main St"],
+      logoUrl: "",
+    });
+
+    assert.equal(definition.purpose, "invoice_zero_savings");
+    assert.equal(
+      subject,
+      "2026 Protest Completed- No Tax Savings (123 Main St property; 9 Oak Ave property)"
+    );
+    assert.match(html, /Dear Jane Smith/);
+    assert.match(html, /no tax savings/i);
+    assert.match(html, /Zelle:/);
+  });
+
   it("escapes client data in the HTML body and inserts the logo as markup", () => {
     const definition = getEmailTemplateDefinition("invoice_delivery");
     const html = renderInvoiceEmailHtml(definition.bodyHtml, {

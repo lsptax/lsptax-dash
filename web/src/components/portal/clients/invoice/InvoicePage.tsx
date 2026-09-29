@@ -57,17 +57,7 @@ const InvoicePage = () => {
         const response = propertyId
           ? await getInvoiceByPropertyId({ propertyId })
           : await getInvoice({ clientId: clientId as string });
-        const { invoiceData: normalized, debug } = normalizeInvoiceData(response);
-        if (import.meta.env.DEV) {
-          const debugIdentifier = propertyId
-            ? `propertyId=${propertyId}`
-            : `clientId=${clientId}`;
-          console.group(`[InvoicePage] invoice payload debug for ${debugIdentifier}`);
-          console.log("Raw response:", response);
-          console.log("Normalization debug:", debug);
-          console.log("Normalized invoice data:", normalized);
-          console.groupEnd();
-        }
+        const { invoiceData: normalized } = normalizeInvoiceData(response);
         if (!cancelled) {
           setInvoiceData(normalized);
         }

@@ -5,6 +5,7 @@ import { getFlatFeeAmount } from "@/utils/flatFee";
 import { formatUSD } from "@/utils/formatCurrency";
 import { ClientData, Invoice, InvoiceProperty } from "@/types/types";
 import brandLogo from "@/assets/invoice-logo.png";
+import type { InvoiceTemplate } from "@/utils/invoiceTemplate";
 
 function formatInvoiceUSD(value: number | string | null | undefined) {
   return formatUSD(value, false);
@@ -26,10 +27,11 @@ type InvoiceSheet2025Props = {
   selectedYear: number;
   invoiceDate: string;
   dueDate: string;
+  variant?: InvoiceTemplate;
 };
 
 const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>(
-  ({ client, property, yearInvoice, selectedYear, invoiceDate, dueDate }, ref) => (
+  ({ client, property, yearInvoice, selectedYear, invoiceDate, dueDate, variant = "current" }, ref) => (
     <div
       ref={ref}
       data-invoice-pdf-sheet
@@ -80,28 +82,39 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
             <p>Account Number:</p>
             <p>{property.propertyDetails.accountNumber || "--"}</p>
             <p>Service:</p>
-            <p>{selectedYear} Protest</p>
+            <p>
+              {selectedYear}{" "}
+              {variant === "arbitration" ? "Arbitration" : variant === "homestead" ? "Homestead" : "Protest"}
+            </p>
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 text-[13px] leading-[1.25] font-medium">
-          <div className="min-h-[88px]">
-            <p>Begining Appraised Value: {formatInvoiceUSD(yearInvoice?.noticeAppraisedValue)}</p>
-            <p>Ending Appraised Value: {formatInvoiceUSD(yearInvoice?.finalAppraisedValue)}</p>
-            <p>Reduction: {formatInvoiceUSD(yearInvoice?.appraisedReduction)}</p>
-            <p>Overall Tax Rate: {yearInvoice?.taxRate ?? 0}%</p>
+        {variant !== "arbitration" ? (
+          <div className={`mt-6 grid text-[13px] leading-[1.25] font-medium ${variant === "homestead" ? "grid-cols-1" : "grid-cols-2"}`}>
+            <div className="min-h-[88px]">
+              <p>Begining Appraised Value: {formatInvoiceUSD(yearInvoice?.noticeAppraisedValue)}</p>
+              <p>Ending Appraised Value: {formatInvoiceUSD(yearInvoice?.finalAppraisedValue)}</p>
+              <p>Reduction: {formatInvoiceUSD(yearInvoice?.appraisedReduction)}</p>
+              <p>Overall Tax Rate: {yearInvoice?.taxRate ?? 0}%</p>
+            </div>
+            {variant === "current" ? (
+              <div className="min-h-[88px]">
+                <p>Begining Market Value: {formatInvoiceUSD(yearInvoice?.noticeMarketValue)}</p>
+                <p>Ending Market Value: {formatInvoiceUSD(yearInvoice?.finalMarketValue)}</p>
+                <p>Reduction: {formatInvoiceUSD(yearInvoice?.marketReduction)}</p>
+              </div>
+            ) : null}
           </div>
-          <div className="min-h-[88px]">
-            <p>Begining Market Value: {formatInvoiceUSD(yearInvoice?.noticeMarketValue)}</p>
-            <p>Ending Market Value: {formatInvoiceUSD(yearInvoice?.finalMarketValue)}</p>
-            <p>Reduction: {formatInvoiceUSD(yearInvoice?.marketReduction)}</p>
-          </div>
-        </div>
+        ) : null}
 
         <div className="mt-4 w-[300px] border border-black p-2 text-[13px] leading-[1.2] font-semibold">
           <div className="grid grid-cols-[1fr_1fr]">
-            <p>Client Tax Savings:</p>
-            <p>{formatInvoiceUSD(yearInvoice?.taxableSavings)}</p>
+            {variant === "arbitration" ? null : (
+              <>
+                <p>Client Tax Savings:</p>
+                <p>{formatInvoiceUSD(yearInvoice?.taxableSavings)}</p>
+              </>
+            )}
             <p>Contingency Fee:</p>
             <p>
               {yearInvoice?.contingencyFee ??
@@ -197,8 +210,6 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
 InvoiceSheet2025.displayName = "InvoiceSheet2025";
 
 export default InvoiceSheet2025;
-
-export { addInvoiceDays, formatInvoiceDate } from "@/utils/invoiceDates";
 
 export function toSafeFilenamePart(value: string): string {
   return value

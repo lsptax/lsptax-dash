@@ -1,7 +1,12 @@
 export const INVOICE_EMAIL_TEMPLATE_KEY = "invoice_delivery";
+export const ZERO_SAVINGS_INVOICE_TEMPLATE_KEY = "invoice_zero_savings";
 export const PAYMENT_ACKNOWLEDGEMENT_TEMPLATE_KEY = "payment_acknowledgement";
 
-export const EMAIL_TEMPLATE_PURPOSES = ["invoice", "payment_acknowledgement"];
+export const EMAIL_TEMPLATE_PURPOSES = [
+  "invoice",
+  "invoice_zero_savings",
+  "payment_acknowledgement",
+];
 export const UNASSIGNED_EMAIL_TEMPLATE_PURPOSE = "unassigned";
 
 const UNASSIGNED_STARTER = {
@@ -14,6 +19,29 @@ const BODY_MAX = 100_000;
 
 const INVOICE_BODY_HTML = `<p>Dear {{clientName}},</p>
 <p><strong>{{year}} Protest Completed- Invoice and Results Attached{{propertySuffix}}</strong></p>
+<p><strong>Payment Options:</strong><br/>
+<strong>Zelle:</strong> 713-505-6806 (Lone Star Property Tax)<br/>
+Kindly include the invoice number for reference.</p>
+<p><strong>Mail Check:</strong><br/>
+Lone Star Property Tax<br/>
+16107 Kensington Drive, Ste #194<br/>
+Sugar Land, TX 77479</p>
+<p>Thank you for choosing Lone Star Property Tax. If you have any questions, please do not hesitate to contact us. We appreciate your business and look forward to serving you again next year.</p>
+<p>Best regards,<br/>
+Lavanya Sharma<br/>
+Administrative Assistant<br/>
+832-847-3911<br/>
+info@lsptax.com<br/>
+results@lsptax.com</p>
+<p style="margin:8px 0 4px;">Thank you,</p>
+{{logo}}
+<p style="margin:8px 0 0;font-size:10px;line-height:1.35;color:#555;">CONFIDENTIALITY NOTICE: The information contained in this e-mail message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and privileged information. Any unauthorized review, use, disclosure or distribution is prohibited. If you are not the intended recipient, and have received this communication in error, please contact the sender by reply e-mail and destroy all copies of the original message.<br/>
+Thank you.</p>`;
+
+const ZERO_SAVINGS_BODY_HTML = `<p>Dear {{clientName}},</p>
+<p><strong>{{year}} Protest Completed- No Tax Savings{{propertySuffix}}</strong></p>
+<p>Your property tax protest has been completed. There were no tax savings on the attached invoice(s). Please find each property invoice attached for your records.</p>
+<p>If an amount is shown as due, you can pay using the options below. If nothing is due, no payment is needed.</p>
 <p><strong>Payment Options:</strong><br/>
 <strong>Zelle:</strong> 713-505-6806 (Lone Star Property Tax)<br/>
 Kindly include the invoice number for reference.</p>
@@ -50,6 +78,34 @@ export const EMAIL_TEMPLATE_CATALOG = [
     description: "Sent when invoice PDFs are emailed to a client.",
     subject: "{{year}} Protest Completed- Invoice and Results Attached{{propertySuffix}}",
     bodyHtml: INVOICE_BODY_HTML,
+    placeholders: [
+      {
+        token: "clientName",
+        label: "Client name, without a title such as Mr. or Mrs.",
+        sample: "Jane Smith",
+      },
+      { token: "year", label: "Tax year", sample: "2026" },
+      {
+        token: "propertySuffix",
+        label: "Property note added to the headline. Blank when there is no address.",
+        sample: " (123 Main St property)",
+      },
+      {
+        token: "logo",
+        label: "Logo image. Uses the invoice logo URL from Brevo settings.",
+        sample: "",
+        raw: true,
+      },
+    ],
+  },
+  {
+    key: ZERO_SAVINGS_INVOICE_TEMPLATE_KEY,
+    name: "0 Savings invoice",
+    purpose: "invoice_zero_savings",
+    description:
+      "Sent automatically when every invoice in the email has $0 tax savings. One email per contact, separate from invoices that have savings. Edit this copy to change that email.",
+    subject: "{{year}} Protest Completed- No Tax Savings{{propertySuffix}}",
+    bodyHtml: ZERO_SAVINGS_BODY_HTML,
     placeholders: [
       {
         token: "clientName",

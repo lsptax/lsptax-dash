@@ -66,6 +66,8 @@ model Client {
   flatFee                Decimal?       @db.Decimal(15, 2) // flat fee amount numeric only; format in app/PDF
 
   envelopeId             String?        // old: envelopeId
+  /// General notes for this client, separate from any one property
+  notes                  String?        @db.Text
   isArchived             Boolean        @default(false) // old: IsArchived
 
   createdAt              DateTime       @default(now())
@@ -123,6 +125,8 @@ model Property {
   lifecycleCompletedAt   DateTime?
   /// User notes for the current lifecycle position (also copied into each history entry when changed)
   lifecycleNotes         String?   @db.Text
+  /// General notes for this property, separate from the client's notes
+  notes                  String?   @db.Text
 
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
@@ -199,6 +203,8 @@ model Invoice {
   paidDate               String?
   isPaid                 Boolean  @default(false)
   paymentNotes           String?
+  /// Printed invoice layout: current, arbitration, or homestead. Null uses current, or arbitration when the year is under arbitration.
+  invoiceTemplate        String?
 
   beginningMarket        Decimal  @default(0) @db.Decimal(15, 2)
   endingMarket           Decimal  @default(0) @db.Decimal(15, 2)

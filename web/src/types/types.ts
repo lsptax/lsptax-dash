@@ -33,6 +33,7 @@ export interface ClientData {
   mailingAddressCityTxZip?: string;
   contingencyFee?: string;
   flatFee?: string | number | null;
+  notes?: string | null;
   IsArchived?: boolean;
   isArchived?: boolean;
   createdAt?: Date;
@@ -44,6 +45,7 @@ export interface Property {
   statusNotes?: string;
   OtherNotes?: string;
   otherNotes?: string;
+  notes?: string | null;
   NAMEONCAD?: string;
   nameOnCad?: string;
   MAILINGADDRESS?: string;
@@ -113,6 +115,8 @@ export interface Invoice {
   paidDate?: string;
   isPaid?: boolean;
   paymentNotes?: string;
+  /** Printed layout: current, arbitration, or homestead. */
+  invoiceTemplate?: string | null;
   beginningMarket?: number;
   endingMarket?: number;
   beginningAppraised?: number;

@@ -20,6 +20,7 @@ import { Invoice, InvoiceData, InvoiceProperty } from "@/types/types";
 import {
   getInvoiceDeliveries,
   sendInvoice,
+  updateInvoiceTemplate,
   type InvoiceDelivery,
 } from "@/store/invoices";
 import { elementsToPdfAttachments } from "@/utils/elementToPdfBase64";
@@ -35,6 +36,23 @@ import { InvoiceEmailStatusBadge } from "@/components/portal/invoices/InvoiceEma
 import { EmailTemplateSelect } from "@/components/portal/account/EmailTemplateSelect";
 import { getInvoiceEmailStatusDisplay, latestDeliveryTrackingForYear } from "@/utils/invoiceEmailStatus";
 import { routes } from "@/routes/ROUTES";
+import {
+  INVOICE_TEMPLATES,
+  INVOICE_TEMPLATE_LABELS,
+  resolveInvoiceTemplate,
+  type InvoiceTemplate,
+} from "@/utils/invoiceTemplate";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ZERO_SAVINGS_INVOICE_TEMPLATE_KEY,
+  isZeroSavingsAmount,
+} from "@/utils/zeroSavingsInvoice";
 
 type InvoiceDetails2025Props = {
   invoice: InvoiceData;
@@ -60,9 +78,14 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [sendSms, setSendSms] = useState(true);
   const [templateKey, setTemplateKey] = useState("invoice_delivery");
+  const [zeroSavingsTemplateKey, setZeroSavingsTemplateKey] = useState(
+    ZERO_SAVINGS_INVOICE_TEMPLATE_KEY
+  );
   const [isSending, setIsSending] = useState(false);
   const [deliveries, setDeliveries] = useState<InvoiceDelivery[]>([]);
   const [loadingDeliveries, setLoadingDeliveries] = useState(false);
+  const [templateOverrides, setTemplateOverrides] = useState<Record<number, InvoiceTemplate>>({});
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const propertiesWithInvoice = useMemo((): PropertyWithInvoice[] => {
     return invoice.properties
@@ -78,6 +101,15 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
         yearInvoice: getYearInvoice(property, selectedYear)!,
       }));
   }, [invoice.properties, propertyIdFilter, selectedYear]);
+
+  const savingsProperties = useMemo(
+    () => propertiesWithInvoice.filter(({ yearInvoice: inv }) => !isZeroSavingsAmount(inv.taxableSavings)),
+    [propertiesWithInvoice]
+  );
+  const zeroSavingsProperties = useMemo(
+    () => propertiesWithInvoice.filter(({ yearInvoice: inv }) => isZeroSavingsAmount(inv.taxableSavings)),
+    [propertiesWithInvoice]
+  );
 
   const displayMatch = propertiesWithInvoice[0];
 
@@ -117,6 +149,32 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
   }, [deliveries, selectedYear, invoice.lastDelivery, loadingDeliveries]);
 
   const yearInvoice = displayMatch?.yearInvoice;
+
+  const templateFor = (inv: Invoice | undefined): InvoiceTemplate => {
+    if (inv?.id != null && templateOverrides[inv.id]) return templateOverrides[inv.id];
+    return resolveInvoiceTemplate(inv);
+  };
+
+  const handleTemplateChange = async (next: InvoiceTemplate) => {
+    const id = yearInvoice?.id;
+    if (id == null) return;
+    const previous = templateFor(yearInvoice);
+    setTemplateOverrides((current) => ({ ...current, [id]: next }));
+    setSavingTemplate(true);
+    try {
+      await updateInvoiceTemplate(id, next);
+    } catch (error) {
+      setTemplateOverrides((current) => ({ ...current, [id]: previous }));
+      toast({
+        title: "Could not save invoice template",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const { invoiceDate, dueDate } = getInvoiceSheetDates(yearInvoice);
   const cadOwnerNameRaw =
     displayMatch?.property.propertyDetails.nameOnCad ||
@@ -188,67 +246,116 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
 
     setIsSending(true);
     try {
-      const captureElements = propertiesWithInvoice
-        .map(({ property }) => {
-          const el = sheetRefs.current.get(property.propertyDetails.id);
-          if (!el) return null;
-          const account = property.propertyDetails.accountNumber || String(property.propertyDetails.id);
-          return {
-            element: el,
-            filename: buildInvoicePdfFilename({
-              clientNumber: invoice.client.clientNumber,
-              clientName: invoice.client.clientName,
-              accountNumber: account,
-              year: selectedYear,
-              propertyId: property.propertyDetails.id,
-              clientId: invoice.client.id,
-            }),
-          };
-        })
-        .filter(Boolean) as Array<{ element: HTMLElement; filename: string }>;
+      const sendGroup = async (
+        group: PropertyWithInvoice[],
+        groupTemplateKey: string,
+        includeSms: boolean
+      ) => {
+        const captureElements = group
+          .map(({ property }) => {
+            const el = sheetRefs.current.get(property.propertyDetails.id);
+            if (!el) return null;
+            const account = property.propertyDetails.accountNumber || String(property.propertyDetails.id);
+            return {
+              element: el,
+              filename: buildInvoicePdfFilename({
+                clientNumber: invoice.client.clientNumber,
+                clientName: invoice.client.clientName,
+                accountNumber: account,
+                year: selectedYear,
+                propertyId: property.propertyDetails.id,
+                clientId: invoice.client.id,
+              }),
+            };
+          })
+          .filter(Boolean) as Array<{ element: HTMLElement; filename: string }>;
 
-      if (captureElements.length === 0) {
+        if (captureElements.length === 0) {
+          throw new Error("Could not prepare invoice PDFs for sending.");
+        }
+
+        const attachments = await elementsToPdfAttachments(captureElements);
+        const propertyAddresses = [
+          ...new Set(
+            group
+              .map(({ property }) => property.propertyDetails.propertyAddress?.trim())
+              .filter((address): address is string => Boolean(address))
+          ),
+        ];
+        const propertyIds = group.map(({ property }) => property.propertyDetails.id);
+        const invoiceIds = group
+          .map(({ yearInvoice: inv }) => inv.id)
+          .filter((id): id is number => typeof id === "number" && !Number.isNaN(id));
+
+        return sendInvoice({
+          clientId,
+          year: selectedYear,
+          sendSms: includeSms,
+          attachments,
+          propertyAddresses,
+          propertyIds,
+          invoiceIds: invoiceIds.length ? invoiceIds : undefined,
+          templateKey: groupTemplateKey,
+        });
+      };
+
+      const groups: Array<{ properties: PropertyWithInvoice[]; templateKey: string; includeSms: boolean }> =
+        [];
+      if (savingsProperties.length > 0) {
+        groups.push({
+          properties: savingsProperties,
+          templateKey,
+          includeSms: sendSms,
+        });
+      }
+      if (zeroSavingsProperties.length > 0) {
+        groups.push({
+          properties: zeroSavingsProperties,
+          templateKey: zeroSavingsTemplateKey,
+          includeSms: sendSms && savingsProperties.length === 0,
+        });
+      }
+
+      const results = [];
+      try {
+        for (const group of groups) {
+          results.push(await sendGroup(group.properties, group.templateKey, group.includeSms));
+        }
+      } catch (error) {
+        if (results.length > 0) {
+          toast({
+            title: "One invoice email was sent",
+            description: `${
+              error instanceof Error ? error.message : "The other email did not send."
+            } Check send history before trying again, so the first email is not duplicated.`,
+            variant: "destructive",
+          });
+          setSendDialogOpen(false);
+          await refreshDeliveries();
+          return;
+        }
+        throw error;
+      }
+      const result = results[0];
+      if (!result) {
         throw new Error("Could not prepare invoice PDFs for sending.");
       }
 
-      const attachments = await elementsToPdfAttachments(captureElements);
-      const propertyAddresses = [
-        ...new Set(
-          propertiesWithInvoice
-            .map(({ property }) => property.propertyDetails.propertyAddress?.trim())
-            .filter((address): address is string => Boolean(address))
-        ),
-      ];
-      const propertyIds = propertiesWithInvoice.map(
-        ({ property }) => property.propertyDetails.id
-      );
-      const invoiceIds = propertiesWithInvoice
-        .map(({ yearInvoice }) => yearInvoice.id)
-        .filter((id): id is number => typeof id === "number" && !Number.isNaN(id));
-
-      const result = await sendInvoice({
-        clientId,
-        year: selectedYear,
-        sendSms,
-        attachments,
-        propertyAddresses,
-        propertyIds,
-        invoiceIds: invoiceIds.length ? invoiceIds : undefined,
-        templateKey,
-      });
-
       toast({
-        title: "Invoice sent",
+        title: results.length > 1 ? "Invoices sent" : "Invoice sent",
         description:
-          result.data.emailLastEvent != null
-            ? `${result.message || `Emailed to ${result.data.recipientEmail}`} (status: ${getInvoiceEmailStatusDisplay({ emailLastEvent: result.data.emailLastEvent }).displayLabel})`
-            : result.message || `Emailed to ${result.data.recipientEmail}`,
+          results.length > 1
+            ? `Emailed ${recipientEmail} twice: tax-savings invoices in one email, and $0 savings invoices in a separate email.`
+            : result.data.emailLastEvent != null
+              ? `${result.message || `Emailed to ${result.data.recipientEmail}`} (status: ${getInvoiceEmailStatusDisplay({ emailLastEvent: result.data.emailLastEvent }).displayLabel})`
+              : result.message || `Emailed to ${result.data.recipientEmail}`,
       });
 
-      if (result.data.warning) {
+      const warning = results.map((item) => item.data.warning).filter(Boolean).join(" | ");
+      if (warning) {
         toast({
           title: "SMS not delivered",
-          description: result.data.warning,
+          description: warning,
         });
       }
 
@@ -289,6 +396,22 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
               View Property
             </Link>
           </Button>
+          <Select
+            value={templateFor(yearInvoice)}
+            onValueChange={(value) => void handleTemplateChange(value as InvoiceTemplate)}
+            disabled={savingTemplate || yearInvoice?.id == null}
+          >
+            <SelectTrigger className="w-[160px]" aria-label="Invoice template">
+              <SelectValue placeholder="Invoice template" />
+            </SelectTrigger>
+            <SelectContent>
+              {INVOICE_TEMPLATES.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {INVOICE_TEMPLATE_LABELS[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="blue" className="bg-brand-blue text-white" onClick={() => reactToPrintFn()}>
             <Printer className="mr-2 h-4 w-4" />
             Print
@@ -328,6 +451,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
               selectedYear={selectedYear}
               invoiceDate={invoiceDate}
               dueDate={dueDate}
+              variant={templateFor(yearInvoice)}
             />
           </div>
 
@@ -364,6 +488,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
               selectedYear={selectedYear}
               invoiceDate={sheetDate}
               dueDate={sheetDueDate}
+              variant={templateFor(inv)}
             />
           );
         })}
@@ -380,13 +505,53 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
                   {propertiesWithInvoice.length} PDF
                   {propertiesWithInvoice.length === 1 ? "" : "s"} for tax year {selectedYear}.
                 </p>
-                <EmailTemplateSelect
-                  id="client-invoice-template"
-                  purpose="invoice"
-                  value={templateKey}
-                  onChange={setTemplateKey}
-                  disabled={isSending}
-                />
+                {savingsProperties.length > 0 && zeroSavingsProperties.length > 0 ? (
+                  <>
+                    <p>
+                      {savingsProperties.length} invoice{savingsProperties.length === 1 ? "" : "s"} with
+                      tax savings and {zeroSavingsProperties.length} with $0 savings. Each group is its
+                      own email. Choose a template for each.
+                    </p>
+                    <EmailTemplateSelect
+                      id="client-invoice-template"
+                      label="Tax savings template"
+                      purpose="invoice"
+                      value={templateKey}
+                      onChange={setTemplateKey}
+                      disabled={isSending}
+                    />
+                    <EmailTemplateSelect
+                      id="client-zero-savings-template"
+                      label="0 savings template"
+                      purpose="invoice_zero_savings"
+                      value={zeroSavingsTemplateKey}
+                      onChange={setZeroSavingsTemplateKey}
+                      disabled={isSending}
+                    />
+                  </>
+                ) : savingsProperties.length === 0 ? (
+                  <>
+                    <p>All of these invoices have $0 tax savings, so the 0 Savings template is selected.</p>
+                    <EmailTemplateSelect
+                      id="client-zero-savings-template"
+                      purpose="invoice_zero_savings"
+                      value={zeroSavingsTemplateKey}
+                      onChange={setZeroSavingsTemplateKey}
+                      disabled={isSending}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <p>These invoices have tax savings, so the invoice email template is selected.</p>
+                    <EmailTemplateSelect
+                      id="client-invoice-template"
+                      purpose="invoice"
+                      value={templateKey}
+                      onChange={setTemplateKey}
+                      disabled={isSending}
+                    />
+                  </>
+                )}
                 {recipientPhone && (
                   <div className="flex items-center gap-2">
                     <Checkbox

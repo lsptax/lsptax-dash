@@ -7,13 +7,15 @@ import { ClientData, Property } from "@/types/types";
 import { routes } from "@/routes/ROUTES";
 import { BackToListLink } from "../BackToListLink";
 import { ListDetailLink } from "../ListDetailLink";
-import { formatClientNumberDisplay } from "@/utils/clientContact";
+import { formatClientNumberDisplay, getStaffClientNumber } from "@/utils/clientContact";
 import { AssociatedPropertiesSection } from "../shared/AssociatedPropertiesSection";
 import { ContractsAoasSection } from "../shared/ContractsAoasSection";
 import { EntityDetailRow, EntityDetailsCard } from "../shared/EntityDetailRow";
 import { SendEnvelopeDialog } from "../shared/SendEnvelopeDialog";
 import { SendClientEmailDialog } from "./SendClientEmailDialog";
 import { useEntityContracts } from "@/hooks/useEntityContracts";
+import { NotesAside, notesPanelClass, useNotesPanel } from "../shared/NotesAside";
+import { editClient } from "@/api/api";
 
 interface Client {
   client: ClientData;
@@ -26,6 +28,7 @@ const ClientPage = () => {
   const [clientData, setClientData] = useState<Client | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const notesPanel = useNotesPanel("lsptax-client-notes-open");
   const contractsState = useEntityContracts(clientData?.client?.id);
 
   const fetchClientData = useCallback(async () => {
@@ -90,6 +93,10 @@ const ClientPage = () => {
   const nonArchivedProperties = properties.filter(
     (p) => !(p.isArchived ?? p.IsArchived)
   );
+  const clientNumber = getStaffClientNumber(client.clientNumber, client.CLIENTNumber);
+  const clientInvoicesTo = clientNumber
+    ? routes.invoices.list({ search: `#${clientNumber}` })
+    : routes.invoices.list();
 
   return (
     <div className="px-4 sm:px-6 py-4">
@@ -113,7 +120,7 @@ const ClientPage = () => {
               Edit Client Details
             </Button>
           </NavLink>
-          <ListDetailLink to={routes.invoices.byClient(client.id)}>
+          <ListDetailLink to={clientInvoicesTo}>
             <Button variant="outline" size="sm">
               Invoice
             </Button>
@@ -126,48 +133,70 @@ const ClientPage = () => {
         </div>
       </div>
 
-      <EntityDetailsCard>
-        <EntityDetailRow label="Client #:">
-          {formatClientNumberDisplay(client.clientNumber, client.CLIENTNumber)}
-        </EntityDetailRow>
-        <EntityDetailRow label="Client Name:">{client.clientName}</EntityDetailRow>
-        <EntityDetailRow label="Phone:">
-          <Phone size={16} className="inline text-primary mr-2" />
-          {client.phoneNumber}
-        </EntityDetailRow>
-        <EntityDetailRow label="Email:">
-          <Mail size={16} className="inline text-primary mr-2" />
-          {client.email}
-        </EntityDetailRow>
-        <EntityDetailRow label="Address:">
-          <MapPin size={16} className="inline text-primary mr-2" />
-          {client.mailingAddress}, {client.mailingAddressCityTxZip}
-        </EntityDetailRow>
-        {client.contingencyFee != null && client.contingencyFee !== "" && (
-          <EntityDetailRow label="Contingency Fee:">
-            {client.contingencyFee}%
+      <div className={notesPanelClass(notesPanel.open)}>
+        <div className="contents lg:block lg:min-w-0">
+        <EntityDetailsCard className="order-1 mb-0 lg:order-none">
+          <EntityDetailRow label="Client #:">
+            {formatClientNumberDisplay(client.clientNumber, client.CLIENTNumber)}
           </EntityDetailRow>
-        )}
-      </EntityDetailsCard>
+          <EntityDetailRow label="Client Name:">{client.clientName}</EntityDetailRow>
+          <EntityDetailRow label="Phone:">
+            <Phone size={16} className="inline text-primary mr-2" />
+            {client.phoneNumber}
+          </EntityDetailRow>
+          <EntityDetailRow label="Email:">
+            <Mail size={16} className="inline text-primary mr-2" />
+            {client.email}
+          </EntityDetailRow>
+          <EntityDetailRow label="Address:">
+            <MapPin size={16} className="inline text-primary mr-2" />
+            {client.mailingAddress}, {client.mailingAddressCityTxZip}
+          </EntityDetailRow>
+          {client.contingencyFee != null && client.contingencyFee !== "" && (
+            <EntityDetailRow label="Contingency Fee:">
+              {client.contingencyFee}%
+            </EntityDetailRow>
+          )}
+        </EntityDetailsCard>
 
-      <AssociatedPropertiesSection
-        properties={properties}
-        addHref={routes.client.addProperty(client.id)}
-        propertyHref={(property) => routes.properties.view(property.id)}
-      />
+        <div className="order-3 mt-8 min-w-0 lg:order-none">
+          <AssociatedPropertiesSection
+            properties={properties}
+            addHref={routes.client.addProperty(client.id)}
+            propertyHref={(property) => routes.properties.view(property.id)}
+            gridClassName="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          />
+        </div>
 
-      <ContractsAoasSection
-        entityId={client.id}
-        entityLabel="client"
-        entityName={client.clientName ?? ""}
-        email={client.email}
-        properties={nonArchivedProperties}
-        contracts={contractsState.contracts}
-        loading={contractsState.loading}
-        downloadingId={contractsState.downloadingId}
-        onRefresh={contractsState.refresh}
-        onDownloadSigned={contractsState.downloadSigned}
-      />
+        <div className="order-4 min-w-0 lg:order-none">
+          <ContractsAoasSection
+            entityId={client.id}
+            entityLabel="client"
+            entityName={client.clientName ?? ""}
+            email={client.email}
+            properties={nonArchivedProperties}
+            contracts={contractsState.contracts}
+            loading={contractsState.loading}
+            downloadingId={contractsState.downloadingId}
+            onRefresh={contractsState.refresh}
+            onDownloadSigned={contractsState.downloadSigned}
+          />
+        </div>
+        </div>
+
+        <NotesAside
+          open={notesPanel.open}
+          onOpenChange={notesPanel.setOpen}
+          description="Notes for this client overall. Property-specific notes stay on each property."
+          value={client.notes ?? ""}
+          onSave={async (notes) => {
+            await editClient(String(client.id), { notes });
+            setClientData((current) =>
+              current ? { ...current, client: { ...current.client, notes } } : current
+            );
+          }}
+        />
+      </div>
     </div>
   );
 };

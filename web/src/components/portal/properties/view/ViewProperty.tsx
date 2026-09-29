@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyData } from "@/types/types";
-import { deleteProperty } from "@/api/api";
+import { deleteProperty, editProperty } from "@/api/api";
 import YearTable from "../yeardata/YearTable";
 import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
 import { PropertyLifecyclePanel } from "@/components/portal/properties/lifecycle/PropertyLifecyclePanel";
@@ -26,6 +26,7 @@ import { BackToListLink } from "../../BackToListLink";
 import { ListDetailLink } from "../../ListDetailLink";
 import { formatClientNumberDisplay } from "@/utils/clientContact";
 import { EntityDetailRow } from "../../shared/EntityDetailRow";
+import { NotesAside, notesPanelClass, useNotesPanel } from "../../shared/NotesAside";
 
 function clampToPropertyInvoiceYear(year: number): number {
   const min = Math.min(...PROPERTY_INVOICE_YEARS);
@@ -44,6 +45,7 @@ const ViewProperty = () => {
   const [selectedYear, setSelectedYear] = useState(() =>
     clampToPropertyInvoiceYear(new Date().getFullYear())
   ); // Track selected year (restricted to property invoice years)
+  const notesPanel = useNotesPanel("lsptax-property-notes-open");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const propertyIdParam = searchParams.get("propertyId");
@@ -347,6 +349,9 @@ const ViewProperty = () => {
         </div>
       </div>
 
+      <div className={notesPanelClass(notesPanel.open)}>
+      <div className="contents lg:block lg:min-w-0">
+      <div className="order-1 lg:order-none">
       <div className="flex items-center justify-between gap-4 border rounded-xl bg-gray-100 my-2 p-4 text-lg">
         <div className="flex gap-2">
           <span>Client No:</span>
@@ -396,7 +401,9 @@ const ViewProperty = () => {
           </table>
         </div>
       </div>
+      </div>
 
+      <div className="order-3 min-w-0 lg:order-none">
       <PropertyLifecyclePanel
         propertyId={activePropertyId}
         lifecycle={property.lifecycle}
@@ -409,6 +416,27 @@ const ViewProperty = () => {
       </h2>
       <div className="mt-4">
         <YearTable invoices={property.invoices} showBpp={showBpp} />
+      </div>
+      </div>
+      </div>
+
+      <NotesAside
+        open={notesPanel.open}
+        onOpenChange={notesPanel.setOpen}
+        description="Notes for this property only. Client-wide notes stay on the client profile."
+        value={prop.notes ?? ""}
+        onSave={async (notes) => {
+          await editProperty(String(activePropertyId), { notes }, {});
+          setProperty((current) =>
+            current
+              ? {
+                  ...current,
+                  propertyDetails: { ...current.propertyDetails, notes },
+                }
+              : current
+          );
+        }}
+      />
       </div>
     </div>
   );

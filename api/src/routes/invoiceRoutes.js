@@ -12,6 +12,7 @@ import {
   syncInvoiceDeliveryTracking,
   syncInvoiceDeliveriesTracking,
   updateInvoicePaymentStatus,
+  updateInvoiceTemplate,
   sendClientPaymentAcknowledgement,
   previewPaymentAcknowledgementRecipients,
 } from "../controller/invoiceController.js";
@@ -23,6 +24,7 @@ router.post("/generate", generateInvoicesForClients);
 
 // Mark invoice(s) paid / unpaid
 router.patch("/payment", updateInvoicePaymentStatus);
+router.patch("/template", updateInvoiceTemplate);
 router.post("/payment-acknowledgement/preview", previewPaymentAcknowledgementRecipients);
 router.post("/payment-acknowledgement", sendClientPaymentAcknowledgement);
 

@@ -348,3 +348,54 @@ html.dark .email-body-editor .template-logo {
   font-size: 0.75rem;
   font-weight: 600;
 }
+
+.notes-editor .ProseMirror {
+  min-height: 4.5rem;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.notes-editor .ProseMirror p,
+.notes-read p {
+  margin: 0 0 0.5em;
+}
+.notes-editor .ProseMirror p:last-child,
+.notes-read p:last-child {
+  margin-bottom: 0;
+}
+.notes-editor .ProseMirror ul,
+.notes-editor .ProseMirror ol,
+.notes-read ul,
+.notes-read ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.25rem;
+}
+.notes-editor .ProseMirror ul,
+.notes-read ul {
+  list-style: disc;
+}
+.notes-editor .ProseMirror ol,
+.notes-read ol {
+  list-style: decimal;
+}
+.notes-editor .ProseMirror li,
+.notes-read li {
+  margin: 0.15em 0;
+}
+.notes-editor .ProseMirror li p,
+.notes-read li p {
+  margin: 0;
+}
+.notes-editor .ProseMirror mark,
+.notes-read mark {
+  background: #fde68a;
+  color: inherit;
+  border-radius: 0.15rem;
+  padding: 0 0.12rem;
+}
+html.dark .notes-editor .ProseMirror mark,
+html.dark .notes-read mark {
+  background: #a16207;
+  color: #fef9c3;
+}
