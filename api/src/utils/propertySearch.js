@@ -1,14 +1,14 @@
 import { sanitizeSearchTerm } from "./search.js";
 import { normalizeAccountNumber } from "./accountNumberNormalize.js";
 
-/** Max digits before a numeric search term is treated as an account number, not property id. */
-export const MAX_PROPERTY_ID_SEARCH_LENGTH = 7;
+/** Postgres int4 max. Longer digit strings are account numbers, not property ids. */
+const MAX_INT4 = 2147483647;
 
 /**
  * Build Prisma OR conditions for property search.
  * - Account number: case-insensitive contains + leading-zero tolerant for numeric terms
- * - Client name: case-insensitive contains
- * - Property id: only for short numeric queries (avoids Harris County account numbers matching as ids)
+ * - Client name, property address, and mailing address: case-insensitive contains
+ * - Property id: exact match when the query fits in a 32-bit id
  */
 export function buildPropertySearchOrConditions(searchTerm) {
   const q = sanitizeSearchTerm(searchTerm);
@@ -17,6 +17,8 @@ export function buildPropertySearchOrConditions(searchTerm) {
   const contains = { contains: q, mode: "insensitive" };
   const orConditions = [
     { accountNumber: contains },
+    { propertyAddress: contains },
+    { mailingAddress: contains },
     { client: { clientName: contains } },
   ];
 
@@ -46,10 +48,9 @@ export function buildPropertySearchOrConditions(searchTerm) {
     }
   }
 
-  // Only match property id for short numeric queries (not long account numbers)
-  if (/^\d+$/.test(q) && q.length <= MAX_PROPERTY_ID_SEARCH_LENGTH) {
-    const idNum = parseInt(q, 10);
-    if (Number.isFinite(idNum) && String(idNum) === String(parseInt(q, 10))) {
+  if (/^\d+$/.test(q)) {
+    const idNum = Number(q);
+    if (Number.isInteger(idNum) && idNum > 0 && idNum <= MAX_INT4) {
       orConditions.push({ id: idNum });
     }
   }

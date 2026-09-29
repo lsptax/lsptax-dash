@@ -27,9 +27,11 @@ const clientToDto = (c) => ({
   flatFee: c.flatFee != null ? Number(c.flatFee) : null,
 });
 
+const MAX_INT4 = 2147483647;
+
 /** Build filter for client search.
  * - If search starts with "#<number>", treat it as clientNumber (user-entered) (e.g. "#231" → clientNumber = "231").
- * - Otherwise, search clientName, email, phoneNumber (case-insensitive).
+ * - Otherwise, search name, email, phone, and client number. A numeric query also matches the row id.
  */
 function clientSearchWhere(searchTerm) {
   const raw = sanitizeSearchTerm(searchTerm);
@@ -49,15 +51,22 @@ function clientSearchWhere(searchTerm) {
     // If "#something" but not numeric, fall through to text search
   }
 
-  const q = raw;
-  const contains = { contains: q, mode: "insensitive" };
-  return {
-    OR: [
-      { clientName: contains },
-      { email: contains },
-      { phoneNumber: contains },
-    ],
-  };
+  const contains = { contains: raw, mode: "insensitive" };
+  const orConditions = [
+    { clientName: contains },
+    { email: contains },
+    { phoneNumber: contains },
+    { clientNumber: contains },
+  ];
+
+  if (/^\d+$/.test(raw)) {
+    const idNum = Number(raw);
+    if (Number.isInteger(idNum) && idNum > 0 && idNum <= MAX_INT4) {
+      orConditions.push({ id: idNum });
+    }
+  }
+
+  return { OR: orConditions };
 }
 
 function normalizeAccountType(accountType) {

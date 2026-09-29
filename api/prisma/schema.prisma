@@ -1,9 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pg_trgm]
 }
 
 enum ClientType {
@@ -81,6 +83,10 @@ model Client {
   @@index([email])
   @@index([phoneNumber])
   @@index([type])
+  @@index([clientName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Client_clientName_trgm_idx")
+  @@index([clientNumber(ops: raw("gin_trgm_ops"))], type: Gin, map: "Client_clientNumber_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "Client_email_trgm_idx")
+  @@index([phoneNumber(ops: raw("gin_trgm_ops"))], type: Gin, map: "Client_phoneNumber_trgm_idx")
 }
 
 model Property {
@@ -138,6 +144,11 @@ model Property {
 
   @@index([clientId])
   @@index([isArchived, clientNumber])
+  @@index([accountNumber(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_accountNumber_trgm_idx")
+  @@index([propertyAddress(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_propertyAddress_trgm_idx")
+  @@index([mailingAddress(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_mailingAddress_trgm_idx")
+  @@index([clientNumber(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_clientNumber_trgm_idx")
+  @@index([nameOnCad(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_nameOnCad_trgm_idx")
 }
 
 /// One scheduled hearing per row; a property may have many hearings.

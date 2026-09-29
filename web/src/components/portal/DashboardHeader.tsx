@@ -195,11 +195,6 @@ const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
   const username = localStorage.getItem("username") || "User";
   const currentHeader = resolveHeader(currentPath, username);
 
-  const showHeaderSearch =
-    currentPath !== "" &&
-    currentPath !== "dashboard" &&
-    currentPath !== "csv-uploads";
-
   async function logoutHandler() {
     try {
       await logoutUser();
@@ -214,7 +209,7 @@ const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
   }
 
   return (
-    <header className="flex w-full items-center gap-3 pl-4 pr-2 sm:pl-6 sm:pr-3 py-3 border-b border-border bg-background/90 backdrop-blur-md">
+    <header className="relative z-30 flex w-full items-center gap-3 pl-4 pr-2 sm:pl-6 sm:pr-3 py-3 border-b border-border bg-background/90 backdrop-blur-md">
       <button
         type="button"
         className="sm:hidden p-2 rounded-md text-foreground hover:bg-muted"
@@ -226,9 +221,7 @@ const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
       <div className="min-w-0 flex-1">
         <HeaderDescriptionItem label={currentHeader.label} desc={currentHeader.desc} />
       </div>
-      {showHeaderSearch ? (
-        <HeaderSearch className="w-36 sm:w-56 md:w-72 lg:w-96 shrink-0" />
-      ) : null}
+      <HeaderSearch className="w-40 sm:w-64 md:w-80 lg:w-[26rem] shrink-0" />
       <div className="flex items-center gap-2 shrink-0">
         <ThemeToggle />
         <DropdownMenu>

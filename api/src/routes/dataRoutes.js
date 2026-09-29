@@ -44,9 +44,11 @@ import {
   postResetEmailTemplate,
   removeEmailTemplate,
 } from "../controller/emailTemplateController.js";
+import { globalSearch } from "../controller/searchController.js";
 
 const router = Router();
 
+router.get("/search", globalSearch);
 router.get("/clients", getClients);
 router.get("/archive_clients", getArchiveClients);
 router.get("/client", getClientDetails);
