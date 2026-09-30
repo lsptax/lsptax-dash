@@ -623,7 +623,7 @@ const InvoicesTable = ({
         <div className="order-last flex w-full flex-wrap items-end gap-3 border-t pt-3">
           <ListSearchField
             label="Client"
-            placeholder="Name, # or ID"
+            placeholder="Name or #"
             value={clientSearch.draft}
             onValueChange={clientSearch.setDraft}
             onCommit={clientSearch.commitNow}

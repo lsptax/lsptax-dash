@@ -7,7 +7,7 @@ import {
 } from "../config/propertyLifecycle.js";
 import { getHearingsByPropertyId } from "./hearingService.js";
 import { paginate } from "../utils/pagination.js";
-import { clientFilterWhere, sanitizeSearchTerm } from "../utils/search.js";
+import { clientFilterWhere, clientNumberSearchTerm, sanitizeSearchTerm } from "../utils/search.js";
 import { accountNumberSearchWhere, propertySearchWhere } from "../utils/propertySearch.js";
 import { buildCadMailingAddressDisplay } from "../utils/propertyAddress.js";
 import {
@@ -72,8 +72,13 @@ function buildPropertyWhere({ isArchived, search, accountType, client = null, pr
   const searchWhere = propertySearchWhere(search);
   if (Object.keys(searchWhere).length) and.push(searchWhere);
 
-  const clientWhere = clientFilterWhere(client);
-  if (clientWhere) and.push({ client: clientWhere });
+  const clientNumber = clientNumberSearchTerm(client);
+  if (clientNumber) {
+    and.push({ clientNumber: { equals: clientNumber, mode: "insensitive" } });
+  } else {
+    const clientWhere = clientFilterWhere(client);
+    if (clientWhere) and.push({ client: clientWhere });
+  }
 
   const propertyWhere = accountNumberSearchWhere(property);
   if (Object.keys(propertyWhere).length) and.push(propertyWhere);

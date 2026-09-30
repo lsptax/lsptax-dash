@@ -1,7 +1,12 @@
 import prisma from "../../prisma/prismaClient.js";
 import { getHearingStats } from "./hearingService.js";
 import { paginateResult } from "../utils/pagination.js";
-import { clientFilterWhere, sanitizeSearchTerm } from "../utils/search.js";
+import {
+  clientFilterWhere,
+  clientNumberSearchTerm,
+  invoiceDisplayedClientNumberWhere,
+  sanitizeSearchTerm,
+} from "../utils/search.js";
 import {
   invoiceToApiDto,
   normalizeInvoiceDateString,
@@ -423,9 +428,11 @@ async function loadGroupedInvoices({
 }) {
   const baseWhere = { isArchived: Boolean(archived) };
   const searchWhere = invoiceSearchWhere(search);
-  const clientWhere = clientFilterWhere(client);
+  const clientNumber = clientNumberSearchTerm(client);
+  const clientWhere = clientNumber ? null : clientFilterWhere(client);
   const and = [
     ...(Object.keys(searchWhere).length ? [searchWhere] : []),
+    ...(clientNumber ? [invoiceDisplayedClientNumberWhere(clientNumber)] : []),
     ...(clientWhere ? [{ property: { client: clientWhere } }] : []),
   ];
   const where = and.length ? { ...baseWhere, AND: and } : baseWhere;

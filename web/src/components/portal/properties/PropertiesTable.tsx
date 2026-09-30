@@ -143,7 +143,7 @@ const PropertiesTable = <TData extends Properties, TValue>({
         </div>
         <ListSearchField
           label="Client"
-          placeholder="Name, # or ID"
+          placeholder="Name or #"
           value={clientSearch.draft}
           onValueChange={clientSearch.setDraft}
           onCommit={clientSearch.commitNow}

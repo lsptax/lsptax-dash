@@ -16,7 +16,12 @@ import {
   getPaymentAcknowledgementSubject,
 } from "../utils/paymentAcknowledgementEmailTemplate.js";
 import { toE164 } from "../utils/phoneNumber.js";
-import { clientFilterWhere, sanitizeSearchTerm } from "../utils/search.js";
+import {
+  clientFilterWhere,
+  clientNumberSearchTerm,
+  invoiceDisplayedClientNumberWhere,
+  sanitizeSearchTerm,
+} from "../utils/search.js";
 import { buildPropertySearchOrConditions } from "../utils/propertySearch.js";
 import {
   uploadInvoiceToSupabase,
@@ -144,8 +149,13 @@ function bulkInvoiceWhere(filters) {
   if (!filters.includeArchivedProperties) propertyWhere.isArchived = false;
   if (!filters.includeArchivedClients) clientWhere.isArchived = false;
   if (filters.clientIds.length) clientWhere.id = { in: filters.clientIds };
-  const clientMatch = clientFilterWhere(filters.client);
-  if (clientMatch) clientWhere.AND = [...(clientWhere.AND || []), clientMatch];
+  const clientNumber = clientNumberSearchTerm(filters.client);
+  if (clientNumber) {
+    where.AND = [...(where.AND || []), invoiceDisplayedClientNumberWhere(clientNumber)];
+  } else {
+    const clientMatch = clientFilterWhere(filters.client);
+    if (clientMatch) clientWhere.AND = [...(clientWhere.AND || []), clientMatch];
+  }
 
   if (filters.cadCounties.length) {
     propertyWhere.OR = filters.cadCounties.map((county) => ({

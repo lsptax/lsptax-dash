@@ -16,9 +16,22 @@ export function sanitizeSearchTerm(value) {
 }
 
 /**
+ * Client number typed in the list search, with an optional leading "#".
+ * Returns null for name searches. Never the database id.
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+export function clientNumberSearchTerm(value) {
+  const term = sanitizeSearchTerm(value);
+  if (!term) return null;
+  const numberTerm = term.startsWith("#") ? term.slice(1).trim() : term;
+  if (!/^\d+$/.test(numberTerm)) return null;
+  return numberTerm;
+}
+
+/**
  * Prisma Client where for a free-text client filter.
- * Matches client name (partial), client number (prefix, optional leading "#"),
- * or system client id (exact, when the term is numeric).
+ * A numeric term matches clientNumber exactly. Anything else matches the client name.
  * @param {unknown} value
  * @returns {object | null}
  */
@@ -26,15 +39,27 @@ export function clientFilterWhere(value) {
   const term = sanitizeSearchTerm(value);
   if (!term) return null;
 
-  const numberTerm = term.startsWith("#") ? term.slice(1).trim() : term;
-  const or = [{ clientName: { contains: term, mode: "insensitive" } }];
-  if (numberTerm) {
-    or.push({ clientNumber: { startsWith: numberTerm, mode: "insensitive" } });
+  const number = clientNumberSearchTerm(term);
+  if (number) {
+    return { clientNumber: { equals: number, mode: "insensitive" } };
   }
-  if (/^\d+$/.test(numberTerm)) {
-    const id = parseInt(numberTerm, 10);
-    if (id <= 2147483647) or.push({ id });
-  }
-  return { OR: or };
+  return { clientName: { contains: term, mode: "insensitive" } };
+}
+
+/**
+ * Invoice rows whose client number on screen equals this number.
+ * The list shows invoice.clientNumber, and the client's number only when that is blank.
+ * @param {string} number
+ * @returns {object}
+ */
+export function invoiceDisplayedClientNumberWhere(number) {
+  const exact = { equals: number, mode: "insensitive" };
+  const blankInvoiceNumber = { OR: [{ clientNumber: null }, { clientNumber: "" }] };
+  return {
+    OR: [
+      { clientNumber: exact },
+      { AND: [blankInvoiceNumber, { property: { client: { clientNumber: exact } } }] },
+    ],
+  };
 }
 
