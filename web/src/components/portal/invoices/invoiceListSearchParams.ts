@@ -11,6 +11,7 @@ export type InvoiceListParams = {
   minAmount: number | null;
   maxAmount: number | null;
   years: number[];
+  client: string;
   offset: number;
   limit: number;
   archived: boolean;
@@ -26,6 +27,7 @@ export const DEFAULT_INVOICE_LIST_PARAMS: InvoiceListParams = {
   minAmount: null,
   maxAmount: null,
   years: [],
+  client: "",
   offset: 0,
   limit: 10,
   archived: false,
@@ -67,6 +69,7 @@ export function parseInvoiceListParams(
     minAmount: parseAmountParam(searchParams.get("minAmount")),
     maxAmount: parseAmountParam(searchParams.get("maxAmount")),
     years: parseYearsParam(searchParams.get("years")),
+    client: searchParams.get("client")?.trim() ?? "",
     offset: Number.isFinite(offset) && offset >= 0 ? offset : 0,
     limit: Number.isFinite(limit) && limit > 0 ? limit : 10,
     archived: searchParams.get("archived") === "true",
@@ -87,6 +90,7 @@ export function invoiceListParamsToSearchParams(
   if (params.minAmount != null) usp.set("minAmount", String(params.minAmount));
   if (params.maxAmount != null) usp.set("maxAmount", String(params.maxAmount));
   if (params.years.length > 0) usp.set("years", params.years.join(","));
+  if (params.client) usp.set("client", params.client);
   if (params.offset > 0) usp.set("offset", String(params.offset));
   if (params.limit !== DEFAULT_INVOICE_LIST_PARAMS.limit) {
     usp.set("limit", String(params.limit));

@@ -16,7 +16,7 @@ import {
   getPaymentAcknowledgementSubject,
 } from "../utils/paymentAcknowledgementEmailTemplate.js";
 import { toE164 } from "../utils/phoneNumber.js";
-import { sanitizeSearchTerm } from "../utils/search.js";
+import { clientFilterWhere, sanitizeSearchTerm } from "../utils/search.js";
 import { buildPropertySearchOrConditions } from "../utils/propertySearch.js";
 import {
   uploadInvoiceToSupabase,
@@ -120,6 +120,7 @@ function normalizeBulkInvoiceFilters(filters = {}) {
     accountNumbers: parseStringList(filters.accountNumbers),
     cadCounties: parseStringList(filters.cadCounties || filters.counties),
     search: sanitizeSearchTerm(filters.search),
+    client: sanitizeSearchTerm(filters.client),
     paymentStatus,
     minInvoiceAmount: parseOptionalNumber(filters.minInvoiceAmount, "minInvoiceAmount"),
     maxInvoiceAmount: parseOptionalNumber(filters.maxInvoiceAmount, "maxInvoiceAmount"),
@@ -143,6 +144,8 @@ function bulkInvoiceWhere(filters) {
   if (!filters.includeArchivedProperties) propertyWhere.isArchived = false;
   if (!filters.includeArchivedClients) clientWhere.isArchived = false;
   if (filters.clientIds.length) clientWhere.id = { in: filters.clientIds };
+  const clientMatch = clientFilterWhere(filters.client);
+  if (clientMatch) clientWhere.AND = [...(clientWhere.AND || []), clientMatch];
 
   if (filters.cadCounties.length) {
     propertyWhere.OR = filters.cadCounties.map((county) => ({
@@ -1591,7 +1594,8 @@ function hasBulkSelection(filters, attachmentClientIds) {
     filters.years.length > 0 ||
     filters.accountNumbers.length > 0 ||
     filters.cadCounties.length > 0 ||
-    Boolean(filters.search)
+    Boolean(filters.search) ||
+    Boolean(filters.client)
   );
 }
 

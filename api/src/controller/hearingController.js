@@ -3,13 +3,15 @@ import { sendError } from "../services/exportService.js";
 
 export const listHearings = async (req, res) => {
   try {
-    const { limit, offset, from, to, status } = req.query;
+    const { limit, offset, from, to, status, client, property } = req.query;
     const result = await hearingService.listHearings({
       limit,
       offset,
       from,
       to,
       status,
+      client,
+      property,
     });
     res.status(200).json(result);
   } catch (error) {

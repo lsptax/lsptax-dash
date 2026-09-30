@@ -201,8 +201,8 @@ export const deleteProperty = async (req, res) => {
 // --- Read & export (data routes) ---
 export const getProperties = async (req, res) => {
   try {
-    const { limit, offset, search, accountType } = req.query;
-    const result = await propertyService.getProperties(limit, offset, search, accountType);
+    const { limit, offset, search, accountType, client, property } = req.query;
+    const result = await propertyService.getProperties(limit, offset, search, accountType, client, property);
     res.status(200).json(result);
   } catch (error) {
     const status = error?.statusCode || 500;
@@ -212,8 +212,8 @@ export const getProperties = async (req, res) => {
 
 export const getArchiveProperties = async (req, res) => {
   try {
-    const { limit, offset, search, accountType } = req.query;
-    const result = await propertyService.getArchiveProperties(limit, offset, search, accountType);
+    const { limit, offset, search, accountType, client, property } = req.query;
+    const result = await propertyService.getArchiveProperties(limit, offset, search, accountType, client, property);
     res.status(200).json(result);
   } catch (error) {
     const status = error?.statusCode || 500;
@@ -244,10 +244,20 @@ export const getPropertyDetails = async (req, res) => {
   }
 };
 
+function propertyExportFilters(query = {}) {
+  return {
+    accountType: query.accountType,
+    client: query.client,
+    property: query.property,
+    search: query.search,
+    archived: query.archived === "true",
+  };
+}
+
 export const downloadPropertiesXLSX = async (req, res) => {
   try {
     const { accountType } = req.query;
-    const properties = await propertyService.getPropertiesForExport({ accountType });
+    const properties = await propertyService.getPropertiesForExport(propertyExportFilters(req.query));
     const buffer = convertToXLSX(properties, EXPORT_FIELDS.properties, "Properties");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     const suffix = accountType ? `-${String(accountType).toLowerCase()}` : "";
@@ -262,7 +272,7 @@ export const downloadPropertiesXLSX = async (req, res) => {
 export const downloadPropertiesCSV = async (req, res) => {
   try {
     const { accountType } = req.query;
-    const properties = await propertyService.getPropertiesForExport({ accountType });
+    const properties = await propertyService.getPropertiesForExport(propertyExportFilters(req.query));
     const csv = convertToCSV(properties, EXPORT_FIELDS.properties);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     const suffix = accountType ? `-${String(accountType).toLowerCase()}` : "";

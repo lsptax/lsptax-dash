@@ -18,6 +18,7 @@ const BULK_INVOICE_FILTER_KEYS = [
   "cadCounties",
   "counties",
   "search",
+  "client",
   "paymentStatus",
   "minInvoiceAmount",
   "maxInvoiceAmount",
@@ -354,7 +355,7 @@ export const getInvoicesByClient = async (req, res) => {
 
 export const getInvoiceIds = async (req, res) => {
   try {
-    const { search, sendStatus, paymentStatus, minAmount, maxAmount, years, archived } = req.query;
+    const { search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, archived } = req.query;
     const ids = await invoiceService.listFilteredInvoiceIds({
       archived: archived === "true",
       search,
@@ -363,6 +364,7 @@ export const getInvoiceIds = async (req, res) => {
       minAmount,
       maxAmount,
       years,
+      client,
     });
     res.status(200).json({ ids, total: ids.length });
   } catch (error) {
@@ -373,7 +375,7 @@ export const getInvoiceIds = async (req, res) => {
 
 export const expandInvoiceIds = async (req, res) => {
   try {
-    const { ids, search, sendStatus, paymentStatus, minAmount, maxAmount, years, archived } = req.body || {};
+    const { ids, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, archived } = req.body || {};
     const invoiceIds = await invoiceService.expandGroupedInvoiceIds({
       ids,
       archived: archived === true || archived === "true",
@@ -383,6 +385,7 @@ export const expandInvoiceIds = async (req, res) => {
       minAmount,
       maxAmount,
       years,
+      client,
     });
     res.status(200).json({ ids: invoiceIds, total: invoiceIds.length });
   } catch (error) {
@@ -393,7 +396,7 @@ export const expandInvoiceIds = async (req, res) => {
 
 export const getAllInvoices = async (req, res) => {
   try {
-    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years } = req.query;
+    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client } = req.query;
     const result = await invoiceService.getAllInvoices(
       limit,
       offset,
@@ -402,7 +405,8 @@ export const getAllInvoices = async (req, res) => {
       paymentStatus,
       minAmount,
       maxAmount,
-      years
+      years,
+      client
     );
     res.status(200).json(result);
   } catch (error) {
@@ -413,7 +417,7 @@ export const getAllInvoices = async (req, res) => {
 
 export const getArchiveInvoices = async (req, res) => {
   try {
-    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years } = req.query;
+    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client } = req.query;
     const result = await invoiceService.getArchiveInvoices(
       limit,
       offset,
@@ -422,7 +426,8 @@ export const getArchiveInvoices = async (req, res) => {
       paymentStatus,
       minAmount,
       maxAmount,
-      years
+      years,
+      client
     );
     res.status(200).json(result);
   } catch (error) {

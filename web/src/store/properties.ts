@@ -11,12 +11,16 @@ export const getProperties = async (
   limit = DEFAULT_PAGE_SIZE,
   offset = 0,
   search?: string,
-  accountType?: string
+  accountType?: string,
+  client?: string,
+  property?: string
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (search?.trim()) params.set("search", search.trim());
     if (accountType?.trim()) params.set("accountType", accountType.trim());
+    if (client?.trim()) params.set("client", client.trim());
+    if (property?.trim()) params.set("property", property.trim());
     const response = await authFetch(`${base()}/api/properties?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch properties");
     const json = await response.json();
@@ -36,12 +40,16 @@ export const getArchiveProperties = async (
   limit = DEFAULT_PAGE_SIZE,
   offset = 0,
   search?: string,
-  accountType?: string
+  accountType?: string,
+  client?: string,
+  property?: string
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (search?.trim()) params.set("search", search.trim());
     if (accountType?.trim()) params.set("accountType", accountType.trim());
+    if (client?.trim()) params.set("client", client.trim());
+    if (property?.trim()) params.set("property", property.trim());
     const response = await authFetch(`${base()}/api/archive_properties?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch properties");
     const json = await response.json();
@@ -96,11 +104,23 @@ async function downloadPropertiesFile(endpoint: string, filenameBase: string) {
 
 export const downloadPropertiesXlsx = async ({
   accountType,
+  client,
+  property,
+  search,
+  archived = false,
 }: {
   accountType?: string;
+  client?: string;
+  property?: string;
+  search?: string;
+  archived?: boolean;
 } = {}) => {
   const params = new URLSearchParams();
   if (accountType?.trim()) params.set("accountType", accountType.trim());
+  if (client?.trim()) params.set("client", client.trim());
+  if (property?.trim()) params.set("property", property.trim());
+  if (search?.trim()) params.set("search", search.trim());
+  if (archived) params.set("archived", "true");
   const qs = params.toString();
   const typeLabel = accountType?.trim() ? accountType.trim() : "all";
   await downloadPropertiesFile(

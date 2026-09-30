@@ -7,8 +7,8 @@ import {
 } from "../config/propertyLifecycle.js";
 import { getHearingsByPropertyId } from "./hearingService.js";
 import { paginate } from "../utils/pagination.js";
-import { sanitizeSearchTerm } from "../utils/search.js";
-import { propertySearchWhere } from "../utils/propertySearch.js";
+import { clientFilterWhere, sanitizeSearchTerm } from "../utils/search.js";
+import { accountNumberSearchWhere, propertySearchWhere } from "../utils/propertySearch.js";
 import { buildCadMailingAddressDisplay } from "../utils/propertyAddress.js";
 import {
   computeInvoiceAmount,
@@ -65,12 +65,18 @@ function propertyAccountTypeWhere(accountType) {
   };
 }
 
-function buildPropertyWhere({ isArchived, search, accountType }) {
+function buildPropertyWhere({ isArchived, search, accountType, client = null, property = null }) {
   const baseWhere = { isArchived };
   const and = [];
 
   const searchWhere = propertySearchWhere(search);
   if (Object.keys(searchWhere).length) and.push(searchWhere);
+
+  const clientWhere = clientFilterWhere(client);
+  if (clientWhere) and.push({ client: clientWhere });
+
+  const propertyWhere = accountNumberSearchWhere(property);
+  if (Object.keys(propertyWhere).length) and.push(propertyWhere);
 
   const accountTypeWhere = propertyAccountTypeWhere(accountType);
   if (accountTypeWhere.__invalidAccountType) return { __invalidAccountType: true };
@@ -79,8 +85,8 @@ function buildPropertyWhere({ isArchived, search, accountType }) {
   return and.length ? { ...baseWhere, AND: and } : baseWhere;
 }
 
-export async function getProperties(limit, offset, search, accountType) {
-  const where = buildPropertyWhere({ isArchived: false, search, accountType });
+export async function getProperties(limit, offset, search, accountType, client = null, property = null) {
+  const where = buildPropertyWhere({ isArchived: false, search, accountType, client, property });
   if (where.__invalidAccountType) {
     const err = new Error("Invalid accountType. Allowed values: real, bpp");
     err.statusCode = 400;
@@ -109,8 +115,8 @@ export async function getProperties(limit, offset, search, accountType) {
   });
 }
 
-export async function getArchiveProperties(limit, offset, search, accountType) {
-  const where = buildPropertyWhere({ isArchived: true, search, accountType });
+export async function getArchiveProperties(limit, offset, search, accountType, client = null, property = null) {
+  const where = buildPropertyWhere({ isArchived: true, search, accountType, client, property });
   if (where.__invalidAccountType) {
     const err = new Error("Invalid accountType. Allowed values: real, bpp");
     err.statusCode = 400;
@@ -354,8 +360,20 @@ export function getArchiveTableMapping() {
   };
 }
 
-export async function getPropertiesForExport({ accountType } = {}) {
-  const where = buildPropertyWhere({ isArchived: false, search: null, accountType });
+export async function getPropertiesForExport({
+  accountType,
+  client = null,
+  property = null,
+  search = null,
+  archived = false,
+} = {}) {
+  const where = buildPropertyWhere({
+    isArchived: Boolean(archived),
+    search,
+    accountType,
+    client,
+    property,
+  });
   if (where.__invalidAccountType) {
     const err = new Error("Invalid accountType. Allowed values: real, bpp");
     err.statusCode = 400;

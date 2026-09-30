@@ -13,6 +13,8 @@ export type { AccountTypeFilter } from "./clients";
 
 export type PropertyListParams = {
   search: string;
+  client: string;
+  property: string;
   accountType: AccountTypeFilter;
   offset: number;
   limit: number;
@@ -23,6 +25,8 @@ const ACCOUNT_TYPE_VALUES = new Set<string>(["all", "real", "bpp"]);
 
 export const DEFAULT_PROPERTY_LIST_PARAMS: PropertyListParams = {
   search: "",
+  client: "",
+  property: "",
   accountType: "all",
   offset: 0,
   limit: 10,
@@ -34,6 +38,8 @@ export function parsePropertyListParams(
 ): PropertyListParams {
   return {
     search: parseSearchParam(searchParams),
+    client: parseSearchParam(searchParams, "client").trim(),
+    property: parseSearchParam(searchParams, "property").trim(),
     accountType: parseEnumParam(
       searchParams,
       "accountType",
@@ -51,6 +57,8 @@ export function propertyListParamsToSearchParams(
 ): URLSearchParams {
   const usp = new URLSearchParams();
   appendSearchParam(usp, params.search);
+  appendSearchParam(usp, params.client, "client");
+  appendSearchParam(usp, params.property, "property");
   if (params.accountType !== DEFAULT_PROPERTY_LIST_PARAMS.accountType) {
     usp.set("accountType", params.accountType);
   }

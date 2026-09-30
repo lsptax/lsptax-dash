@@ -76,6 +76,7 @@ export async function resolveInvoiceListRange(
     minAmount?: number | null;
     maxAmount?: number | null;
     years?: number[];
+    client?: string;
   }
 ): Promise<{ start: number; end: number }> {
   if (selectedInvoiceIds.length === 0) {
@@ -92,6 +93,7 @@ export async function resolveInvoiceListRange(
   const minAmount = options?.minAmount ?? null;
   const maxAmount = options?.maxAmount ?? null;
   const years = options?.years ?? [];
+  const client = options?.client?.trim() || undefined;
   const fetchPage = options?.archived ? getArchiveInvoices : getAllInvoices;
   const targetCount = selectedSet.size;
 
@@ -104,7 +106,8 @@ export async function resolveInvoiceListRange(
       paymentStatus,
       minAmount,
       maxAmount,
-      years
+      years,
+      client
     );
     (page.data as InvoiceSummary[]).forEach((row, index) => {
       const id = Number(row.id);

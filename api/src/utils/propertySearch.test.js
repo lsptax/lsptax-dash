@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildPropertySearchOrConditions } from "./propertySearch.js";
+import { accountNumberSearchWhere, buildPropertySearchOrConditions } from "./propertySearch.js";
 
 describe("buildPropertySearchOrConditions", () => {
   it("matches an address and a client name for text", () => {
@@ -15,6 +15,12 @@ describe("buildPropertySearchOrConditions", () => {
     const conditions = buildPropertySearchOrConditions("12345");
     assert.ok(conditions.some((condition) => condition.id === 12345));
     assert.ok(conditions.some((condition) => condition.accountNumber));
+  });
+
+  it("keeps a property-number search to account numbers", () => {
+    const where = accountNumberSearchWhere("00123");
+    assert.ok(where.OR?.length > 0);
+    assert.ok(where.OR.every((condition) => condition.accountNumber));
   });
 
   it("does not treat an oversized account number as a property id", () => {

@@ -19,13 +19,14 @@ import {
   parseHearingListParams,
 } from "@/utils/listParams/hearings";
 import { useListSearchParams } from "@/hooks/useListSearchParams";
+import { ListSearchField, useDebouncedListSearch } from "../ListSearchField";
 
 const HearingsTable = () => {
   const { params, updateParams } = useListSearchParams(
     parseHearingListParams,
     mergeHearingListParams
   );
-  const { from, to, status, offset, limit } = params;
+  const { from, to, status, client, property, offset, limit } = params;
   const [fromDate, setFromDate] = useState(from);
   const [toDate, setToDate] = useState(to);
   const [statusFilter, setStatusFilter] = useState(status || "all");
@@ -49,16 +50,39 @@ const HearingsTable = () => {
     setFromDate("");
     setToDate("");
     setStatusFilter("all");
-    updateParams({ from: "", to: "", status: "", offset: 0 });
+    updateParams({ from: "", to: "", status: "", client: "", property: "", offset: 0 });
   };
 
-  const { data, isLoading, isError, refetch } = useHearingsQuery({
+  const [loadedClient, setLoadedClient] = useState(client);
+  const [loadedProperty, setLoadedProperty] = useState(property);
+
+  const { data, isLoading, isError, isPlaceholderData, refetch } = useHearingsQuery({
     limit,
     offset,
     from: from || undefined,
     to: to || undefined,
     status: status || undefined,
+    client,
+    property,
   });
+
+  useEffect(() => {
+    if (data && !isPlaceholderData) {
+      setLoadedClient(client);
+      setLoadedProperty(property);
+    }
+  }, [data, isPlaceholderData, client, property]);
+
+  const clientSearch = useDebouncedListSearch(
+    client,
+    (next) => updateParams({ client: next, offset: 0 }),
+    !isError && loadedClient !== client
+  );
+  const propertySearch = useDebouncedListSearch(
+    property,
+    (next) => updateParams({ property: next, offset: 0 }),
+    !isError && loadedProperty !== property
+  );
 
   const hearings = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -88,68 +112,82 @@ const HearingsTable = () => {
     );
   }
 
-  const hasFilters = from || to || status;
+  const hasFilters = Boolean(from || to || status || client || property);
 
   return (
     <div>
-      <div className="portal-toolbar lg:items-end">
-        <div className="flex-1">
+      <div className="portal-toolbar !flex-wrap md:!items-end">
+        <div className="mr-auto shrink-0">
           <p className="text-2xl font-semibold tabular-nums">{total}</p>
           <p className="text-sm text-muted-foreground">Scheduled hearings</p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="hearings-from">
-              From
-            </label>
-            <Input
-              id="hearings-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="hearings-to">
-              To
-            </label>
-            <Input
-              id="hearings-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="hearings-status">
-              Status
-            </label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger id="hearings-status" className="mt-1 w-[10rem]">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {HEARING_STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="blue" className="gap-2" onClick={applyFilters}>
-            <Search className="h-4 w-4" />
-            Apply
-          </Button>
-          {hasFilters && (
-            <Button variant="outline" onClick={clearFilters}>
-              Clear
-            </Button>
-          )}
+        <ListSearchField
+          label="Client"
+          placeholder="Name, # or ID"
+          value={clientSearch.draft}
+          onValueChange={clientSearch.setDraft}
+          onCommit={clientSearch.commitNow}
+          searching={clientSearch.searching}
+        />
+        <ListSearchField
+          label="Property"
+          placeholder="Property #"
+          value={propertySearch.draft}
+          onValueChange={propertySearch.setDraft}
+          onCommit={propertySearch.commitNow}
+          searching={propertySearch.searching}
+        />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground" htmlFor="hearings-from">
+            From
+          </label>
+          <Input
+            id="hearings-from"
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="h-9 w-[10.5rem]"
+          />
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground" htmlFor="hearings-to">
+            To
+          </label>
+          <Input
+            id="hearings-to"
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="h-9 w-[10.5rem]"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground" htmlFor="hearings-status">
+            Status
+          </label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger id="hearings-status" className="h-9 w-[10rem]">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {HEARING_STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="blue" className="h-9" onClick={applyFilters}>
+          <Search />
+          Apply
+        </Button>
+        {hasFilters ? (
+          <Button variant="ghost" className="h-9" onClick={clearFilters}>
+            Clear
+          </Button>
+        ) : null}
       </div>
 
       <TableBuilder
@@ -171,7 +209,7 @@ const HearingsTable = () => {
           icon: Calendar,
           title: "No hearings found",
           description: hasFilters
-            ? "Try adjusting date or status filters."
+            ? "Try adjusting the filters."
             : "Hearings appear here once added from a property in Hearing Management.",
         }}
       />

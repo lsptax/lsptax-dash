@@ -48,19 +48,38 @@ export function usePropertiesQuery({
   search = "",
   archived = false,
   accountType,
+  client = "",
+  property = "",
 }: {
   limit?: number;
   offset?: number;
   search?: string;
   archived?: boolean;
   accountType?: string;
+  client?: string;
+  property?: string;
 }) {
   return useQuery({
-    queryKey: ["properties", limit, offset, search, archived, accountType || ""],
+    queryKey: ["properties", limit, offset, search, archived, accountType || "", client, property],
     queryFn: () =>
       archived
-        ? getArchiveProperties(limit, offset, search || undefined, accountType || undefined)
-        : getProperties(limit, offset, search || undefined, accountType || undefined),
+        ? getArchiveProperties(
+            limit,
+            offset,
+            search || undefined,
+            accountType || undefined,
+            client || undefined,
+            property || undefined
+          )
+        : getProperties(
+            limit,
+            offset,
+            search || undefined,
+            accountType || undefined,
+            client || undefined,
+            property || undefined
+          ),
+    placeholderData: keepPreviousData,
     ...queryClientDefaults,
   });
 }
@@ -94,6 +113,7 @@ export function useInvoicesQuery({
   minAmount = null,
   maxAmount = null,
   years = [],
+  client = "",
 }: {
   limit?: number;
   offset?: number;
@@ -104,9 +124,10 @@ export function useInvoicesQuery({
   minAmount?: number | null;
   maxAmount?: number | null;
   years?: number[];
+  client?: string;
 }) {
   return useQuery({
-    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus, minAmount, maxAmount, years],
+    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus, minAmount, maxAmount, years, client],
     queryFn: () =>
       archived
         ? getArchiveInvoices(
@@ -117,7 +138,8 @@ export function useInvoicesQuery({
             paymentStatus,
             minAmount,
             maxAmount,
-            years
+            years,
+            client || undefined
           )
         : getAllInvoices(
             limit,
@@ -127,7 +149,8 @@ export function useInvoicesQuery({
             paymentStatus,
             minAmount,
             maxAmount,
-            years
+            years,
+            client || undefined
           ),
     placeholderData: keepPreviousData,
     ...queryClientDefaults,
@@ -140,16 +163,21 @@ export function useHearingsQuery({
   from,
   to,
   status,
+  client = "",
+  property = "",
 }: {
   limit?: number;
   offset?: number;
   from?: string;
   to?: string;
   status?: string;
+  client?: string;
+  property?: string;
 }) {
   return useQuery({
-    queryKey: ["hearings", limit, offset, from ?? "", to ?? "", status ?? ""],
-    queryFn: () => getHearings(limit, offset, from, to, status),
+    queryKey: ["hearings", limit, offset, from ?? "", to ?? "", status ?? "", client, property],
+    queryFn: () => getHearings(limit, offset, from, to, status, client, property),
+    placeholderData: keepPreviousData,
     ...queryClientDefaults,
   });
 }

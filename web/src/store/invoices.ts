@@ -38,7 +38,8 @@ export const getAllInvoices = async (
   paymentStatus: InvoicePaymentStatusFilter = "any",
   minAmount: number | null = null,
   maxAmount: number | null = null,
-  years: number[] = []
+  years: number[] = [],
+  client?: string
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
@@ -48,6 +49,7 @@ export const getAllInvoices = async (
     if (minAmount != null) params.set("minAmount", String(minAmount));
     if (maxAmount != null) params.set("maxAmount", String(maxAmount));
     if (years.length > 0) params.set("years", years.join(","));
+    if (client?.trim()) params.set("client", client.trim());
     const response = await authFetch(`${base()}/api/invoices?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch Invoices");
     const json = await response.json();
@@ -71,6 +73,7 @@ export const getFilteredInvoiceIds = async ({
   minAmount = null,
   maxAmount = null,
   years = [],
+  client,
 }: {
   archived?: boolean;
   search?: string;
@@ -79,6 +82,7 @@ export const getFilteredInvoiceIds = async ({
   minAmount?: number | null;
   maxAmount?: number | null;
   years?: number[];
+  client?: string;
 } = {}): Promise<number[]> => {
   const params = new URLSearchParams();
   if (archived) params.set("archived", "true");
@@ -88,6 +92,7 @@ export const getFilteredInvoiceIds = async ({
   if (minAmount != null) params.set("minAmount", String(minAmount));
   if (maxAmount != null) params.set("maxAmount", String(maxAmount));
   if (years.length > 0) params.set("years", years.join(","));
+  if (client?.trim()) params.set("client", client.trim());
   const query = params.toString();
   const response = await authFetch(`${base()}/api/invoices/ids${query ? `?${query}` : ""}`);
   const json = await response.json().catch(() => ({}));
@@ -108,6 +113,7 @@ export const expandGroupedInvoiceIds = async ({
   minAmount = null,
   maxAmount = null,
   years = [],
+  client,
 }: {
   ids: number[];
   archived?: boolean;
@@ -117,6 +123,7 @@ export const expandGroupedInvoiceIds = async ({
   minAmount?: number | null;
   maxAmount?: number | null;
   years?: number[];
+  client?: string;
 }): Promise<number[]> => {
   const response = await authFetch(`${base()}/api/invoices/expand-ids`, {
     method: "POST",
@@ -133,6 +140,7 @@ export const expandGroupedInvoiceIds = async ({
       minAmount,
       maxAmount,
       years,
+      client: client?.trim() || undefined,
     }),
   });
   const json = await response.json().catch(() => ({}));
@@ -152,7 +160,8 @@ export const getArchiveInvoices = async (
   paymentStatus: InvoicePaymentStatusFilter = "any",
   minAmount: number | null = null,
   maxAmount: number | null = null,
-  years: number[] = []
+  years: number[] = [],
+  client?: string
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
@@ -162,6 +171,7 @@ export const getArchiveInvoices = async (
     if (minAmount != null) params.set("minAmount", String(minAmount));
     if (maxAmount != null) params.set("maxAmount", String(maxAmount));
     if (years.length > 0) params.set("years", years.join(","));
+    if (client?.trim()) params.set("client", client.trim());
     const response = await authFetch(`${base()}/api/archive-invoices?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch Invoices");
     const json = await response.json();
@@ -337,6 +347,7 @@ export type BulkInvoiceSendFilters = {
   cadCounties?: string[];
   counties?: string[];
   search?: string;
+  client?: string;
   paymentStatus?: "any" | "paid" | "unpaid";
   minInvoiceAmount?: number;
   maxInvoiceAmount?: number;

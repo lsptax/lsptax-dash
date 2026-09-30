@@ -15,3 +15,26 @@ export function sanitizeSearchTerm(value) {
   return q;
 }
 
+/**
+ * Prisma Client where for a free-text client filter.
+ * Matches client name (partial), client number (prefix, optional leading "#"),
+ * or system client id (exact, when the term is numeric).
+ * @param {unknown} value
+ * @returns {object | null}
+ */
+export function clientFilterWhere(value) {
+  const term = sanitizeSearchTerm(value);
+  if (!term) return null;
+
+  const numberTerm = term.startsWith("#") ? term.slice(1).trim() : term;
+  const or = [{ clientName: { contains: term, mode: "insensitive" } }];
+  if (numberTerm) {
+    or.push({ clientNumber: { startsWith: numberTerm, mode: "insensitive" } });
+  }
+  if (/^\d+$/.test(numberTerm)) {
+    const id = parseInt(numberTerm, 10);
+    if (id <= 2147483647) or.push({ id });
+  }
+  return { OR: or };
+}
+

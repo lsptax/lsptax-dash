@@ -8,6 +8,8 @@ import {
   parseHearingStatusInput,
 } from "../config/hearingConstants.js";
 import { paginate } from "../utils/pagination.js";
+import { clientFilterWhere } from "../utils/search.js";
+import { accountNumberSearchWhere } from "../utils/propertySearch.js";
 import {
   getDayRange,
   getMeetingsThisWeekRange,
@@ -267,10 +269,16 @@ export async function getHearingsByPropertyId(propertyId) {
   }));
 }
 
-function buildListWhere({ from, to, status }) {
+function buildListWhere({ from, to, status, client = null, property = null }) {
+  const propertyWhere = { isArchived: false };
+  const clientMatch = clientFilterWhere(client);
+  if (clientMatch) propertyWhere.client = clientMatch;
+  const accountMatch = accountNumberSearchWhere(property);
+  if (Object.keys(accountMatch).length) propertyWhere.AND = [accountMatch];
+
   const where = {
     ...notDeleted,
-    property: { isArchived: false },
+    property: propertyWhere,
   };
   const dateFilter = {};
   const fromDate = from ? parseHearingDate(from) : null;
@@ -288,8 +296,8 @@ function buildListWhere({ from, to, status }) {
 }
 
 /** Paginated hearings table: propertyId, clientId, clientName, date, status, etc. */
-export async function listHearings({ limit, offset, from, to, status }) {
-  const where = buildListWhere({ from, to, status });
+export async function listHearings({ limit, offset, from, to, status, client = null, property = null }) {
+  const where = buildListWhere({ from, to, status, client, property });
   return paginate(prisma.hearing, {
     where,
     orderBy: { date: "asc" },

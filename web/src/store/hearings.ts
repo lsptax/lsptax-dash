@@ -10,11 +10,15 @@ export const getHearings = async (
   from?: string,
   to?: string,
   status?: string,
+  client?: string,
+  property?: string,
 ): Promise<PaginatedResponse<Hearing>> => {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (from?.trim()) params.set("from", from.trim());
   if (to?.trim()) params.set("to", to.trim());
   if (status?.trim()) params.set("status", status.trim());
+  if (client?.trim()) params.set("client", client.trim());
+  if (property?.trim()) params.set("property", property.trim());
   const response = await authFetch(`${base()}/api/hearings?${params.toString()}`);
   if (!response.ok) throw new Error("Failed to fetch hearings");
   const json = await response.json();

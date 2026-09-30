@@ -74,6 +74,7 @@ import {
   resolveInvoiceListRange,
   type InvoicePdfRenderJob,
 } from "@/utils/bulkInvoicePdf";
+import { ListSearchField, useDebouncedListSearch } from "../ListSearchField";
 
 interface InvoicesTableProps {
   columns: ColumnDef<InvoiceSummary>[];
@@ -95,6 +96,7 @@ const InvoicesTable = ({
     minAmount,
     maxAmount,
     years,
+    client,
     offset,
     limit,
     archived,
@@ -123,7 +125,10 @@ const InvoicesTable = ({
     setMaxAmountDraft(maxAmount == null ? "" : String(maxAmount));
   }, [minAmount, maxAmount]);
 
-  const { data, isLoading, isError, refetch } = useInvoicesQuery({
+  const [loadedClient, setLoadedClient] = useState(client);
+  const [loadedProperty, setLoadedProperty] = useState(appliedSearch);
+
+  const { data, isLoading, isError, isPlaceholderData, refetch } = useInvoicesQuery({
     limit,
     offset,
     search: appliedSearch,
@@ -133,7 +138,26 @@ const InvoicesTable = ({
     minAmount,
     maxAmount,
     years,
+    client,
   });
+
+  useEffect(() => {
+    if (data && !isPlaceholderData) {
+      setLoadedClient(client);
+      setLoadedProperty(appliedSearch);
+    }
+  }, [data, isPlaceholderData, client, appliedSearch]);
+
+  const clientSearch = useDebouncedListSearch(
+    client,
+    (next) => updateParams({ client: next, offset: 0 }),
+    !isError && loadedClient !== client
+  );
+  const propertySearch = useDebouncedListSearch(
+    appliedSearch,
+    (next) => updateParams({ search: next, offset: 0 }),
+    !isError && loadedProperty !== appliedSearch
+  );
 
   const invoices = (data?.data ?? []) as InvoiceSummary[];
   const total = data?.total ?? 0;
@@ -160,7 +184,7 @@ const InvoicesTable = ({
   const allFilteredSelected = total > 0 && selectedInvoiceIds.size === total;
   const canSelectAllFiltered = total > currentPageInvoiceIds.length;
 
-  const selectionFilterKey = `${archived}|${appliedSearch}|${sendStatus}|${paymentStatus}|${minAmount ?? ""}|${maxAmount ?? ""}|${years.join(",")}`;
+  const selectionFilterKey = `${archived}|${appliedSearch}|${sendStatus}|${paymentStatus}|${minAmount ?? ""}|${maxAmount ?? ""}|${years.join(",")}|${client}`;
   const selectionFilterKeyRef = useRef(selectionFilterKey);
   useEffect(() => {
     if (selectionFilterKeyRef.current === selectionFilterKey) return;
@@ -182,6 +206,7 @@ const InvoicesTable = ({
         minAmount,
         maxAmount,
         years,
+        client,
       });
       if (requestId !== selectAllRequestRef.current) return;
       setSelectedInvoiceIds(new Set(ids));
@@ -287,6 +312,7 @@ const InvoicesTable = ({
       minAmount,
       maxAmount,
       years,
+      client,
     });
   };
 
@@ -343,6 +369,7 @@ const InvoicesTable = ({
         minAmount,
         maxAmount,
         years,
+        client,
       });
       if (invoiceIds.length > MAX_BULK_INVOICE_DOWNLOAD) {
         throw new Error(
@@ -380,6 +407,7 @@ const InvoicesTable = ({
         minAmount,
         maxAmount,
         years,
+        client,
       });
 
       await downloadInvoicePdfsAsZip(jobs, sheetRefs.current, (completed, total) => {
@@ -504,7 +532,9 @@ const InvoicesTable = ({
     paymentStatus !== "any" ||
     minAmount != null ||
     maxAmount != null ||
-    years.length > 0;
+    years.length > 0 ||
+    client !== "" ||
+    appliedSearch !== "";
 
   const clearFilters = () => {
     setMinAmountDraft("");
@@ -515,6 +545,8 @@ const InvoicesTable = ({
       minAmount: null,
       maxAmount: null,
       years: [],
+      client: "",
+      search: "",
       offset: 0,
     });
     setSelectedInvoiceIds(new Set());
@@ -589,6 +621,22 @@ const InvoicesTable = ({
         </div>
 
         <div className="order-last flex w-full flex-wrap items-end gap-3 border-t pt-3">
+          <ListSearchField
+            label="Client"
+            placeholder="Name, # or ID"
+            value={clientSearch.draft}
+            onValueChange={clientSearch.setDraft}
+            onCommit={clientSearch.commitNow}
+            searching={clientSearch.searching}
+          />
+          <ListSearchField
+            label="Property"
+            placeholder="Property #"
+            value={propertySearch.draft}
+            onValueChange={propertySearch.setDraft}
+            onCommit={propertySearch.commitNow}
+            searching={propertySearch.searching}
+          />
           <FilterField label="Email">
             <Select
               value={sendStatus}
@@ -823,6 +871,7 @@ const InvoicesTable = ({
               }
             : {
                 search: appliedSearch || undefined,
+                ...(client ? { client } : {}),
                 paymentStatus: "unpaid",
                 ...(years.length > 0 ? { years } : {}),
               }

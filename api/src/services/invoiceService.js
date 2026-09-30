@@ -1,7 +1,7 @@
 import prisma from "../../prisma/prismaClient.js";
 import { getHearingStats } from "./hearingService.js";
 import { paginateResult } from "../utils/pagination.js";
-import { sanitizeSearchTerm } from "../utils/search.js";
+import { clientFilterWhere, sanitizeSearchTerm } from "../utils/search.js";
 import {
   invoiceToApiDto,
   normalizeInvoiceDateString,
@@ -9,7 +9,7 @@ import {
   resolveInvoiceDueAmount,
   todayInvoiceDateString,
 } from "../utils/invoiceYearlyData.js";
-import { buildPropertySearchOrConditions } from "../utils/propertySearch.js";
+import { accountNumberSearchWhere, buildPropertySearchOrConditions } from "../utils/propertySearch.js";
 import {
   getLatestDeliveriesByClientIds,
   getSentInvoiceDeliveriesByClientIds,
@@ -376,6 +376,12 @@ function invoiceSearchWhere(searchTerm) {
   const raw = sanitizeSearchTerm(searchTerm);
   if (!raw) return {};
 
+  const accountConditions = accountNumberSearchWhere(raw).OR ?? [];
+  const or = [
+    ...accountConditions,
+    ...accountConditions.map((condition) => ({ property: condition })),
+  ];
+
   if (raw.startsWith("#")) {
     const numPart = raw.slice(1).trim();
     if (/^\d+$/.test(numPart)) {
@@ -383,20 +389,15 @@ function invoiceSearchWhere(searchTerm) {
         startsWith: numPart,
         mode: "insensitive",
       };
-      return {
-        OR: [
-          { clientNumber: clientNumberFilter },
-          { property: { client: { clientNumber: clientNumberFilter } } },
-        ],
-      };
+      or.push(
+        { clientNumber: clientNumberFilter },
+        { property: { client: { clientNumber: clientNumberFilter } } }
+      );
     }
   }
 
-  const orConditions = buildPropertySearchOrConditions(searchTerm).filter(
-    (c) => c.accountNumber
-  );
-  if (!orConditions.length) return {};
-  return { OR: orConditions };
+  if (!or.length) return {};
+  return { OR: or };
 }
 
 function parseInvoiceYears(value) {
@@ -417,14 +418,17 @@ async function loadGroupedInvoices({
   minAmount = null,
   maxAmount = null,
   years = null,
+  client = null,
   includeSendStatus = true,
 }) {
   const baseWhere = { isArchived: Boolean(archived) };
   const searchWhere = invoiceSearchWhere(search);
-  const where =
-    Object.keys(searchWhere).length === 0
-      ? baseWhere
-      : { ...baseWhere, AND: [searchWhere] };
+  const clientWhere = clientFilterWhere(client);
+  const and = [
+    ...(Object.keys(searchWhere).length ? [searchWhere] : []),
+    ...(clientWhere ? [{ property: { client: clientWhere } }] : []),
+  ];
+  const where = and.length ? { ...baseWhere, AND: and } : baseWhere;
 
   const invoices = await prisma.invoice.findMany({
     where,
@@ -479,7 +483,8 @@ export async function getAllInvoices(
   paymentStatus = "any",
   minAmount = null,
   maxAmount = null,
-  years = null
+  years = null,
+  client = null
 ) {
   const grouped = await loadGroupedInvoices({
     archived: false,
@@ -489,6 +494,7 @@ export async function getAllInvoices(
     minAmount,
     maxAmount,
     years,
+    client,
     includeSendStatus: true,
   });
   return paginateResult(grouped, limit, offset);
@@ -502,7 +508,8 @@ export async function getArchiveInvoices(
   paymentStatus = "any",
   minAmount = null,
   maxAmount = null,
-  years = null
+  years = null,
+  client = null
 ) {
   const grouped = await loadGroupedInvoices({
     archived: true,
@@ -512,6 +519,7 @@ export async function getArchiveInvoices(
     minAmount,
     maxAmount,
     years,
+    client,
     includeSendStatus: true,
   });
   return paginateResult(grouped, limit, offset);
@@ -526,6 +534,7 @@ export async function listFilteredInvoiceIds({
   minAmount = null,
   maxAmount = null,
   years = null,
+  client = null,
 } = {}) {
   const grouped = await loadGroupedInvoices({
     archived,
@@ -535,6 +544,7 @@ export async function listFilteredInvoiceIds({
     minAmount,
     maxAmount,
     years,
+    client,
     includeSendStatus: false,
   });
   return grouped
@@ -555,6 +565,7 @@ export async function expandGroupedInvoiceIds({
   minAmount = null,
   maxAmount = null,
   years = null,
+  client = null,
 } = {}) {
   const wanted = new Set(
     (Array.isArray(ids) ? ids : [])
@@ -571,6 +582,7 @@ export async function expandGroupedInvoiceIds({
     minAmount,
     maxAmount,
     years,
+    client,
     includeSendStatus: false,
   });
 

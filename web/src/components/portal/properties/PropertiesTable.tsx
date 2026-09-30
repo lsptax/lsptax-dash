@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ColumnDef, ColumnFiltersState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { downloadPropertiesXlsx } from "@/store/data";
 import TableBuilder from "../TableBuilder";
 import { routes } from "@/routes/ROUTES";
@@ -22,6 +23,7 @@ import {
 } from "@/utils/listParams/properties";
 import { useListSearchParams } from "@/hooks/useListSearchParams";
 import { useToast } from "@/hooks/use-toast";
+import { ListSearchField, useDebouncedListSearch } from "../ListSearchField";
 
 interface PropertiesTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -35,17 +37,40 @@ const PropertiesTable = <TData extends Properties, TValue>({
     parsePropertyListParams,
     mergePropertyListParams
   );
-  const { search, accountType, offset, limit, archived } = params;
+  const { search, client, property, accountType, offset, limit, archived } = params;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [loadedClient, setLoadedClient] = useState(client);
+  const [loadedProperty, setLoadedProperty] = useState(property);
 
-  const { data, isLoading, isError, refetch } = usePropertiesQuery({
+  const { data, isLoading, isError, isPlaceholderData, refetch } = usePropertiesQuery({
     limit,
     offset,
     search,
     archived,
     accountType: accountType === "all" ? undefined : accountType,
+    client,
+    property,
   });
+
+  useEffect(() => {
+    if (data && !isPlaceholderData) {
+      setLoadedClient(client);
+      setLoadedProperty(property);
+    }
+  }, [data, isPlaceholderData, client, property]);
+
+  const clientSearch = useDebouncedListSearch(
+    client,
+    (next) => updateParams({ client: next, offset: 0 }),
+    !isError && loadedClient !== client
+  );
+  const propertySearch = useDebouncedListSearch(
+    property,
+    (next) => updateParams({ property: next, offset: 0 }),
+    !isError && loadedProperty !== property
+  );
+  const filtersActive = client !== "" || property !== "";
 
   const properties = (data?.data ?? []) as TData[];
   const total = data?.total ?? 0;
@@ -56,6 +81,10 @@ const PropertiesTable = <TData extends Properties, TValue>({
     try {
       await downloadPropertiesXlsx({
         accountType: accountType === "all" ? undefined : accountType,
+        client: client || undefined,
+        property: property || undefined,
+        search: search || undefined,
+        archived,
       });
     } catch (err) {
       console.error("Error downloading properties export:", err);
@@ -107,13 +136,29 @@ const PropertiesTable = <TData extends Properties, TValue>({
 
   return (
     <div className="overflow-y-auto">
-      <div className="portal-toolbar">
-        <div className="w-full">
+      <div className="portal-toolbar !flex-wrap md:!items-end">
+        <div className="mr-auto shrink-0">
           <p className="text-2xl font-semibold tabular-nums">{total}</p>
           <p className="text-sm text-muted-foreground">{archived ? "Archived properties" : "Active properties"}</p>
         </div>
-        <div className="flex flex-col gap-2 w-full md:max-w-[220px]">
-          <h1 className="text-lg font-semibold">Account Type</h1>
+        <ListSearchField
+          label="Client"
+          placeholder="Name, # or ID"
+          value={clientSearch.draft}
+          onValueChange={clientSearch.setDraft}
+          onCommit={clientSearch.commitNow}
+          searching={clientSearch.searching}
+        />
+        <ListSearchField
+          label="Property"
+          placeholder="Property #"
+          value={propertySearch.draft}
+          onValueChange={propertySearch.setDraft}
+          onCommit={propertySearch.commitNow}
+          searching={propertySearch.searching}
+        />
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Account Type</Label>
           <Select
             value={accountType}
             onValueChange={(value) =>
@@ -123,7 +168,7 @@ const PropertiesTable = <TData extends Properties, TValue>({
               })
             }
           >
-            <SelectTrigger aria-label="Filter by account type">
+            <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Filter by account type">
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
@@ -133,19 +178,33 @@ const PropertiesTable = <TData extends Properties, TValue>({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2 w-full">
-          <Button variant="outline" onClick={switchArchived}>
-            <Archive />
-            {archived ? "View Active" : "View Archived"}
+        <Button variant="outline" className="h-9" onClick={switchArchived}>
+          <Archive />
+          {archived ? "View Active" : "View Archived"}
+        </Button>
+        <Button
+          variant="outline"
+          className="h-9 w-9 px-0"
+          onClick={handleCsvDownload}
+          disabled={downloadingCsv}
+          aria-label="Download properties"
+        >
+          {downloadingCsv ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <Download />
+          )}
+        </Button>
+        {filtersActive ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-9"
+            onClick={() => updateParams({ client: "", property: "", offset: 0 })}
+          >
+            Clear
           </Button>
-          <Button variant="outline" onClick={handleCsvDownload} disabled={downloadingCsv}>
-            {downloadingCsv ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <Download />
-            )}
-          </Button>
-        </div>
+        ) : null}
       </div>
       <TableBuilder
         data={properties}

@@ -63,3 +63,12 @@ export function propertySearchWhere(searchTerm) {
   if (!orConditions.length) return {};
   return { OR: orConditions };
 }
+
+/** Account-number-only match, including leading-zero tolerant numeric terms. */
+export function accountNumberSearchWhere(searchTerm) {
+  const orConditions = buildPropertySearchOrConditions(searchTerm).filter(
+    (condition) => condition.accountNumber
+  );
+  if (!orConditions.length) return {};
+  return { OR: orConditions };
+}

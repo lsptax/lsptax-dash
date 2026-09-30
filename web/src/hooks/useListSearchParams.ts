@@ -13,9 +13,9 @@ export function useListSearchParams<T extends Record<string, unknown>>(
 
   const updateParams = useCallback(
     (updates: Partial<T>) => {
-      setSearchParams(merge(searchParams, updates), { replace: true });
+      setSearchParams((current) => merge(current, updates), { replace: true });
     },
-    [merge, searchParams, setSearchParams]
+    [merge, setSearchParams]
   );
 
   return { params, updateParams, searchParams };
