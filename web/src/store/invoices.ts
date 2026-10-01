@@ -27,6 +27,67 @@ export const getInvoiceByPropertyId = async ({ propertyId }: { propertyId: strin
   }
 };
 
+export type InvoiceSummaryRow = {
+  invoiceId: number;
+  propertyId: number;
+  propertyAddress: string;
+  county: string;
+  accountNumber: string;
+  invoiceTemplate: string | null;
+  underArbitration: boolean;
+  noticeMarketValue: number;
+  finalMarketValue: number;
+  marketReduction: number;
+  noticeAppraisedValue: number;
+  finalAppraisedValue: number;
+  appraisedReduction: number;
+  taxRate: number;
+  taxableSavings: number;
+  contingencyFee: number;
+  invoiceAmount: number;
+  paid: boolean;
+};
+
+export type ClientInvoiceSummary = {
+  year: number;
+  client: {
+    id: number;
+    clientNumber: string;
+    clientName: string;
+    typeOfAcct: string;
+    mailingAddress: string;
+    mailingAddressCityTxZip: string;
+  };
+  rows: InvoiceSummaryRow[];
+  total: number;
+};
+
+export const getClientInvoiceSummaryYears = async (
+  clientId: number | string
+): Promise<number[]> => {
+  const response = await authFetch(`${base()}/api/invoice-summary/${clientId}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message || "Failed to load invoice years.");
+  }
+  const body = (await response.json()) as { years?: number[] };
+  return Array.isArray(body.years) ? body.years : [];
+};
+
+export const getClientInvoiceSummary = async (
+  clientId: number | string,
+  year: number
+): Promise<ClientInvoiceSummary> => {
+  const response = await authFetch(
+    `${base()}/api/invoice-summary/${clientId}?year=${encodeURIComponent(String(year))}`
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message || "Failed to load invoice summary.");
+  }
+  return response.json();
+};
+
 export type InvoiceSendStatusFilter = import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
 export type InvoicePaymentStatusFilter = "any" | "paid" | "unpaid";
 

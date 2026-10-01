@@ -353,6 +353,27 @@ export const getInvoicesByClient = async (req, res) => {
   }
 };
 
+export const getInvoiceSummary = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { year } = req.query;
+    if (year == null || year === "") {
+      const years = await invoiceService.listInvoiceSummaryYears(clientId);
+      if (!years) return res.status(404).json({ message: "Client not found." });
+      return res.status(200).json({ years });
+    }
+    if (!/^\d{4}$/.test(String(year))) {
+      return res.status(400).json({ message: "A 4-digit year is required." });
+    }
+    const result = await invoiceService.getInvoiceSummaryForClient(clientId, year);
+    if (!result) return res.status(404).json({ message: "Client not found." });
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching invoice summary:", error);
+    res.status(500).json({ message: "Failed to fetch invoice summary." });
+  }
+};
+
 export const getInvoiceIds = async (req, res) => {
   try {
     const { search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, archived } = req.query;

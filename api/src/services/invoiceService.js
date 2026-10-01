@@ -22,6 +22,7 @@ import {
   toDeliveryTrackingDto,
   sendPaymentAcknowledgementEmailsForInvoices,
 } from "./invoiceDeliveryService.js";
+import { buildInvoiceSummary } from "./invoiceSummary.js";
 
 /** propertyId = Property.id (system id). Use this for GET /api/invoice/:id. */
 export async function getInvoiceByPropertyId(propertyId) {
@@ -183,6 +184,72 @@ export async function getInvoicesByClientId(clientId, limit, offset, search) {
     lastDelivery,
     ...paginateResult(groupedByProperty, limit, offset),
   };
+}
+
+/** Distinct invoice years for a client. Use this for GET /api/invoice-summary/:clientId. */
+export async function listInvoiceSummaryYears(clientId) {
+  const idNum = parseInt(clientId, 10);
+  if (Number.isNaN(idNum)) return null;
+
+  const client = await prisma.client.findUnique({
+    where: { id: idNum },
+    select: { id: true },
+  });
+  if (!client) return null;
+
+  const rows = await prisma.invoice.groupBy({
+    by: ["year"],
+    where: {
+      isArchived: false,
+      property: { clientId: idNum, isArchived: false },
+    },
+    orderBy: { year: "desc" },
+  });
+  return rows.map((row) => row.year);
+}
+
+/** clientId = Client.id (system id). Use this for GET /api/invoice-summary/:clientId?year=. */
+export async function getInvoiceSummaryForClient(clientId, year) {
+  const idNum = parseInt(clientId, 10);
+  const yearNum = parseInt(year, 10);
+  if (Number.isNaN(idNum) || Number.isNaN(yearNum)) return null;
+
+  const client = await prisma.client.findUnique({
+    where: { id: idNum },
+    select: {
+      id: true,
+      clientNumber: true,
+      clientName: true,
+      typeOfAcct: true,
+      mailingAddress: true,
+      mailingAddressCityTxZip: true,
+      contingencyFee: true,
+    },
+  });
+  if (!client) return null;
+
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      year: yearNum,
+      isArchived: false,
+      property: { clientId: idNum, isArchived: false },
+    },
+    include: {
+      property: {
+        select: {
+          id: true,
+          accountNumber: true,
+          propertyAddress: true,
+          cadCounty: true,
+          flatFee: true,
+          mailingAddress: true,
+          mailingAddressCityTxZip: true,
+        },
+      },
+    },
+  });
+
+  return buildInvoiceSummary(client, invoices, yearNum, resolveClientContingencyDefault(client));
 }
 
 function isAfter(value, comparison) {

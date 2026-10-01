@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Link } from "react-router-dom";
-import { LoaderCircle, Mail, Printer } from "lucide-react";
+import { FileDown, LoaderCircle, Mail, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Invoice, InvoiceData, InvoiceProperty } from "@/types/types";
 import {
+  getClientInvoiceSummary,
   getInvoiceDeliveries,
   sendInvoice,
   updateInvoiceTemplate,
@@ -26,6 +27,7 @@ import {
 import { elementsToPdfAttachments } from "@/utils/elementToPdfBase64";
 import { buildInvoicePdfFilename } from "@/utils/bulkInvoicePdf";
 import { getInvoiceSheetDates } from "@/utils/invoiceDates";
+import { downloadInvoiceSummaryPdf } from "@/utils/invoiceSummaryPdf";
 import InvoiceSheet2025, {
   getYearInvoice,
   toSafeFilenamePart,
@@ -86,6 +88,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
   const [loadingDeliveries, setLoadingDeliveries] = useState(false);
   const [templateOverrides, setTemplateOverrides] = useState<Record<number, InvoiceTemplate>>({});
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [downloadingSummary, setDownloadingSummary] = useState(false);
 
   const propertiesWithInvoice = useMemo((): PropertyWithInvoice[] => {
     return invoice.properties
@@ -216,6 +219,32 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
       }
     `,
   });
+
+  const handleDownloadSummary = async () => {
+    const clientId = invoice.client.id;
+    if (!clientId) return;
+    setDownloadingSummary(true);
+    try {
+      const summary = await getClientInvoiceSummary(clientId, selectedYear);
+      if (summary.rows.length === 0) {
+        toast({
+          title: "Nothing to download",
+          description: `No invoices found for ${selectedYear}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      await downloadInvoiceSummaryPdf(summary);
+    } catch (error) {
+      toast({
+        title: "Could not download invoice summary",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingSummary(false);
+    }
+  };
 
   const handleSendInvoice = async () => {
     const clientId = invoice.client.id;
@@ -415,6 +444,18 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
           <Button variant="blue" className="bg-brand-blue text-white" onClick={() => reactToPrintFn()}>
             <Printer className="mr-2 h-4 w-4" />
             Print
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!invoice.client.id || downloadingSummary}
+            onClick={() => void handleDownloadSummary()}
+          >
+            {downloadingSummary ? (
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
+            Download summary
           </Button>
           <Button
             variant="blue"

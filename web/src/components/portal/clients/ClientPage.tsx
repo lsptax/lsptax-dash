@@ -13,6 +13,7 @@ import { ContractsAoasSection } from "../shared/ContractsAoasSection";
 import { EntityDetailRow, EntityDetailsCard } from "../shared/EntityDetailRow";
 import { SendEnvelopeDialog } from "../shared/SendEnvelopeDialog";
 import { SendClientEmailDialog } from "./SendClientEmailDialog";
+import { DownloadInvoiceSummaryButton } from "./DownloadInvoiceSummaryButton";
 import { useEntityContracts } from "@/hooks/useEntityContracts";
 import { NotesAside, notesPanelClass, useNotesPanel } from "../shared/NotesAside";
 import { editClient } from "@/api/api";
@@ -125,6 +126,7 @@ const ClientPage = () => {
               Invoice
             </Button>
           </ListDetailLink>
+          <DownloadInvoiceSummaryButton clientId={client.id} />
           <NavLink to={routes.client.contract(client.id)}>
             <Button variant="outline" size="sm">
               Create Contract

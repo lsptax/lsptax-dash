@@ -22,6 +22,7 @@ import {
 import {
   getInvoicesByClient,
   getInvoiceByProperty,
+  getInvoiceSummary,
   getAllInvoices,
   getArchiveInvoices,
   getInvoiceIds,
@@ -101,6 +102,7 @@ router.get("/property", getPropertyDetails);
 
 router.get("/invoice/clientid=:id", getInvoicesByClient);
 router.get("/invoice/:id", getInvoiceByProperty);
+router.get("/invoice-summary/:clientId", getInvoiceSummary);
 router.get("/invoices/ids", getInvoiceIds);
 router.post("/invoices/expand-ids", expandInvoiceIds);
 router.get("/invoices", getAllInvoices);
