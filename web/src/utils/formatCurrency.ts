@@ -35,7 +35,7 @@ export function formatCurrency(value: number | string | null | undefined, includ
  */
 export function formatUSD(value: number | string | null | undefined, includeDecimals: boolean = true): string {
   if (value === null || value === undefined || value === '') {
-    return '$0';
+    return includeDecimals ? '$0.00' : '$0';
   }
 
   // Convert to number with better precision
@@ -44,7 +44,7 @@ export function formatUSD(value: number | string | null | undefined, includeDeci
     // Handle potential decimal precision issues
     numValue = Number(value);
     if (isNaN(numValue)) {
-      return '$0';
+      return includeDecimals ? '$0.00' : '$0';
     }
   } else {
     numValue = value;

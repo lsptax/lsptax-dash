@@ -13,15 +13,16 @@ import {
   COLLECTED_DEFINITION_V1,
   averagePropertiesPerClient,
   billedByGroup,
-  collectedByPaidMonth,
+  cashflowByMonth,
+  collectedThroughDate,
   invoicesMatchingBilledDate,
-  invoicesMatchingCollectedDate,
   largestUnpaidClients,
   moneyWindows,
   paidUnpaidCounts,
   pastDueTotals,
   protestTotals,
   reductionsByCounty,
+  sentInvoiceTotals,
   unpaidTotals,
 } from "./financialMetrics.js";
 
@@ -180,9 +181,20 @@ export async function getOwnerDashboard(filters = {}, referenceDate = new Date()
   const pastDue = pastDueTotals(arInvoices, windows.asOf);
   const counts = paidUnpaidCounts(arInvoices);
   const protest = protestTotals(invoicesMatchingBilledDate(invoices, dateConstraint));
+  const cashflow = {
+    asOfIso: getOwnerDateWindows(referenceDate).asOf,
+    range: dateConstraint,
+  };
+  const sent = sentInvoiceTotals(invoices, cashflow);
 
   return {
     ...reportMeta(windows, filters),
+    totalExpected: sent.totalExpected,
+    stillToCollect: sent.stillToCollect,
+    sentInvoiceCount: sent.sentInvoiceCount,
+    unpaidSentCount: sent.unpaidSentCount,
+    collectedSoFar: collectedThroughDate(invoices, cashflow),
+    byMonth: cashflowByMonth(invoices, cashflow),
     billedThisMonth: money.billedThisMonth,
     billedLastMonth: money.billedLastMonth,
     billedYtd: money.billedYtd,
@@ -271,7 +283,10 @@ export async function getCollectedReport(filters = {}, referenceDate = new Date(
   const { windows, dateConstraint } = resolveContext(filters, referenceDate);
   const invoices = await loadInScopeInvoices(filters);
   const money = moneyWindows(invoices, windows, dateConstraint);
-  const collectedInvoices = invoicesMatchingCollectedDate(invoices, dateConstraint);
+  const cashflow = {
+    asOfIso: getOwnerDateWindows(referenceDate).asOf,
+    range: dateConstraint,
+  };
 
   return {
     ...reportMeta(windows, filters),
@@ -279,7 +294,8 @@ export async function getCollectedReport(filters = {}, referenceDate = new Date(
     collectedLastMonth: money.collectedLastMonth,
     collectedYtd: money.collectedYtd,
     collectedCalendarYear: money.collectedCalendarYear,
-    byMonth: collectedByPaidMonth(collectedInvoices),
+    collectedSoFar: collectedThroughDate(invoices, cashflow),
+    byMonth: cashflowByMonth(invoices, cashflow),
   };
 }
 

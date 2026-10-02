@@ -28,6 +28,12 @@ export type OwnerDashboardStats = {
   averageReduction: number | null;
   totalValueReductions: number;
   totalTaxSavings: number;
+  totalExpected: number;
+  stillToCollect: number;
+  sentInvoiceCount: number;
+  unpaidSentCount: number;
+  collectedSoFar: number;
+  byMonth: { year: number; month: number; expected: number; collected: number }[];
   filters?: Record<string, string | number | null>;
 };
 
@@ -100,7 +106,9 @@ export async function getBilledReport(
 
 export async function getCollectedReport(
   filters: OwnerFilters = {}
-): Promise<{ byMonth?: { year: number; month: number; collected: number }[] }> {
+): Promise<{
+  byMonth?: { year: number; month: number; expected: number; collected: number }[];
+}> {
   return getJson(withFilters("/report/collected", filters));
 }
 

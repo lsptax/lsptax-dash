@@ -4,11 +4,14 @@ import { getOwnerDateWindows } from "../utils/invoiceDateWindows.js";
 import {
   COLLECTED_DEFINITION_V1,
   billedByGroup,
+  cashflowByMonth,
   collectedByPaidMonth,
+  collectedThroughDate,
   largestUnpaidClients,
   moneyWindows,
   pastDueTotals,
   protestTotals,
+  sentInvoiceTotals,
   unpaidTotals,
 } from "./financialMetrics.js";
 
@@ -169,5 +172,70 @@ describe("AR and protest totals", () => {
     assert.equal(protest.totalValueReductions, 150);
     assert.equal(protest.averageReduction, 75);
     assert.equal(protest.totalTaxSavings, 15);
+  });
+});
+
+describe("expected and collected so far", () => {
+  const asOf = "2026-09-07";
+
+  it("sums sent invoices to the cent and leaves unsent invoices out", () => {
+    const invoices = [
+      invoice({
+        id: 1,
+        invoiceDate: "08/15/2026",
+        invoiceAmount: 1245.67,
+        isPaid: false,
+      }),
+      invoice({
+        id: 2,
+        propertyId: 11,
+        invoiceDate: "09/02/2026",
+        invoiceAmount: 10.1,
+        isPaid: true,
+        paidDate: "09/04/2026",
+      }),
+      invoice({
+        id: 3,
+        propertyId: 12,
+        invoiceDate: "",
+        invoiceAmount: 999,
+        isPaid: false,
+      }),
+    ];
+    const sent = sentInvoiceTotals(invoices, { asOfIso: asOf });
+    assert.equal(sent.totalExpected, 1255.77);
+    assert.equal(sent.stillToCollect, 1245.67);
+    assert.equal(sent.sentInvoiceCount, 2);
+    assert.equal(sent.unpaidSentCount, 1);
+    assert.equal(collectedThroughDate(invoices, { asOfIso: asOf }), 10.1);
+  });
+
+  it("puts expected on the invoice month and collected on the paid month", () => {
+    const invoices = [
+      invoice({
+        invoiceDate: "08/15/2026",
+        paidDate: "09/03/2026",
+        isPaid: true,
+        invoiceAmount: 1245.67,
+      }),
+      invoice({
+        id: 2,
+        propertyId: 11,
+        invoiceDate: "09/01/2026",
+        isPaid: false,
+        invoiceAmount: 20.33,
+      }),
+      invoice({
+        id: 3,
+        propertyId: 12,
+        invoiceDate: "10/01/2026",
+        isPaid: false,
+        invoiceAmount: 50,
+      }),
+    ];
+    assert.deepEqual(cashflowByMonth(invoices, { asOfIso: asOf }), [
+      { year: 2026, month: 8, expected: 1245.67, collected: 0 },
+      { year: 2026, month: 9, expected: 20.33, collected: 1245.67 },
+    ]);
   });
 });

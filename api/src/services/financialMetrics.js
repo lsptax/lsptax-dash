@@ -198,6 +198,82 @@ export function collectedByPaidMonth(invoices) {
   );
 }
 
+function inCashflowScope(parsed, { asOfIso = null, range = null } = {}) {
+  if (!parsed) return false;
+  if (asOfIso && parsed.iso > asOfIso) return false;
+  if (range && !dateInInclusiveRange(parsed, range.start, range.end)) return false;
+  return true;
+}
+
+/** Sent invoices: a real invoice date, on or before asOf, inside an optional date filter. */
+export function sentInvoiceTotals(invoices, scope = {}) {
+  let totalExpected = 0;
+  let stillToCollect = 0;
+  let sentInvoiceCount = 0;
+  let unpaidSentCount = 0;
+  for (const invoice of invoices) {
+    const billed = parseInvoiceCalendarDate(invoice.invoiceDate);
+    if (!inCashflowScope(billed, scope)) continue;
+    const amount = money(invoice.invoiceAmount);
+    totalExpected = roundMoney(totalExpected + amount);
+    sentInvoiceCount += 1;
+    if (!invoice.isPaid) {
+      stillToCollect = roundMoney(stillToCollect + amount);
+      unpaidSentCount += 1;
+    }
+  }
+  return { totalExpected, stillToCollect, sentInvoiceCount, unpaidSentCount };
+}
+
+/** Paid invoices with paidDate on or before asOf, inside an optional date filter. */
+export function collectedThroughDate(invoices, scope = {}) {
+  let amount = 0;
+  for (const invoice of invoices) {
+    if (!invoice.isPaid) continue;
+    const paid = parseInvoiceCalendarDate(invoice.paidDate);
+    if (!inCashflowScope(paid, scope)) continue;
+    amount = roundMoney(amount + money(invoice.invoiceAmount));
+  }
+  return amount;
+}
+
+/**
+ * Expected is grouped by invoiceDate. Collected is grouped by paidDate.
+ * A month can have one side without the other.
+ */
+export function cashflowByMonth(invoices, scope = {}) {
+  const byMonth = new Map();
+  const touch = (parsed) => {
+    const key = monthKey(parsed);
+    const current = byMonth.get(key) || {
+      year: parsed.y,
+      month: parsed.m,
+      expected: 0,
+      collected: 0,
+    };
+    byMonth.set(key, current);
+    return current;
+  };
+
+  for (const invoice of invoices) {
+    const billed = parseInvoiceCalendarDate(invoice.invoiceDate);
+    if (inCashflowScope(billed, scope)) {
+      const row = touch(billed);
+      row.expected = roundMoney(row.expected + money(invoice.invoiceAmount));
+    }
+    if (!invoice.isPaid) continue;
+    const paid = parseInvoiceCalendarDate(invoice.paidDate);
+    if (inCashflowScope(paid, scope)) {
+      const row = touch(paid);
+      row.collected = roundMoney(row.collected + money(invoice.invoiceAmount));
+    }
+  }
+
+  return [...byMonth.values()].sort((a, b) =>
+    a.year !== b.year ? a.year - b.year : a.month - b.month
+  );
+}
+
 function billedGroupKey(invoice, groupBy) {
   switch (groupBy) {
     case "taxYear":

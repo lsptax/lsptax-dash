@@ -7,7 +7,6 @@ import { QUERY_META_SUPPRESS_GLOBAL_ERROR_TOAST } from "@/routes/ROUTES";
 import {
   downloadOwnerReportCsv,
   getBilledReport,
-  getCollectedReport,
   getOwnerDashboard,
   getUnpaidReport,
 } from "@/api/ownerDashboard";
@@ -27,23 +26,25 @@ import { useToast } from "@/hooks/use-toast";
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-const moneyExact = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
 function formatMoney(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return "—";
-  return Math.abs(value) >= 1000 ? money.format(value) : moneyExact.format(value);
+  return money.format(value);
 }
 
 function formatRate(value: number | null | undefined) {
   if (value == null) return "—";
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatMonth(year: number, month: number) {
+  return new Date(year, month - 1, 1).toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default function OwnerDashboardPage() {
@@ -70,12 +71,6 @@ export default function OwnerDashboardPage() {
   const billedQuery = useQuery({
     queryKey: ["owner-billed-county", filters],
     queryFn: () => getBilledReport(filters, "county"),
-    enabled: canView,
-    meta: QUERY_META_SUPPRESS_GLOBAL_ERROR_TOAST,
-  });
-  const collectedQuery = useQuery({
-    queryKey: ["owner-collected", filters],
-    queryFn: () => getCollectedReport(filters),
     enabled: canView,
     meta: QUERY_META_SUPPRESS_GLOBAL_ERROR_TOAST,
   });
@@ -112,6 +107,12 @@ export default function OwnerDashboardPage() {
   const stats = dashboardQuery.data;
   const error = dashboardQuery.error;
   const loading = dashboardQuery.isLoading;
+  const byMonth = stats?.byMonth ?? [];
+  const monthRows = byMonth.map((row) => [
+    formatMonth(row.year, row.month),
+    formatMoney(row.expected),
+    formatMoney(row.collected),
+  ]);
 
   return (
     <div className="w-full px-4 sm:px-5 py-4 space-y-3">
@@ -132,7 +133,25 @@ export default function OwnerDashboardPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard
+          label="Collected so far"
+          value={formatMoney(stats?.collectedSoFar)}
+          hint="All payments in this filter, through today"
+          loading={loading}
+        />
+        <StatCard
+          label="Still to collect"
+          value={formatMoney(stats?.stillToCollect)}
+          hint={`${stats?.unpaidSentCount ?? 0} sent invoices unpaid`}
+          loading={loading}
+        />
+        <StatCard
+          label="Total expected"
+          value={formatMoney(stats?.totalExpected)}
+          hint={`${stats?.sentInvoiceCount ?? 0} sent invoices in this filter`}
+          loading={loading}
+        />
         <StatCard
           label="Billed this month"
           value={formatMoney(stats?.billedThisMonth)}
@@ -152,12 +171,6 @@ export default function OwnerDashboardPage() {
           loading={loading}
         />
         <StatCard
-          label="Outstanding"
-          value={formatMoney(stats?.outstandingReceivables)}
-          hint={`${stats?.unpaidInvoiceCount ?? 0} unpaid`}
-          loading={loading}
-        />
-        <StatCard
           label="Past due"
           value={formatMoney(stats?.pastDueReceivables)}
           hint={`${stats?.pastDueInvoiceCount ?? 0} invoices`}
@@ -171,7 +184,7 @@ export default function OwnerDashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <MiniTable
           title="Billed by county"
           empty="No billed invoices in this filter."
@@ -181,20 +194,6 @@ export default function OwnerDashboardPage() {
             row.county || row.label || "(none)",
             formatMoney(row.billed),
           ])}
-        />
-        <MiniTable
-          title="Collected by month"
-          empty="No collections in this filter."
-          loading={collectedQuery.isLoading}
-          onDownload={() => downloadTable("collected")}
-          rows={(collectedQuery.data?.byMonth ?? [])
-            .slice()
-            .reverse()
-            .slice(0, 8)
-            .map((row) => [
-              `${row.year}-${String(row.month).padStart(2, "0")}`,
-              formatMoney(row.collected),
-            ])}
         />
         <MiniTable
           title="Largest unpaid"
@@ -207,6 +206,25 @@ export default function OwnerDashboardPage() {
           ])}
         />
       </div>
+
+      <MiniTable
+        title="Expected and collected by month"
+        headers={["Month", "Expected", "Collected"]}
+        empty="No sent invoices or payments in this filter."
+        loading={loading}
+        scroll
+        onDownload={() => downloadTable("collected")}
+        rows={monthRows}
+        footer={
+          monthRows.length
+            ? [
+                "Total",
+                formatMoney(stats?.totalExpected),
+                formatMoney(stats?.collectedSoFar),
+              ]
+            : undefined
+        }
+      />
     </div>
   );
 }
@@ -230,22 +248,28 @@ function StatCard({
       ) : (
         <div className="text-xl font-semibold mt-0.5 tabular-nums">{value}</div>
       )}
-      {hint ? <div className="text-xs text-muted-foreground mt-1 truncate">{hint}</div> : null}
+      {hint ? <div className="text-xs text-muted-foreground mt-1">{hint}</div> : null}
     </div>
   );
 }
 
 function MiniTable({
   title,
+  headers,
   rows,
+  footer,
   empty,
   loading,
+  scroll,
   onDownload,
 }: {
   title: string;
+  headers?: string[];
   rows: string[][];
+  footer?: string[];
   empty: string;
   loading?: boolean;
+  scroll?: boolean;
   onDownload?: () => void;
 }) {
   return (
@@ -259,21 +283,61 @@ function MiniTable({
           </Button>
         ) : null}
       </div>
-      <div className="px-3 py-3">
+      <div className={`px-3 py-3 ${scroll ? "max-h-80 overflow-y-auto" : ""}`}>
         {loading ? (
           <div className="p-3 text-sm text-muted-foreground">Loading…</div>
         ) : rows.length === 0 ? (
           <div className="p-3 text-sm text-muted-foreground">{empty}</div>
         ) : (
           <table className="w-full text-sm">
+            {headers?.length ? (
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b">
+                  {headers.map((header, index) => (
+                    <th
+                      key={header}
+                      className={`px-3 py-2 text-xs font-medium text-muted-foreground ${
+                        index === 0 ? "text-left" : "text-right"
+                      }`}
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            ) : null}
             <tbody>
-              {rows.map(([left, right]) => (
-                <tr key={`${left}-${right}`} className="border-b last:border-0">
-                  <td className="px-3 py-2.5 text-foreground">{left}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-medium">{right}</td>
+              {rows.map((cells, rowIndex) => (
+                <tr key={`${cells[0]}-${rowIndex}`} className="border-b last:border-0">
+                  {cells.map((cell, index) => (
+                    <td
+                      key={`${cells[0]}-${index}`}
+                      className={`px-3 py-2.5 tabular-nums ${
+                        index === 0 ? "text-left text-foreground" : "text-right font-medium"
+                      }`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
+            {footer?.length ? (
+              <tfoot>
+                <tr className="border-t">
+                  {footer.map((cell, index) => (
+                    <td
+                      key={`${cell}-${index}`}
+                      className={`sticky bottom-0 bg-card px-3 py-2.5 font-semibold tabular-nums ${
+                        index === 0 ? "text-left" : "text-right"
+                      }`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         )}
       </div>

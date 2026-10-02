@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoaderCircle, FileText, Users, Building2, Calendar, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiBaseUrl } from "@/api/client";
+import { formatUSD } from "@/utils/formatCurrency";
 
 interface Client {
   id: number;
@@ -311,7 +312,7 @@ const InvoiceGenerator = () => {
                 <div className="text-sm text-muted-foreground">Total Invoices</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">${(stats.totalAmount ?? 0).toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatUSD(stats.totalAmount ?? 0)}</div>
                 <div className="text-sm text-muted-foreground">Total Amount</div>
               </div>
               <div className="text-center">

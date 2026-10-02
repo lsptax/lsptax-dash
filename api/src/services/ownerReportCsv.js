@@ -58,6 +58,7 @@ export function csvForCollectedReport(payload) {
     return convertToCSV(payload.byMonth, [
       { label: "Year", value: "year" },
       { label: "Month", value: "month" },
+      { label: "Expected", value: "expected" },
       { label: "Collected", value: "collected" },
     ]);
   }

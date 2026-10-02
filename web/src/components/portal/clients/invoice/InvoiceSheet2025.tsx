@@ -112,7 +112,7 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
             {variant === "arbitration" ? null : (
               <>
                 <p>Client Tax Savings:</p>
-                <p>{formatInvoiceUSD(yearInvoice?.taxableSavings)}</p>
+                <p>{formatUSD(yearInvoice?.taxableSavings)}</p>
               </>
             )}
             <p>Contingency Fee:</p>
