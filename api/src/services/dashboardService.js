@@ -7,22 +7,26 @@ import {
   referenceDateFromFilters,
   taxYearsFromFilters,
 } from "../utils/reportFilters.js";
+import { roundMoney } from "../utils/invoiceYearlyData.js";
 import { toInvoiceExportRow } from "./ownerInvoiceExport.js";
+import { queryOwnerDashboard } from "./ownerDashboardQuery.js";
 import {
   BILLED_GROUP_BY,
   COLLECTED_DEFINITION_V1,
   averagePropertiesPerClient,
   billedByGroup,
   cashflowByMonth,
+  cashflowForMonths,
   collectedThroughDate,
+  collectionPeriod,
+  collectionRate,
+  filterByCalendarMonth,
+  selectedMonthKeys,
   invoicesMatchingBilledDate,
   largestUnpaidClients,
   moneyWindows,
-  paidUnpaidCounts,
-  pastDueTotals,
   protestTotals,
   reductionsByCounty,
-  sentInvoiceTotals,
   unpaidTotals,
 } from "./financialMetrics.js";
 
@@ -170,53 +174,57 @@ function resolveContext(filters = {}, referenceDate = new Date()) {
 
 export async function getOwnerDashboard(filters = {}, referenceDate = new Date()) {
   const { windows, dateConstraint } = resolveContext(filters, referenceDate);
-  const [invoices, activeProperties] = await Promise.all([
-    loadInScopeInvoices(filters),
-    prisma.property.count({ where: propertyCountWhere(filters) }),
-  ]);
-
-  const money = moneyWindows(invoices, windows, dateConstraint);
-  const arInvoices = invoicesMatchingBilledDate(invoices, dateConstraint);
-  const unpaid = unpaidTotals(arInvoices);
-  const pastDue = pastDueTotals(arInvoices, windows.asOf);
-  const counts = paidUnpaidCounts(arInvoices);
-  const protest = protestTotals(invoicesMatchingBilledDate(invoices, dateConstraint));
-  const cashflow = {
-    asOfIso: getOwnerDateWindows(referenceDate).asOf,
-    range: dateConstraint,
-  };
-  const sent = sentInvoiceTotals(invoices, cashflow);
+  const months = selectedMonthKeys(filters);
+  const monthSelection = months.length > 0 && !filters.from && !filters.to;
+  const scopedConstraint = monthSelection ? null : dateConstraint;
+  const actualAsOf = getOwnerDateWindows(referenceDate).asOf;
+  const period = collectionPeriod(filters, windows, scopedConstraint, actualAsOf);
+  const facts = await queryOwnerDashboard(filters, {
+    windows,
+    scopedConstraint,
+    actualAsOf,
+    pastDueAsOf: windows.asOf,
+    periodRange: period.range,
+    months,
+    monthSelection,
+  });
 
   return {
     ...reportMeta(windows, filters),
-    totalExpected: sent.totalExpected,
-    stillToCollect: sent.stillToCollect,
-    sentInvoiceCount: sent.sentInvoiceCount,
-    unpaidSentCount: sent.unpaidSentCount,
-    collectedSoFar: collectedThroughDate(invoices, cashflow),
-    byMonth: cashflowByMonth(invoices, cashflow),
-    billedThisMonth: money.billedThisMonth,
-    billedLastMonth: money.billedLastMonth,
-    billedYtd: money.billedYtd,
-    billedCalendarYear: money.billedCalendarYear,
-    collectedThisMonth: money.collectedThisMonth,
-    collectedLastMonth: money.collectedLastMonth,
-    collectedYtd: money.collectedYtd,
-    collectedCalendarYear: money.collectedCalendarYear,
-    collectionRate: money.collectionRate,
-    outstandingReceivables: unpaid.totalUnpaid,
-    pastDueReceivables: pastDue.pastDueReceivables,
-    activeProperties,
-    propertiesInvoiced: money.propertiesInvoicedYtd,
-    propertiesInvoicedThisMonth: money.propertiesInvoicedThisMonth,
-    propertiesInvoicedYtd: money.propertiesInvoicedYtd,
-    paidInvoiceCount: counts.paidInvoiceCount,
-    unpaidInvoiceCount: counts.unpaidInvoiceCount,
-    pastDueInvoiceCount: pastDue.pastDueInvoiceCount,
-    propertiesProtested: protest.propertiesProtested,
-    averageReduction: protest.averageReduction,
-    totalValueReductions: protest.totalValueReductions,
-    totalTaxSavings: protest.totalTaxSavings,
+    totalExpected: facts.totalExpected,
+    stillToCollect: facts.stillToCollect,
+    sentInvoiceCount: facts.sentInvoiceCount,
+    unpaidSentCount: facts.unpaidSentCount,
+    collectedSoFar: facts.periodCollected,
+    periodBilled: facts.periodBilled,
+    periodLabel: period.label,
+    notYetDueReceivables: roundMoney(facts.totalUnpaid - facts.pastDueReceivables),
+    notYetDueInvoiceCount: facts.unpaidInvoiceCount - facts.pastDueInvoiceCount,
+    byMonth: facts.byMonth,
+    billedThisMonth: facts.billedThisMonth,
+    billedLastMonth: facts.billedLastMonth,
+    billedYtd: facts.billedYtd,
+    billedCalendarYear: facts.billedCalendarYear,
+    collectedThisMonth: facts.collectedThisMonth,
+    collectedLastMonth: facts.collectedLastMonth,
+    collectedYtd: facts.collectedYtd,
+    collectedCalendarYear: facts.collectedCalendarYear,
+    collectionRate: collectionRate(facts.periodCollected, facts.periodBilled),
+    outstandingReceivables: facts.totalUnpaid,
+    pastDueReceivables: facts.pastDueReceivables,
+    activeProperties: facts.activeProperties,
+    propertiesInvoiced: facts.propertiesInvoicedYtd,
+    propertiesInvoicedThisMonth: facts.propertiesInvoicedThisMonth,
+    propertiesInvoicedYtd: facts.propertiesInvoicedYtd,
+    paidInvoiceCount: facts.paidInvoiceCount,
+    unpaidInvoiceCount: facts.unpaidInvoiceCount,
+    pastDueInvoiceCount: facts.pastDueInvoiceCount,
+    propertiesProtested: facts.propertiesProtested,
+    averageReduction: facts.averageReduction,
+    totalValueReductions: facts.totalValueReductions,
+    totalTaxSavings: facts.totalTaxSavings,
+    billedByCounty: facts.billedByCounty,
+    largestOutstandingClients: facts.largestOutstandingClients,
   };
 }
 
@@ -265,7 +273,13 @@ export async function getBilledReport({ groupBy, ...filters } = {}, referenceDat
   const { windows, dateConstraint } = resolveContext(filters, referenceDate);
   const invoices = await loadInScopeInvoices(filters);
   const money = moneyWindows(invoices, windows, dateConstraint);
-  const billedInvoices = invoicesMatchingBilledDate(invoices, dateConstraint);
+  const months = selectedMonthKeys(filters);
+  const monthSelection = months.length > 0 && !filters.from && !filters.to;
+  const billedInvoices = filterByCalendarMonth(
+    invoicesMatchingBilledDate(invoices, monthSelection ? null : dateConstraint),
+    monthSelection ? months : [],
+    "invoiceDate"
+  );
 
   return {
     ...reportMeta(windows, filters),
@@ -283,25 +297,36 @@ export async function getCollectedReport(filters = {}, referenceDate = new Date(
   const { windows, dateConstraint } = resolveContext(filters, referenceDate);
   const invoices = await loadInScopeInvoices(filters);
   const money = moneyWindows(invoices, windows, dateConstraint);
+  const months = selectedMonthKeys(filters);
+  const monthSelection = months.length > 0 && !filters.from && !filters.to;
+  const actualAsOf = getOwnerDateWindows(referenceDate).asOf;
   const cashflow = {
-    asOfIso: getOwnerDateWindows(referenceDate).asOf,
-    range: dateConstraint,
+    asOfIso: actualAsOf,
+    range: monthSelection ? null : dateConstraint,
   };
+  const selectedCashflow = monthSelection
+    ? cashflowForMonths(invoices, months, actualAsOf)
+    : null;
 
   return {
     ...reportMeta(windows, filters),
-    collectedThisMonth: money.collectedThisMonth,
+    collectedThisMonth: selectedCashflow ? selectedCashflow.collected : money.collectedThisMonth,
     collectedLastMonth: money.collectedLastMonth,
     collectedYtd: money.collectedYtd,
     collectedCalendarYear: money.collectedCalendarYear,
     collectedSoFar: collectedThroughDate(invoices, cashflow),
-    byMonth: cashflowByMonth(invoices, cashflow),
+    byMonth: selectedCashflow ? selectedCashflow.byMonth : cashflowByMonth(invoices, cashflow),
   };
 }
 
 export async function getUnpaidReport({ view, limit, ...filters } = {}, referenceDate = new Date()) {
-  const { dateConstraint } = resolveContext(filters, referenceDate);
-  const invoices = invoicesMatchingBilledDate(await loadInScopeInvoices(filters), dateConstraint);
+  const { windows, dateConstraint } = resolveContext(filters, referenceDate);
+  const months = selectedMonthKeys(filters);
+  const monthSelection = months.length > 0 && !filters.from && !filters.to;
+  const invoices = invoicesMatchingBilledDate(
+    await loadInScopeInvoices(filters),
+    monthSelection ? null : dateConstraint
+  );
   const unpaid = unpaidTotals(invoices);
   const largestLimit = view === "largest" ? Math.min(Number(limit) || 25, 100) : 10;
 
@@ -311,7 +336,7 @@ export async function getUnpaidReport({ view, limit, ...filters } = {}, referenc
     unpaidInvoiceCount: unpaid.unpaidInvoiceCount,
     unpaidClientCount: unpaid.unpaidClientCount,
     totalUnpaid: unpaid.totalUnpaid,
-    largestOutstandingClients: largestUnpaidClients(invoices, largestLimit),
+    largestOutstandingClients: largestUnpaidClients(invoices, largestLimit, windows.asOf),
   };
 }
 

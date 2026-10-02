@@ -41,7 +41,6 @@ export function currentOwnerTaxYear(now = new Date()): string {
 
 export function defaultOwnerFilters(now = new Date()): OwnerFilters {
   return {
-    month: [currentOwnerMonth(now)],
     taxYear: [currentOwnerTaxYear(now)],
   };
 }

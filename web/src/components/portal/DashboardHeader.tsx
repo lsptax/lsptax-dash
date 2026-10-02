@@ -209,7 +209,7 @@ const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
   }
 
   return (
-    <header className="relative z-30 flex w-full items-center gap-3 pl-4 pr-2 sm:pl-6 sm:pr-3 py-3 border-b border-border bg-background/90 backdrop-blur-md">
+    <header className="relative z-30 flex w-full shrink-0 items-center gap-3 pl-4 pr-2 sm:pl-6 sm:pr-3 py-3 border-b border-border bg-background/90 backdrop-blur-md">
       <button
         type="button"
         className="sm:hidden p-2 rounded-md text-foreground hover:bg-muted"

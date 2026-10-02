@@ -58,8 +58,9 @@ export function csvForCollectedReport(payload) {
     return convertToCSV(payload.byMonth, [
       { label: "Year", value: "year" },
       { label: "Month", value: "month" },
-      { label: "Expected", value: "expected" },
+      { label: "Billed", value: "billed" },
       { label: "Collected", value: "collected" },
+      { label: "Outstanding", value: "outstanding" },
     ]);
   }
   return convertToCSV([summaryRow(payload)], [
@@ -80,6 +81,7 @@ export function csvForUnpaidReport(payload) {
       { label: "Client number", value: "clientNumber" },
       { label: "Unpaid amount", value: "unpaidAmount" },
       { label: "Unpaid invoices", value: "unpaidInvoiceCount" },
+      { label: "Status", value: "status" },
     ]);
   }
   return convertToCSV([summaryRow(payload)], [
