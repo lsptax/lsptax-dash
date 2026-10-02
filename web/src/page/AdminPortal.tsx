@@ -29,19 +29,34 @@ const AdminPortal = () => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = previous.htmlOverflow;
+      body.style.overflow = previous.bodyOverflow;
+    };
+  }, []);
+
   return (
-    <div className="h-screen overflow-hidden bg-background">
-      <div className="flex h-full">
+    <div data-smooth-scroll="portal" className="fixed inset-0 flex overflow-hidden bg-background">
+      <div className="flex h-full min-h-0 w-full">
         <div
-          className={`fixed z-40 top-0 left-0 h-full bg-card border-r border-border transition-transform transform ${
+          className={`fixed inset-y-0 left-0 z-40 h-full shrink-0 bg-card transition-transform ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
-          } sm:relative sm:translate-x-0 sm:flex`}
+          } sm:static sm:z-auto sm:translate-x-0`}
         >
           <SideMenu />
         </div>
-        <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <DashboardHeader onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
-          <main id="main" className="flex-1 overflow-auto" tabIndex={-1}>
+          <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth" tabIndex={-1}>
             <Breadcrumbs />
             <ErrorBoundary fallback={<AdminPortalErrorFallback />}>
               <Suspense fallback={<PortalSuspenseFallback />}>

@@ -5,8 +5,10 @@ import {
   COLLECTED_DEFINITION_V1,
   billedByGroup,
   cashflowByMonth,
+  cashflowForMonths,
   collectedByPaidMonth,
   collectedThroughDate,
+  collectionPeriod,
   largestUnpaidClients,
   moneyWindows,
   pastDueTotals,
@@ -234,8 +236,84 @@ describe("expected and collected so far", () => {
       }),
     ];
     assert.deepEqual(cashflowByMonth(invoices, { asOfIso: asOf }), [
-      { year: 2026, month: 8, expected: 1245.67, collected: 0 },
-      { year: 2026, month: 9, expected: 20.33, collected: 1245.67 },
+      { year: 2026, month: 8, billed: 1245.67, collected: 0, outstanding: 0 },
+      { year: 2026, month: 9, billed: 20.33, collected: 1245.67, outstanding: 20.33 },
     ]);
+  });
+
+  it("sums every selected month and skips months that were not selected", () => {
+    const invoices = [
+      invoice({
+        invoiceDate: "09/04/2026",
+        paidDate: "09/20/2026",
+        isPaid: true,
+        invoiceAmount: 29646.34,
+      }),
+      invoice({
+        id: 2,
+        propertyId: 11,
+        invoiceDate: "10/01/2026",
+        isPaid: false,
+        invoiceAmount: 1017.78,
+      }),
+      invoice({
+        id: 3,
+        propertyId: 12,
+        invoiceDate: "08/15/2026",
+        paidDate: "08/20/2026",
+        isPaid: true,
+        invoiceAmount: 5000,
+      }),
+    ];
+    const result = cashflowForMonths(invoices, ["2026-09", "2026-10"], "2026-10-02");
+    assert.equal(result.billed, 30664.12);
+    assert.equal(result.collected, 29646.34);
+    assert.deepEqual(
+      result.byMonth.map((row) => row.month),
+      [9, 10]
+    );
+    assert.equal(result.byMonth[1].billed, 1017.78);
+    assert.equal(result.byMonth[1].collected, 0);
+  });
+
+  it("labels collected-so-far as year to date unless a date range is selected", () => {
+    const ytd = collectionPeriod({}, windows, null, windows.asOf);
+    assert.equal(ytd.label, "YTD · 2026");
+    assert.deepEqual(ytd.range, windows.ytd);
+
+    const selected = collectionPeriod(
+      { from: "2026-08-01", to: "2026-08-31" },
+      windows,
+      { start: "2026-08-01", end: "2026-08-31" },
+      windows.asOf
+    );
+    assert.equal(selected.label, "Selected dates");
+    assert.deepEqual(selected.range, { start: "2026-08-01", end: "2026-08-31" });
+  });
+
+  it("marks a client past due when any unpaid invoice is past its due date", () => {
+    const rows = largestUnpaidClients(
+      [
+        invoice({
+          clientId: 1,
+          clientName: "Late",
+          dueDate: "08/01/2026",
+          invoiceAmount: 40,
+          isPaid: false,
+        }),
+        invoice({
+          id: 2,
+          clientId: 2,
+          clientName: "Current",
+          dueDate: "12/01/2026",
+          invoiceAmount: 10,
+          isPaid: false,
+        }),
+      ],
+      10,
+      asOf
+    );
+    assert.equal(rows[0].status, "Past due");
+    assert.equal(rows[1].status, "Not due");
   });
 });

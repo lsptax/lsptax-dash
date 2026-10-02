@@ -117,7 +117,7 @@ export default function OwnerFiltersBar({ value, onChange, actions }: OwnerFilte
             values={value.month ?? []}
             options={months}
             searchable
-            allTimeLabel="All-time"
+            allTimeLabel="All"
             emptyLabel="No month found"
             onChange={(next) => onChange(patchList(value, "month", next))}
           />

@@ -238,8 +238,8 @@ export function collectedThroughDate(invoices, scope = {}) {
 }
 
 /**
- * Expected is grouped by invoiceDate. Collected is grouped by paidDate.
- * A month can have one side without the other.
+ * Billed and still-unpaid amounts are grouped by invoiceDate.
+ * Collected is grouped by paidDate. A month can have one side without the other.
  */
 export function cashflowByMonth(invoices, scope = {}) {
   const byMonth = new Map();
@@ -248,8 +248,9 @@ export function cashflowByMonth(invoices, scope = {}) {
     const current = byMonth.get(key) || {
       year: parsed.y,
       month: parsed.m,
-      expected: 0,
+      billed: 0,
       collected: 0,
+      outstanding: 0,
     };
     byMonth.set(key, current);
     return current;
@@ -259,7 +260,9 @@ export function cashflowByMonth(invoices, scope = {}) {
     const billed = parseInvoiceCalendarDate(invoice.invoiceDate);
     if (inCashflowScope(billed, scope)) {
       const row = touch(billed);
-      row.expected = roundMoney(row.expected + money(invoice.invoiceAmount));
+      const amount = money(invoice.invoiceAmount);
+      row.billed = roundMoney(row.billed + amount);
+      if (!invoice.isPaid) row.outstanding = roundMoney(row.outstanding + amount);
     }
     if (!invoice.isPaid) continue;
     const paid = parseInvoiceCalendarDate(invoice.paidDate);
@@ -272,6 +275,38 @@ export function cashflowByMonth(invoices, scope = {}) {
   return [...byMonth.values()].sort((a, b) =>
     a.year !== b.year ? a.year - b.year : a.month - b.month
   );
+}
+
+export function selectedMonthKeys(filters = {}) {
+  const months = filters.months?.length ? filters.months : filters.month ? [filters.month] : [];
+  return [...new Set(months.map((month) => String(month)))].sort();
+}
+
+export function filterByCalendarMonth(invoices, months, field) {
+  if (!months?.length) return invoices;
+  const selected = new Set(months);
+  return invoices.filter((invoice) => {
+    const parsed = parseInvoiceCalendarDate(invoice[field]);
+    if (!parsed) return false;
+    return selected.has(monthKey(parsed));
+  });
+}
+
+/** One row per selected month, including months with no activity. Totals are the sum. */
+export function cashflowForMonths(invoices, months, asOfIso) {
+  const byKey = new Map(
+    cashflowByMonth(invoices, { asOfIso }).map((row) => [
+      `${row.year}-${String(row.month).padStart(2, "0")}`,
+      row,
+    ])
+  );
+  const byMonth = months.map((key) => {
+    const [year, month] = key.split("-").map(Number);
+    return byKey.get(key) || { year, month, billed: 0, collected: 0, outstanding: 0 };
+  });
+  const billed = byMonth.reduce((sum, row) => roundMoney(sum + row.billed), 0);
+  const collected = byMonth.reduce((sum, row) => roundMoney(sum + row.collected), 0);
+  return { billed, collected, byMonth };
 }
 
 function billedGroupKey(invoice, groupBy) {
@@ -330,7 +365,7 @@ export function billedByGroup(invoices, groupBy) {
     .sort((a, b) => b.billed - a.billed);
 }
 
-export function largestUnpaidClients(invoices, limit = 10) {
+export function largestUnpaidClients(invoices, limit = 10, asOfIso = null) {
   const byClient = new Map();
   for (const invoice of invoices) {
     if (invoice.isPaid || invoice.clientId == null) continue;
@@ -340,14 +375,51 @@ export function largestUnpaidClients(invoices, limit = 10) {
       clientNumber: invoice.clientNumber || "",
       unpaidAmount: 0,
       unpaidInvoiceCount: 0,
+      pastDueAmount: 0,
     };
-    current.unpaidAmount = roundMoney(current.unpaidAmount + money(invoice.invoiceAmount));
+    const amount = money(invoice.invoiceAmount);
+    current.unpaidAmount = roundMoney(current.unpaidAmount + amount);
     current.unpaidInvoiceCount += 1;
+    const due = parseInvoiceCalendarDate(invoice.dueDate);
+    if (asOfIso && parsedDateBefore(due, asOfIso)) {
+      current.pastDueAmount = roundMoney(current.pastDueAmount + amount);
+    }
     byClient.set(invoice.clientId, current);
   }
   return [...byClient.values()]
+    .map(({ pastDueAmount, ...rest }) => ({
+      ...rest,
+      status: pastDueAmount > 0 ? "Past due" : "Not due",
+    }))
     .sort((a, b) => b.unpaidAmount - a.unpaidAmount)
     .slice(0, limit);
+}
+
+/**
+ * Window for "collected so far" and the matching collection rate.
+ * A from/to range wins. Otherwise a calendar year, otherwise year-to-date.
+ */
+export function collectionPeriod(filters = {}, windows, dateConstraint, actualAsOf) {
+  const asOf = actualAsOf || windows?.asOf;
+  if (filters.from || filters.to) {
+    const start = dateConstraint?.start || "0000-01-01";
+    let end = dateConstraint?.end || asOf;
+    if (asOf && end > asOf) end = asOf;
+    if (start > end) return { range: null, label: "Selected dates" };
+    return { range: { start, end }, label: "Selected dates" };
+  }
+  const hasMonth = Boolean(filters.months?.length || filters.month);
+  if (filters.calendarYear != null && !hasMonth) {
+    const year = filters.calendarYear;
+    const full = windows.calendarYear;
+    const end = asOf && full.end > asOf ? asOf : full.end;
+    const label = end < `${year}-12-31` ? `YTD · ${year}` : String(year);
+    return { range: { start: full.start, end }, label };
+  }
+  return {
+    range: windows.ytd,
+    label: `YTD · ${String(windows.ytd.start).slice(0, 4)}`,
+  };
 }
 
 export function reductionsByCounty(invoices) {

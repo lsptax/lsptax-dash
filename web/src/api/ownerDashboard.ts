@@ -33,7 +33,19 @@ export type OwnerDashboardStats = {
   sentInvoiceCount: number;
   unpaidSentCount: number;
   collectedSoFar: number;
-  byMonth: { year: number; month: number; expected: number; collected: number }[];
+  periodBilled: number;
+  periodLabel: string;
+  notYetDueReceivables: number;
+  notYetDueInvoiceCount: number;
+  byMonth: {
+    year: number;
+    month: number;
+    billed: number;
+    collected: number;
+    outstanding: number;
+  }[];
+  billedByCounty?: BilledGroup[];
+  largestOutstandingClients?: UnpaidClientRow[];
   filters?: Record<string, string | number | null>;
 };
 
@@ -58,6 +70,7 @@ export type UnpaidClientRow = {
   clientNumber: string;
   unpaidAmount: number;
   unpaidInvoiceCount: number;
+  status?: "Past due" | "Not due";
 };
 
 function withFilters(path: string, filters: OwnerFilters, extra?: Record<string, string>) {
@@ -107,7 +120,13 @@ export async function getBilledReport(
 export async function getCollectedReport(
   filters: OwnerFilters = {}
 ): Promise<{
-  byMonth?: { year: number; month: number; expected: number; collected: number }[];
+  byMonth?: {
+    year: number;
+    month: number;
+    billed: number;
+    collected: number;
+    outstanding: number;
+  }[];
 }> {
   return getJson(withFilters("/report/collected", filters));
 }

@@ -6,7 +6,7 @@ const navLinkClass =
 
 const Header = () => {
   return (
-    <div className="scroll-smooth bg-background text-foreground border-b border-border">
+    <div className="bg-background text-foreground border-b border-border">
       <div className="flex md:hidden justify-between items-center px-4 py-3 gap-2">
         <img src={logo} alt="Lone Star Property Tax logo" className="h-10 w-auto" />
         <a

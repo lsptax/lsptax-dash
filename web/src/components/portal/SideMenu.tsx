@@ -68,7 +68,7 @@ const SideMenu: React.FC = () => {
     <TooltipProvider>
       <div
         className={cn(
-          "h-full bg-card text-card-foreground transition-all border-r border-border flex flex-col items-center",
+          "flex h-full shrink-0 flex-col items-center overflow-y-auto border-r border-border bg-card text-card-foreground transition-all",
           isOpen ? "w-64" : "w-16"
         )}
       >
