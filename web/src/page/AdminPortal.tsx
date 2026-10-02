@@ -45,7 +45,7 @@ const AdminPortal = () => {
   }, []);
 
   return (
-    <div data-smooth-scroll="portal" className="fixed inset-0 flex overflow-hidden bg-background">
+    <div className="fixed inset-0 flex overflow-hidden bg-background">
       <div className="flex h-full min-h-0 w-full">
         <div
           className={`fixed inset-y-0 left-0 z-40 h-full shrink-0 bg-card transition-transform ${
@@ -56,7 +56,7 @@ const AdminPortal = () => {
         </div>
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <DashboardHeader onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
-          <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth" tabIndex={-1}>
+          <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain" tabIndex={-1}>
             <Breadcrumbs />
             <ErrorBoundary fallback={<AdminPortalErrorFallback />}>
               <Suspense fallback={<PortalSuspenseFallback />}>

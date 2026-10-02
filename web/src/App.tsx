@@ -11,7 +11,6 @@ import NotFoundPage from "./page/NotFoundPage";
 import { PortalRouteElements } from "./routes/portalRouteElements";
 import PrivacyPolicyPage from "./page/PrivacyPolicyPage";
 import TermsOfUsePage from "./page/TermsOfUsePage";
-import SmoothScroll from "./components/SmoothScroll";
 
 function ThemeRouteSync() {
   const { pathname } = useLocation();
@@ -28,7 +27,6 @@ function App() {
   return (
     <Router>
       <ThemeRouteSync />
-      <SmoothScroll />
       <a
         href="#main"
         className="sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:m-0 focus:w-auto focus:h-auto focus:overflow-visible focus:bg-primary focus:text-primary-foreground focus:rounded-md"

@@ -16,22 +16,15 @@ html, body {
 }
 
 /*
- * Anchor jumps ease on the document and on the portal's own scroll panels.
- * Menus stay instant. Wheel easing inside the portal is handled in SmoothScroll.
+ * Public pages ease into anchor targets. The portal scrolls its own panels
+ * and stays on the browser's native scroll.
  */
-#main,
-[data-smooth-scroll="portal"] .overflow-y-auto,
-[data-smooth-scroll="portal"] .overflow-auto,
-[data-smooth-scroll="portal"] .portal-table {
-  scroll-behavior: smooth;
+#main {
+  scroll-behavior: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html,
-  #main,
-  [data-smooth-scroll="portal"] .overflow-y-auto,
-  [data-smooth-scroll="portal"] .overflow-auto,
-  [data-smooth-scroll="portal"] .portal-table {
+  html {
     scroll-behavior: auto;
   }
 }
