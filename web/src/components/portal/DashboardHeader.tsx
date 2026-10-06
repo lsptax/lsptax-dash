@@ -85,7 +85,7 @@ const headerEntries: { prefix: string; label: string; desc: string }[] = [
   {
     prefix: "owner",
     label: "Finances",
-    desc: "Billed vs collected, unpaid, and protest results.",
+    desc: "Track revenue, collections, outstanding amounts and client results — all in one place.",
   },
   {
     prefix: "csv-uploads",

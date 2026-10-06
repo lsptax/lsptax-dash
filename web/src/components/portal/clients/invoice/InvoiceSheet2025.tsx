@@ -30,8 +30,156 @@ type InvoiceSheet2025Props = {
   variant?: InvoiceTemplate;
 };
 
+type FeeInvoiceVariant = Extract<InvoiceTemplate, "arbitration" | "homestead">;
+
+const FEE_LETTERHEAD_PHONE = "713-505-6806";
+
+function accountNumberFor(property: InvoiceProperty, yearInvoice: Invoice | undefined) {
+  return property.propertyDetails.accountNumber?.trim() || yearInvoice?.AccountNumber?.trim() || "--";
+}
+
+function propertyLineFor(property: InvoiceProperty) {
+  return property.propertyDetails.propertyAddress?.trim() || property.propertyDetails.nameOnCad?.trim() || "--";
+}
+
+const FeeInvoiceSheet = React.forwardRef<
+  HTMLDivElement,
+  InvoiceSheet2025Props & { variant: FeeInvoiceVariant }
+>(({ client, property, yearInvoice, selectedYear, invoiceDate, dueDate, variant }, ref) => {
+  const accountNumber = accountNumberFor(property, yearInvoice);
+  const clientNumber = getClientNumber(client, property);
+  const showClientNumber = clientNumber !== "--";
+  const invoiceNumber = `${accountNumber} / ${selectedYear}`;
+  const typeLabel = variant === "arbitration" ? `${selectedYear} Arbitration Fee` : "HS Exemption";
+  const fee = formatUSD(yearInvoice?.invoiceAmount);
+
+  return (
+    <div
+      ref={ref}
+      data-invoice-pdf-sheet
+      id="invoice-2025-sheet"
+      className="paper-sheet mx-auto flex w-full max-w-[950px] min-h-[255mm] flex-col bg-white p-5 text-[12px] leading-[1.2] text-black shadow font-sans"
+    >
+      <div className="flex items-start justify-between gap-6 pb-1">
+        <div className="flex items-start gap-2">
+          <img src={brandLogo} alt="LSP Tax logo" className="h-[76px] w-[76px] object-contain" />
+          <div className="pt-1 text-[13px] leading-[1.25] font-semibold">
+            <p className="text-[17px] font-black tracking-wide leading-[1.1]">LONE STAR PROPERTY TAX</p>
+            <p>16107 KENSINGTON DRIVE, STE. 194</p>
+            <p>SUGARLAND, TX 77479</p>
+            <p>info@lsptax.com</p>
+            <p>{FEE_LETTERHEAD_PHONE}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-[150px_auto] gap-x-8 gap-y-1 pt-1 text-[13px] leading-[1.25] font-semibold">
+          <p>Invoice Date:</p>
+          <p className="text-right">{invoiceDate}</p>
+          <p>Invoice Number:</p>
+          <p className="text-right">{invoiceNumber}</p>
+        </div>
+      </div>
+
+      <div className="my-3 border border-black px-2 py-2">
+        <div className="flex items-start justify-between gap-4 text-[13px] leading-[1.25] font-medium">
+          <div>
+            <p>{client.clientName}</p>
+            <p>{client.mailingAddress}</p>
+            <p>{client.mailingAddressCityTxZip}</p>
+          </div>
+          {showClientNumber ? <p className="pr-1 font-semibold">{clientNumber}</p> : null}
+        </div>
+      </div>
+
+      <div className="my-3 text-center text-[16px] font-bold underline tracking-wide">
+        FOR PROFESSIONAL SERVICES
+      </div>
+
+      <div className="flex min-h-[260px] flex-1 flex-col border border-black p-3 text-[13px] leading-[1.25] font-medium">
+        <div className="flex items-start justify-between gap-6">
+          <p className="font-semibold">Property Tax Representation For:</p>
+          <p className="shrink-0">
+            <span className="font-semibold">Account Number:</span> {accountNumber}
+          </p>
+        </div>
+        <p className="mt-1">{propertyLineFor(property)}</p>
+        <div className="mt-12 grid w-[440px] max-w-full grid-cols-[88px_1fr] gap-y-5">
+          <p>Type:</p>
+          <p>{typeLabel}</p>
+          <p>Fee:</p>
+          <p>{fee}</p>
+        </div>
+      </div>
+
+      <div className="relative my-6">
+        <div className="border-t border-dashed border-black" />
+        <p className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[#ffffff] px-3 text-[15px] font-bold leading-none">
+          Cut Here ✂
+        </p>
+      </div>
+
+      <div className="grid grid-cols-[1fr_390px] items-start gap-x-6 gap-y-3 text-[13px] leading-[1.25] font-medium">
+        <div className="pt-1">
+          <p>{client.clientName}</p>
+          <p>{client.mailingAddress}</p>
+          <p>{client.mailingAddressCityTxZip}</p>
+        </div>
+        <div className="border border-black p-2 font-semibold">
+          <div className="grid grid-cols-[140px_1fr_auto] gap-x-2 gap-y-1">
+            <p>Account Number:</p>
+            <p>{accountNumber}</p>
+            <p>{showClientNumber ? clientNumber : ""}</p>
+            <p>Due Date:</p>
+            <p className="col-span-2">{dueDate}</p>
+            <p>Total Fee Due:</p>
+            <p className="col-span-2">{fee}</p>
+          </div>
+        </div>
+
+        <div />
+        <div className="border border-black p-2 font-semibold">
+          <div className="grid grid-cols-[150px_1fr] items-end">
+            <p>Amount Enclosed:</p>
+            <p className="mb-1 border-b border-black" />
+          </div>
+        </div>
+
+        <p className="pt-2 font-semibold">Please remit payment to adress below:</p>
+        <div className="border border-black p-2 font-semibold">
+          <div className="grid grid-cols-2">
+            <p>OR</p>
+            <p>ZELLE:</p>
+          </div>
+          <p className="mt-1">{FEE_LETTERHEAD_PHONE} (Lone Star Property Tax)</p>
+        </div>
+
+        <div className="font-semibold">
+          <p>LONE STAR PROPERTY TAX</p>
+          <p>16107 KENSINGTON DRIVE, STE. 194</p>
+          <p>SUGARLAND, TX 77479</p>
+        </div>
+        <div />
+      </div>
+
+      {yearInvoice?.paymentNotes?.trim() && (
+        <div className="mt-4 text-[13px] leading-[1.25] font-medium">
+          <p className="font-semibold">Payment Notes:</p>
+          <p className="whitespace-pre-wrap">{yearInvoice.paymentNotes.trim()}</p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+FeeInvoiceSheet.displayName = "FeeInvoiceSheet";
+
 const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>(
-  ({ client, property, yearInvoice, selectedYear, invoiceDate, dueDate, variant = "current" }, ref) => (
+  (props, ref) => {
+    if (props.variant === "arbitration" || props.variant === "homestead") {
+      return <FeeInvoiceSheet ref={ref} {...props} variant={props.variant} />;
+    }
+
+    const { client, property, yearInvoice, selectedYear, invoiceDate, dueDate } = props;
+    return (
     <div
       ref={ref}
       data-invoice-pdf-sheet
@@ -82,39 +230,28 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
             <p>Account Number:</p>
             <p>{property.propertyDetails.accountNumber || "--"}</p>
             <p>Service:</p>
-            <p>
-              {selectedYear}{" "}
-              {variant === "arbitration" ? "Arbitration" : variant === "homestead" ? "Homestead" : "Protest"}
-            </p>
+            <p>{selectedYear} Protest</p>
           </div>
         </div>
 
-        {variant !== "arbitration" ? (
-          <div className={`mt-6 grid text-[13px] leading-[1.25] font-medium ${variant === "homestead" ? "grid-cols-1" : "grid-cols-2"}`}>
-            <div className="min-h-[88px]">
-              <p>Begining Appraised Value: {formatInvoiceUSD(yearInvoice?.noticeAppraisedValue)}</p>
-              <p>Ending Appraised Value: {formatInvoiceUSD(yearInvoice?.finalAppraisedValue)}</p>
-              <p>Reduction: {formatInvoiceUSD(yearInvoice?.appraisedReduction)}</p>
-              <p>Overall Tax Rate: {yearInvoice?.taxRate ?? 0}%</p>
-            </div>
-            {variant === "current" ? (
-              <div className="min-h-[88px]">
-                <p>Begining Market Value: {formatInvoiceUSD(yearInvoice?.noticeMarketValue)}</p>
-                <p>Ending Market Value: {formatInvoiceUSD(yearInvoice?.finalMarketValue)}</p>
-                <p>Reduction: {formatInvoiceUSD(yearInvoice?.marketReduction)}</p>
-              </div>
-            ) : null}
+        <div className="mt-6 grid grid-cols-2 text-[13px] leading-[1.25] font-medium">
+          <div className="min-h-[88px]">
+            <p>Begining Appraised Value: {formatInvoiceUSD(yearInvoice?.noticeAppraisedValue)}</p>
+            <p>Ending Appraised Value: {formatInvoiceUSD(yearInvoice?.finalAppraisedValue)}</p>
+            <p>Reduction: {formatInvoiceUSD(yearInvoice?.appraisedReduction)}</p>
+            <p>Overall Tax Rate: {yearInvoice?.taxRate ?? 0}%</p>
           </div>
-        ) : null}
+          <div className="min-h-[88px]">
+            <p>Begining Market Value: {formatInvoiceUSD(yearInvoice?.noticeMarketValue)}</p>
+            <p>Ending Market Value: {formatInvoiceUSD(yearInvoice?.finalMarketValue)}</p>
+            <p>Reduction: {formatInvoiceUSD(yearInvoice?.marketReduction)}</p>
+          </div>
+        </div>
 
         <div className="mt-4 w-[300px] border border-black p-2 text-[13px] leading-[1.2] font-semibold">
           <div className="grid grid-cols-[1fr_1fr]">
-            {variant === "arbitration" ? null : (
-              <>
-                <p>Client Tax Savings:</p>
-                <p>{formatUSD(yearInvoice?.taxableSavings)}</p>
-              </>
-            )}
+            <p>Client Tax Savings:</p>
+            <p>{formatUSD(yearInvoice?.taxableSavings)}</p>
             <p>Contingency Fee:</p>
             <p>
               {yearInvoice?.contingencyFee ??
@@ -204,7 +341,8 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
         </div>
       )}
     </div>
-  )
+    );
+  }
 );
 
 InvoiceSheet2025.displayName = "InvoiceSheet2025";

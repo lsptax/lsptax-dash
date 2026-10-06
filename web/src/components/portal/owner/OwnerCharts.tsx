@@ -29,10 +29,10 @@ const money = new Intl.NumberFormat("en-US", {
 });
 
 export const chartColors = {
-  billed: "#0284c7",
-  collected: "#059669",
-  unpaid: "#dc2626",
-  notDue: "#f59e0b",
+  billed: "#3b82f6",
+  collected: "#22d3ee",
+  unpaid: "#f43f5e",
+  notDue: "#3b82f6",
 };
 
 function formatMoney(value: number) {
@@ -42,7 +42,7 @@ function formatMoney(value: number) {
 function formatAxisMoney(value: number) {
   const abs = Math.abs(value);
   if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1000) return `$${(value / 1000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
+  if (abs >= 1000) return `$${Math.round(value / 1000)}K`;
   return `$${Math.round(value)}`;
 }
 
@@ -143,6 +143,72 @@ export type CashflowMonth = {
 };
 
 type Series = "billed" | "collected" | "unpaid";
+
+export function MonthlyBillingChart({
+  months,
+  onFocusMonth,
+}: {
+  months: CashflowMonth[];
+  onFocusMonth?: (key: string) => void;
+}) {
+  const data = useMemo(() => {
+    const years = new Set(months.map((row) => row.year));
+    const withYear = years.size > 1;
+    return months.map((row) => ({
+      key: `${row.year}-${String(row.month).padStart(2, "0")}`,
+      label: new Date(row.year, row.month - 1, 1).toLocaleString("en-US", {
+        month: "short",
+        year: withYear ? "2-digit" : undefined,
+      }),
+      billed: row.billed,
+      collected: row.collected,
+    }));
+  }, [months]);
+
+  if (!data.length) {
+    return <div className="py-10 text-sm text-muted-foreground">No billing or payments in this filter.</div>;
+  }
+
+  return (
+    <div className="h-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          barGap={2}
+          barCategoryGap="22%"
+          margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+          onClick={(state) => {
+            const index = state?.activeTooltipIndex;
+            if (index == null || !onFocusMonth) return;
+            const row = data[Number(index)];
+            if (row) onFocusMonth(row.key);
+          }}
+        >
+          <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+          <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+          <YAxis width={48} tick={{ fontSize: 12 }} tickFormatter={formatAxisMoney} tickLine={false} axisLine={false} />
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.35 }} />
+          <Bar
+            dataKey="billed"
+            name="Billed"
+            fill={chartColors.billed}
+            radius={[3, 3, 0, 0]}
+            maxBarSize={16}
+            className={onFocusMonth ? "cursor-pointer" : undefined}
+          />
+          <Bar
+            dataKey="collected"
+            name="Collected"
+            fill={chartColors.collected}
+            radius={[3, 3, 0, 0]}
+            maxBarSize={16}
+            className={onFocusMonth ? "cursor-pointer" : undefined}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 export function CashflowChart({
   months,
@@ -421,22 +487,22 @@ export function UnpaidDonut({
 }) {
   const total = notYetDue + pastDue;
   const slices: { status: UnpaidStatus; label: string; value: number; count: number; color: string }[] = [
-    { status: "Past due", label: "Past due", value: pastDue, count: pastDueCount, color: chartColors.unpaid },
-    { status: "Not due", label: "Not yet due", value: notYetDue, count: notYetDueCount, color: chartColors.notDue },
+    { status: "Past due", label: "Past Due", value: pastDue, count: pastDueCount, color: chartColors.unpaid },
+    { status: "Not due", label: "Not Yet Due", value: notYetDue, count: notYetDueCount, color: chartColors.notDue },
   ];
   const pick = (status: UnpaidStatus) => onSelect(selected === status ? null : status);
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="relative h-44 w-44 shrink-0">
+    <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative h-40 w-40 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={total > 0 ? slices : [{ status: "none", value: 1, color: "hsl(var(--muted))" }]}
               dataKey="value"
               innerRadius={58}
-              outerRadius={80}
-              paddingAngle={total > 0 && pastDue > 0 && notYetDue > 0 ? 2 : 0}
+              outerRadius={74}
+              paddingAngle={total > 0 && pastDue > 0 && notYetDue > 0 ? 3 : 0}
               stroke="none"
               startAngle={90}
               endAngle={-270}
@@ -456,14 +522,16 @@ export function UnpaidDonut({
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <div className="text-[11px] text-muted-foreground">{selected ? selected : "Unpaid"}</div>
-          <div className="text-sm font-semibold tabular-nums text-red-600 dark:text-red-400">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <div className="text-sm font-semibold tabular-nums leading-none">
             {formatMoney(selected ? slices.find((slice) => slice.status === selected)?.value ?? 0 : total)}
+          </div>
+          <div className="mt-1 text-xs leading-none text-muted-foreground">
+            {selected === "Not due" ? "Not Yet Due" : selected === "Past due" ? "Past Due" : "Total Unpaid"}
           </div>
         </div>
       </div>
-      <div className="w-full space-y-2">
+      <div className="w-full space-y-1 sm:max-w-[13rem]">
         {slices.map((slice) => (
           <button
             key={slice.status}
@@ -471,27 +539,24 @@ export function UnpaidDonut({
             onClick={() => pick(slice.status)}
             aria-pressed={selected === slice.status}
             className={cn(
-              "flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition hover:bg-muted/50",
-              selected === slice.status && "ring-2 ring-offset-1 ring-offset-background",
-              selected && selected !== slice.status && "opacity-50"
+              "flex w-full items-start justify-between gap-3 text-left transition",
+              selected && selected !== slice.status && "opacity-45"
             )}
-            style={selected === slice.status ? { ["--tw-ring-color" as string]: slice.color } : undefined}
           >
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: slice.color }} />
-              <span>
-                <span className="font-medium">{slice.label}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {slice.count.toLocaleString()} invoices · {percent(slice.value, total)}
-                </span>
-              </span>
+            <span className="flex items-center gap-1.5 text-sm text-foreground">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: slice.color }} />
+              {slice.label}
             </span>
-            <span className="font-semibold tabular-nums" style={{ color: slice.color }}>
-              {formatMoney(slice.value)}
+            <span className="text-right">
+              <span className="block text-sm font-semibold tabular-nums" style={{ color: slice.color }}>
+                {formatMoney(slice.value)}
+              </span>
+              <span className="block text-xs leading-tight text-muted-foreground">
+                ({total ? `${((slice.value / total) * 100).toFixed(1)}%` : "—"})
+              </span>
             </span>
           </button>
         ))}
-        <div className="text-xs text-muted-foreground">Click a slice to filter the balances below.</div>
       </div>
     </div>
   );
