@@ -9,7 +9,8 @@ import {
 } from "../utils/reportFilters.js";
 import { roundMoney } from "../utils/invoiceYearlyData.js";
 import { toInvoiceExportRow } from "./ownerInvoiceExport.js";
-import { queryOwnerDashboard } from "./ownerDashboardQuery.js";
+import { queryOwnerDashboard, queryProtestByYear } from "./ownerDashboardQuery.js";
+import { isClosedInvoiceStatus } from "../utils/invoiceStatus.js";
 import {
   BILLED_GROUP_BY,
   COLLECTED_DEFINITION_V1,
@@ -50,6 +51,7 @@ function toMetricInvoice(row) {
     dueDate: row.dueDate,
     invoiceAmount: row.invoiceAmount,
     isPaid: row.isPaid,
+    status: row.status,
     appraisedReduction: row.appraisedReduction,
     taxableSavings: row.taxableSavings,
     accountNumber: property.accountNumber || row.accountNumber || "",
@@ -72,11 +74,14 @@ function prismaEntityWhere(filters = {}) {
     client: { isArchived: false },
   };
   if (filters.clientId != null) propertyWhere.clientId = filters.clientId;
+  if (filters.propertyType) propertyWhere.propertyType = filters.propertyType;
+  if (filters.consultantId != null) propertyWhere.consultantId = filters.consultantId;
   const cadCounty = cadCountyWhere(filters);
   if (cadCounty) propertyWhere.cadCounty = cadCounty;
 
   const where = {
     isArchived: false,
+    status: { notIn: ["VOIDED", "WRITTEN_OFF"] },
     property: propertyWhere,
   };
   const taxYears = taxYearsFromFilters(filters);
@@ -92,6 +97,8 @@ function propertyCountWhere(filters = {}) {
   };
   if (filters.clientId != null) where.clientId = filters.clientId;
   if (filters.propertyId != null) where.id = filters.propertyId;
+  if (filters.propertyType) where.propertyType = filters.propertyType;
+  if (filters.consultantId != null) where.consultantId = filters.consultantId;
   const cadCounty = cadCountyWhere(filters);
   if (cadCounty) where.cadCounty = cadCounty;
   return where;
@@ -109,6 +116,7 @@ async function loadInScopeInvoices(filters = {}) {
       dueDate: true,
       invoiceAmount: true,
       isPaid: true,
+      status: true,
       appraisedReduction: true,
       taxableSavings: true,
       accountNumber: true,
@@ -130,6 +138,7 @@ async function loadInScopeInvoices(filters = {}) {
   });
   return rows
     .map(toMetricInvoice)
+    .filter((invoice) => !isClosedInvoiceStatus(invoice.status))
     .filter((invoice) => invoiceMatchesEntityFilters(invoice, filters));
 }
 
@@ -147,6 +156,8 @@ function publicFilters(filters = {}) {
     counties: counties.length ? counties : null,
     clientId: filters.clientId ?? null,
     propertyId: filters.propertyId ?? null,
+    propertyType: filters.propertyType ?? null,
+    consultantId: filters.consultantId ?? null,
   };
 }
 
@@ -179,15 +190,18 @@ export async function getOwnerDashboard(filters = {}, referenceDate = new Date()
   const scopedConstraint = monthSelection ? null : dateConstraint;
   const actualAsOf = getOwnerDateWindows(referenceDate).asOf;
   const period = collectionPeriod(filters, windows, scopedConstraint, actualAsOf);
-  const facts = await queryOwnerDashboard(filters, {
-    windows,
-    scopedConstraint,
-    actualAsOf,
-    pastDueAsOf: windows.asOf,
-    periodRange: period.range,
-    months,
-    monthSelection,
-  });
+  const [facts, protestByYear] = await Promise.all([
+    queryOwnerDashboard(filters, {
+      windows,
+      scopedConstraint,
+      actualAsOf,
+      pastDueAsOf: windows.asOf,
+      periodRange: period.range,
+      months,
+      monthSelection,
+    }),
+    queryProtestByYear(filters),
+  ]);
 
   return {
     ...reportMeta(windows, filters),
@@ -225,6 +239,7 @@ export async function getOwnerDashboard(filters = {}, referenceDate = new Date()
     totalTaxSavings: facts.totalTaxSavings,
     billedByCounty: facts.billedByCounty,
     largestOutstandingClients: facts.largestOutstandingClients,
+    protestByYear,
   };
 }
 

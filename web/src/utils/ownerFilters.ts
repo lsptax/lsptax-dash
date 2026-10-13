@@ -7,9 +7,11 @@ export type OwnerFilters = {
   county?: string[];
   clientId?: string;
   propertyId?: string;
+  propertyType?: string;
+  consultantId?: string;
 };
 
-const SCALAR_KEYS = ["from", "to", "calendarYear", "clientId", "propertyId"] as const;
+const SCALAR_KEYS = ["from", "to", "calendarYear", "clientId", "propertyId", "propertyType", "consultantId"] as const;
 const LIST_KEYS = ["month", "taxYear", "county"] as const;
 const OWNER_FILTER_TZ = "America/Chicago";
 

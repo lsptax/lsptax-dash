@@ -27,6 +27,7 @@ import { ListDetailLink } from "../../ListDetailLink";
 import { formatClientNumberDisplay } from "@/utils/clientContact";
 import { EntityDetailRow } from "../../shared/EntityDetailRow";
 import { NotesAside, notesPanelClass, useNotesPanel } from "../../shared/NotesAside";
+import { PROPERTY_TYPES, labelFor } from "@/constants/classification";
 
 function clampToPropertyInvoiceYear(year: number): number {
   const min = Math.min(...PROPERTY_INVOICE_YEARS);
@@ -397,6 +398,12 @@ const ViewProperty = () => {
                 {cadMailingDisplay || "—"}
               </EntityDetailRow>
               <EntityDetailRow label="County:">{cadCounty || "—"}</EntityDetailRow>
+              <EntityDetailRow label="Property Type:">
+                {labelFor(PROPERTY_TYPES, prop?.propertyType)}
+              </EntityDetailRow>
+              <EntityDetailRow label="Consultant:">
+                {prop?.consultant?.name?.trim() || prop?.consultant?.email || "—"}
+              </EntityDetailRow>
             </tbody>
           </table>
         </div>

@@ -387,6 +387,52 @@ export default function OwnerDashboardPage() {
         />
       </div>
 
+      <Panel
+        icon={<FileText className="h-3.5 w-3.5 text-sky-500" />}
+        title="Protest Pipeline by Tax Year"
+      >
+        <div className="min-h-0 overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-card text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Year</th>
+                <th className="px-3 py-2 font-medium">Protested</th>
+                <th className="px-3 py-2 font-medium">Pending</th>
+                <th className="px-3 py-2 font-medium">Awaiting results</th>
+                <th className="px-3 py-2 font-medium">Completed</th>
+                <th className="px-3 py-2 font-medium">Awaiting invoice</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="px-3 py-3 text-muted-foreground" colSpan={6}>
+                    Loading protest totals…
+                  </td>
+                </tr>
+              ) : (stats?.protestByYear ?? []).length === 0 ? (
+                <tr>
+                  <td className="px-3 py-3 text-muted-foreground" colSpan={6}>
+                    No protested properties in this filter.
+                  </td>
+                </tr>
+              ) : (
+                stats?.protestByYear?.map((row) => (
+                  <tr key={row.year} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-medium">{row.year}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.protested.toLocaleString()}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.pending.toLocaleString()}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.resultsPending.toLocaleString()}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.completed.toLocaleString()}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.awaitingInvoice.toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-3">
         <Panel
           className="h-full"

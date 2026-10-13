@@ -3,11 +3,20 @@ import { formatUSD } from "@/utils/formatCurrency";
 import { getBppInvoiceAmount } from "@/utils/bppInvoice";
 import { Invoice } from "@/types/types";
 import { PROPERTY_INVOICE_YEARS } from "../propertyInvoiceYears";
+import {
+  INVOICE_STATUSES,
+  PROTEST_STATUSES,
+  labelFor,
+} from "@/constants/classification";
 
 // Define the type for table row data
 type TableRow = {
   year: number;
   "Protest Date"?: string;
+  "Protest Status"?: string;
+  "Protest Completed"?: string;
+  "Result Date"?: string;
+  "Invoice Status"?: string;
   "BPP Rendered"?: string;
   "BPP Invoice": string | number;
   "BPP Paid": string;
@@ -51,6 +60,15 @@ const YearTable: React.FC<{ invoices: Invoice[]; showBpp?: boolean }> = ({
     return {
       year,
       "Protest Date": yearData?.protestDate,
+      "Protest Status": yearData?.protestStatus
+        ? labelFor(PROTEST_STATUSES, yearData.protestStatus)
+        : "—",
+      "Protest Completed": yearData?.protestCompletedDate || "—",
+      "Result Date": yearData?.protestResultDate || "—",
+      "Invoice Status": labelFor(
+        INVOICE_STATUSES,
+        yearData?.isPaid ? "PAID" : yearData?.status || (yearData ? "DRAFT" : "")
+      ),
       "BPP Rendered": yearData?.bppRendered,
       "BPP Invoice": yearData ? getBppInvoiceAmount(yearData) : "-",
       "BPP Paid": yearData?.bppPaid || "-",

@@ -48,6 +48,8 @@ export const PROPERTY_UPDATE_FIELDS = [
   "lifecycleStep",
   "lifecycleNotes",
   "notes",
+  "propertyType",
+  "consultantId",
 ];
 
 /** Pick only allowed keys from obj. */

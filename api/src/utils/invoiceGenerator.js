@@ -8,6 +8,7 @@ import {
   normalizeInvoiceDateString,
   todayInvoiceDateString,
 } from "./invoiceYearlyData.js";
+import { statusAfterIssue } from "./invoiceStatus.js";
 
 /** Fields safe to set on bulk generate without wiping user-entered invoice data. */
 const GENERATE_METADATA_FIELDS = new Set([
@@ -147,6 +148,7 @@ export async function generateInvoices(options) {
             data: {
               ...metadataDefaults,
               invoiceDate: metadataDefaults.invoiceDate ?? today,
+              status: statusAfterIssue(existing.status, metadataDefaults),
               ...derived,
             },
           });
@@ -165,6 +167,7 @@ export async function generateInvoices(options) {
             contingencyFee: clientPct,
             ...metadataDefaults,
             invoiceDate: metadataDefaults.invoiceDate ?? today,
+            status: statusAfterIssue("DRAFT", metadataDefaults),
             invoiceAmount: flatFeeForInvoiceYear(property.flatFee, year),
           };
           invoiceData.push(shell);

@@ -49,10 +49,21 @@ import {
   getBppInvoiceEditValue,
   parseBppInvoiceString,
 } from "@/utils/bppInvoice";
+import { useQuery } from "@tanstack/react-query";
+import { authFetch, getApiBaseUrl } from "@/api/client";
+import {
+  INVOICE_STATUSES,
+  PROPERTY_TYPES,
+  PROTEST_STATUSES,
+} from "@/constants/classification";
 
 type TableRow = {
   year: number;
   "Protest Date": string;
+  "Protest Status": string;
+  "Protest Completed": string;
+  "Result Date": string;
+  "Invoice Status": string;
   "BPP Rendered": string;
   "BPP Invoice": string;
   "BPP Paid": string;
@@ -92,6 +103,8 @@ const formSchema = z.object({
   mailingAddressCityTxZip: z.string().optional().default(""),
   propertyAddress: z.string().optional().default(""),
   cadCounty: z.string().optional().default(""),
+  propertyType: z.string().optional().default(""),
+  consultantId: z.string().optional().default(""),
   accountNumber: z.string().optional().default(""),
   clientNumber: z.coerce.string().optional().default(""),
   contactOwner: z.string().nullable().default(""),
@@ -116,6 +129,8 @@ function mapPropertyDetailsToFormValues(
     ),
     propertyAddress: str(details.propertyAddress),
     cadCounty: str(details.cadCounty ?? details.CADCOUNTY),
+    propertyType: str(details.propertyType),
+    consultantId: details.consultantId == null ? "" : String(details.consultantId),
     accountNumber: str(details.accountNumber ?? details.AccountNumber),
     clientNumber: str(details.clientNumber ?? details.CLIENTNumber),
     contactOwner: str(details.contactOwner ?? details.CONTACTOWNER),
@@ -300,6 +315,18 @@ export default function EditProperty() {
       isArchived: false,
     },
   });
+  const staffQuery = useQuery({
+    queryKey: ["staff"],
+    queryFn: async () => {
+      const response = await authFetch(`${getApiBaseUrl()}/api/staff`);
+      if (!response.ok) throw new Error("Failed to load staff");
+      const data = (await response.json()) as {
+        staff: { id: number; name: string; email: string }[];
+      };
+      return data.staff ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     setPendingValues(values);
@@ -447,6 +474,10 @@ export default function EditProperty() {
       return {
         year,
         "Protest Date": yearData?.protestDate || "",
+        "Protest Status": yearData?.protestStatus || "NONE",
+        "Protest Completed": yearData?.protestCompletedDate || "",
+        "Result Date": yearData?.protestResultDate || "",
+        "Invoice Status": yearData?.isPaid ? "PAID" : yearData?.status || "DRAFT",
         "BPP Rendered": yearData?.bppRendered || "",
         "BPP Invoice": getBppInvoiceEditValue(yearData),
         "BPP Paid": yearData?.bppPaid || "",
@@ -722,6 +753,60 @@ export default function EditProperty() {
 
             <FormField
               control={form.control}
+              name="propertyType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property Type</FormLabel>
+                  <Select
+                    value={field.value || "NONE"}
+                    onValueChange={(value) => field.onChange(value === "NONE" ? "" : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select property type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Unclassified</SelectItem>
+                      {PROPERTY_TYPES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="consultantId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Consultant</FormLabel>
+                  <Select
+                    value={field.value || "NONE"}
+                    onValueChange={(value) => field.onChange(value === "NONE" ? "" : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select consultant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Unassigned</SelectItem>
+                      {(staffQuery.data ?? []).map((person) => (
+                        <SelectItem key={person.id} value={String(person.id)}>
+                          {person.name?.trim() || person.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="accountNumber"
               render={({ field }) => (
                 <FormItem>
@@ -859,7 +944,48 @@ export default function EditProperty() {
                         key={`${row.year}-${key}`}
                         className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                       >
-                        {key === "Under Litigation" ||
+                        {key === "Protest Status" ? (
+                          <select
+                            value={String(row["Protest Status"] || "NONE")}
+                            onChange={(e) =>
+                              setTableData((current) =>
+                                current.map((item, idx) =>
+                                  idx === rowIndex
+                                    ? { ...item, "Protest Status": e.target.value }
+                                    : item
+                                )
+                              )
+                            }
+                            className="block w-full px-2 py-1 text-sm border border-gray-300 rounded-md bg-white"
+                          >
+                            <option value="NONE">Not protested</option>
+                            {PROTEST_STATUSES.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : key === "Invoice Status" ? (
+                          <select
+                            value={String(row["Invoice Status"] || "DRAFT")}
+                            onChange={(e) =>
+                              setTableData((current) =>
+                                current.map((item, idx) =>
+                                  idx === rowIndex
+                                    ? { ...item, "Invoice Status": e.target.value }
+                                    : item
+                                )
+                              )
+                            }
+                            className="block w-full px-2 py-1 text-sm border border-gray-300 rounded-md bg-white"
+                          >
+                            {INVOICE_STATUSES.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : key === "Under Litigation" ||
                         key === "Under Arbitration" ? (
                           <input
                             type="checkbox"

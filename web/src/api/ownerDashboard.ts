@@ -46,7 +46,17 @@ export type OwnerDashboardStats = {
   }[];
   billedByCounty?: BilledGroup[];
   largestOutstandingClients?: UnpaidClientRow[];
+  protestByYear?: ProtestYearRow[];
   filters?: Record<string, string | number | null>;
+};
+
+export type ProtestYearRow = {
+  year: number;
+  protested: number;
+  pending: number;
+  resultsPending: number;
+  completed: number;
+  awaitingInvoice: number;
 };
 
 export type OwnerDashboardOptions = {

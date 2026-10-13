@@ -16,6 +16,7 @@ import {
   invoiceToApiDto,
   resolveClientContingencyDefault,
 } from "../utils/invoiceYearlyData.js";
+import { isAssignableStaffType, parsePropertyType } from "../utils/propertyClassification.js";
 
 const propertyToDto = (p) => {
   const cadMailing = buildCadMailingAddressDisplay(p);
@@ -156,6 +157,7 @@ export async function getPropertyDetails(propertyId) {
     include: {
       client: true,
       invoices: true,
+      consultant: { select: { id: true, name: true, email: true, type: true } },
     },
   });
   if (!property) return null;
@@ -265,6 +267,8 @@ export async function updateProperty(propertyId, data, allowedFields) {
     Object.assign(safeData, lifecycleData);
   }
 
+  await applyPropertyClassification(safeData);
+
   return prisma.property.update({
     where: { id },
     data: safeData,
@@ -275,6 +279,7 @@ export async function updatePropertyMany(propertyId, data, allowedFields) {
   const safeData = pick(data, allowedFields);
   // Bulk path can't safely resolve lifecycle history; require single-property update for lifecycle.
   for (const k of LIFECYCLE_PATCH_FIELDS) delete safeData[k];
+  await applyPropertyClassification(safeData);
   return prisma.property.updateMany({
     where: { id: parseInt(propertyId) },
     data: safeData,
@@ -308,6 +313,7 @@ export async function addPropertyToClient(clientId, propertyData) {
   };
   const { clientId: _skipId, clientNumber: _skipNum, ...rest } = propertyData || {};
   const data = { ...defaults, ...rest };
+  await applyPropertyClassification(data);
   const newProperty = await prisma.property.create({
     data: {
       ...data,
@@ -333,6 +339,41 @@ export async function addPropertyToClient(clientId, propertyData) {
     });
   }
   return newProperty;
+}
+
+async function applyPropertyClassification(data) {
+  if (Object.prototype.hasOwnProperty.call(data, "propertyType")) {
+    const parsed = parsePropertyType(data.propertyType);
+    if (!parsed.ok) {
+      const err = new Error("propertyType must be Residential, Commercial, BPP, or Land");
+      err.statusCode = 400;
+      throw err;
+    }
+    data.propertyType = parsed.value;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(data, "consultantId")) return;
+  const raw = data.consultantId;
+  if (raw == null || String(raw).trim() === "") {
+    data.consultantId = null;
+    return;
+  }
+  const consultantId = Number(raw);
+  if (!Number.isInteger(consultantId) || consultantId < 1) {
+    const err = new Error("consultantId must be a staff user id");
+    err.statusCode = 400;
+    throw err;
+  }
+  const consultant = await prisma.user.findUnique({
+    where: { id: consultantId },
+    select: { id: true, type: true },
+  });
+  if (!consultant || !isAssignableStaffType(consultant.type)) {
+    const err = new Error("consultantId must be an owner, admin, or staff user");
+    err.statusCode = 400;
+    throw err;
+  }
+  data.consultantId = consultantId;
 }
 
 export async function deleteProperty(propertyId) {

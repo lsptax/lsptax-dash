@@ -1,4 +1,6 @@
 import { parseContingencyFeePercent } from "../config/csvColumnMapping.js";
+import { effectiveInvoiceStatus, parseInvoiceStatus } from "./invoiceStatus.js";
+import { parseProtestStatus } from "./protestTracking.js";
 
 /** Preset contingency fee override values (percent). Other numeric percents are also allowed. */
 export const ALLOWED_CONTINGENCY_PERCENTS = [0, 15, 20, 25, 35, 45];
@@ -8,6 +10,10 @@ export const ALLOWED_CONTINGENCY_PERCENTS = [0, 15, 20, 25, 35, 45];
  */
 export const YEARLY_INVOICE_FIELD_ALIASES = {
   protestDate: ["Protest Date"],
+  protestStatus: ["Protest Status"],
+  protestCompletedDate: ["Protest Completed", "Completion Date"],
+  protestResultDate: ["Result Date", "Protest Result Date"],
+  status: ["Invoice Status"],
   bppRendered: ["BPP Rendered"],
   bppInvoice: ["BPP Invoice"],
   bppPaid: ["BPP Paid"],
@@ -103,6 +109,8 @@ const US_DATE_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
 /** Invoice metadata date columns stored as MM/DD/YYYY with zero-padded month/day. */
 export const INVOICE_DATE_STRING_FIELDS = new Set([
   "protestDate",
+  "protestCompletedDate",
+  "protestResultDate",
   "hearingDate",
   "invoiceDate",
   "dueDate",
@@ -510,6 +518,12 @@ export function buildInvoicePatchFromYearlyData(
     }
   }
 
+  for (const field of ["protestCompletedDate", "protestResultDate"]) {
+    if (!Object.prototype.hasOwnProperty.call(row, field)) continue;
+    const raw = row[field];
+    patch[field] = isEmptyYearlyInput(raw) ? "" : normalizeInvoiceDateString(raw);
+  }
+
   for (const field of BOOLEAN_INVOICE_FIELDS) {
     if (!Object.prototype.hasOwnProperty.call(row, field)) continue;
     const raw = row[field];
@@ -532,6 +546,35 @@ export function buildInvoicePatchFromYearlyData(
     }
   } else if (hasPaidDate) {
     patch.isPaid = Boolean(String(patch.paidDate || "").trim());
+  }
+
+  if (Object.prototype.hasOwnProperty.call(row, "status")) {
+    const parsed = parseInvoiceStatus(row.status);
+    if (parsed.ok && parsed.value) {
+      patch.status = parsed.value;
+      if (parsed.value === "PAID") {
+        patch.isPaid = true;
+        if (!String(patch.paidDate || existing?.paidDate || "").trim()) {
+          patch.paidDate = todayInvoiceDateString();
+        }
+      } else {
+        patch.isPaid = false;
+        patch.paidDate = "";
+      }
+    }
+  } else if (patch.isPaid === true) {
+    patch.status = "PAID";
+  } else if (patch.isPaid === false && existing?.status === "PAID") {
+    const issued = Boolean(
+      String(patch.invoiceDate ?? existing?.invoiceDate ?? "").trim() ||
+        String(patch.generatedDate ?? existing?.generatedDate ?? "").trim()
+    );
+    patch.status = issued ? "SENT" : "DRAFT";
+  }
+
+  if (Object.prototype.hasOwnProperty.call(row, "protestStatus")) {
+    const parsed = parseProtestStatus(row.protestStatus);
+    if (parsed.ok) patch.protestStatus = parsed.value;
   }
 
   const merged = { ...existing, ...patch };
@@ -610,6 +653,7 @@ export function invoiceToApiDto(invoice, clientContingencyFee = 25, propertyFlat
   }
   dto.contingencyFeePercent = Number(calculated.contingencyFee);
   dto.bppInvoiceAmount = bppInvoiceAmount;
+  dto.status = effectiveInvoiceStatus(invoice);
   delete dto.flatFee;
   return dto;
 }

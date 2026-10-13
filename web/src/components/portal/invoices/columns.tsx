@@ -10,6 +10,7 @@ import { InvoiceActionsCell } from "./InvoiceActionsCell";
 import { InvoiceEmailStatusBadge } from "./InvoiceEmailStatusBadge";
 import { InvoicePaidCell } from "./InvoicePaidCell";
 import { InvoicePaidDetailsButton } from "./InvoicePaidDetailsButton";
+import { invoiceStatusBadgeClass, labelFor, INVOICE_STATUSES } from "@/constants/classification";
 
 export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
   {
@@ -83,6 +84,20 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
     cell: ({ row }) => (
       <div className="font-bold">{formatUSD(row.original.totalInvoiceAmount)}</div>
     ),
+  },
+  {
+    accessorKey: "invoiceStatus",
+    header: "Invoice Status",
+    cell: ({ row }) => {
+      const status = row.original.invoiceStatus || (row.original.isPaid ? "PAID" : "DRAFT");
+      return (
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(status)}`}
+        >
+          {labelFor(INVOICE_STATUSES, status)}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "isPaid",

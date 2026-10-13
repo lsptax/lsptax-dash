@@ -1,4 +1,5 @@
 import { calendarDateInTz, BUSINESS_TZ, zonedDateTimeToUtc } from "./weekRange.js";
+import { parsePropertyType } from "./propertyClassification.js";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -69,6 +70,8 @@ export function parseReportFilters(query = {}) {
   const countiesRaw = listQuery(query.county);
   const clientIdRaw = firstQuery(query.clientId);
   const propertyIdRaw = firstQuery(query.propertyId);
+  const propertyTypeRaw = firstQuery(query.propertyType);
+  const consultantIdRaw = firstQuery(query.consultantId);
   const format = firstQuery(query.format).toLowerCase();
 
   const errors = [];
@@ -114,6 +117,20 @@ export function parseReportFilters(query = {}) {
     else propertyId = n;
   }
 
+  let propertyType = null;
+  if (propertyTypeRaw && propertyTypeRaw.toLowerCase() !== "all") {
+    const parsed = parsePropertyType(propertyTypeRaw);
+    if (!parsed.ok || !parsed.value) errors.push("propertyType must be Residential, Commercial, BPP, or Land");
+    else propertyType = parsed.value;
+  }
+
+  let consultantId = null;
+  if (consultantIdRaw && consultantIdRaw.toLowerCase() !== "all") {
+    const n = Number(consultantIdRaw);
+    if (!Number.isInteger(n) || n < 1) errors.push("consultantId must be a positive integer");
+    else consultantId = n;
+  }
+
   const counties = countiesRaw.filter((county) => county.toLowerCase() !== "all");
 
   if (format && format !== "csv" && format !== "json") {
@@ -140,6 +157,8 @@ export function parseReportFilters(query = {}) {
     county: counties.length === 1 ? counties[0] : "",
     clientId,
     propertyId,
+    propertyType,
+    consultantId,
     format: format || "json",
   };
 }

@@ -74,6 +74,9 @@ export interface Property {
   bppFee?: string;
   FlatFee?: string;
   flatFee?: string;
+  propertyType?: "RESIDENTIAL" | "COMMERCIAL" | "BPP" | "LAND" | null;
+  consultantId?: number | null;
+  consultant?: { id: number; name: string; email: string; type?: string } | null;
   IsArchived?: boolean;
   isArchived?: boolean;
   createdAt?: Date;
@@ -114,6 +117,10 @@ export interface Invoice {
   invoiceAmount?: number;
   paidDate?: string;
   isPaid?: boolean;
+  status?: "DRAFT" | "SENT" | "PAID" | "PAST_DUE" | "VOIDED" | "WRITTEN_OFF";
+  protestStatus?: "PENDING" | "COMPLETED" | "RESULTS_PENDING" | null;
+  protestCompletedDate?: string;
+  protestResultDate?: string;
   paymentNotes?: string;
   /** Printed layout: current, arbitration, or homestead. */
   invoiceTemplate?: string | null;
@@ -151,6 +158,8 @@ export interface InvoiceSummary {
   paidCount?: number;
   /** True when every year-invoice in this property group is paid. */
   isPaid?: boolean;
+  /** Rollup of Draft, Sent, Paid, Past Due, Voided, and Written Off. */
+  invoiceStatus?: "DRAFT" | "SENT" | "PAID" | "PAST_DUE" | "VOIDED" | "WRITTEN_OFF";
   /** Paid year-invoices only — used for payment detail popover in the list table. */
   paidInvoices?: PaidInvoiceDetail[];
   totalInvoiceAmount: number;

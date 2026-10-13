@@ -42,6 +42,8 @@ describe("parseReportFilters", () => {
     assert.deepEqual(filters.counties, ["Bexar"]);
     assert.equal(filters.clientId, 12);
     assert.equal(filters.propertyId, 44);
+    assert.equal(parseReportFilters({ propertyType: "bpp", consultantId: "7" }).propertyType, "BPP");
+    assert.equal(parseReportFilters({ propertyType: "bpp", consultantId: "7" }).consultantId, 7);
   });
 
   it("rejects invalid dates and treats county All as empty", () => {

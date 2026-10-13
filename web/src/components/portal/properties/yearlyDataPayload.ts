@@ -26,6 +26,10 @@ export function resolveContingencyPercentString(
 
 const LABEL_TO_CAMEL: Record<string, string> = {
   "Protest Date": "protestDate",
+  "Protest Status": "protestStatus",
+  "Protest Completed": "protestCompletedDate",
+  "Result Date": "protestResultDate",
+  "Invoice Status": "status",
   "BPP Rendered": "bppRendered",
   "BPP Invoice": "bppInvoice",
   "BPP Paid": "bppPaid",

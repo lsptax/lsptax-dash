@@ -14,6 +14,7 @@ import {
   resolveInvoiceDueAmount,
   todayInvoiceDateString,
 } from "../utils/invoiceYearlyData.js";
+import { effectiveInvoiceStatus, paymentWriteData } from "../utils/invoiceStatus.js";
 import { accountNumberSearchWhere, buildPropertySearchOrConditions } from "../utils/propertySearch.js";
 import {
   getLatestDeliveriesByClientIds,
@@ -283,6 +284,7 @@ function buildGroupedInvoices(invoices, useSet = true) {
     const feeDue = resolveInvoiceDueAmount(invoice, clientContingencyFee);
     const id = invoice.id;
     const invoicePaid = Boolean(invoice.isPaid);
+    const invoiceStatus = effectiveInvoiceStatus(invoice);
     if (!acc[groupKey]) {
       acc[groupKey] = {
         id,
@@ -293,6 +295,7 @@ function buildGroupedInvoices(invoices, useSet = true) {
         propertyId: invoice.propertyId ?? null,
         propertyNumbers: useSet ? new Set() : [],
         invoiceIds: useSet ? new Set([id]) : [id],
+        invoiceStatuses: [invoiceStatus],
         paidCount: invoicePaid ? 1 : 0,
         paidInvoices: invoicePaid ? [buildPaidInvoiceDetail(invoice, feeDue)] : [],
         invoiceCount: 1,
@@ -309,6 +312,7 @@ function buildGroupedInvoices(invoices, useSet = true) {
       }
       if (useSet) acc[groupKey].invoiceIds.add(id);
       else acc[groupKey].invoiceIds.push(id);
+      acc[groupKey].invoiceStatuses.push(invoiceStatus);
       if (isAfter(invoice.updatedAt, acc[groupKey].updatedAt)) {
         acc[groupKey].updatedAt = invoice.updatedAt;
         acc[groupKey].id = invoice.id;
@@ -326,8 +330,9 @@ function buildGroupedInvoices(invoices, useSet = true) {
       const invoiceIds = useSet ? Array.from(item.invoiceIds) : item.invoiceIds;
       const invoiceCount = item.invoiceCount || invoiceIds.length;
       const paidCount = item.paidCount || 0;
+      const { invoiceStatuses, ...rest } = item;
       return {
-        ...item,
+        ...rest,
         propertyNumbers: useSet ? Array.from(item.propertyNumbers) : item.propertyNumbers,
         invoiceIds,
         invoiceCount,
@@ -336,9 +341,26 @@ function buildGroupedInvoices(invoices, useSet = true) {
           (a, b) => (Number(b.year) || 0) - (Number(a.year) || 0)
         ),
         isPaid: invoiceCount > 0 && paidCount === invoiceCount,
+        invoiceStatus: rollupInvoiceStatus(invoiceStatuses),
       };
     })
     .sort(compareInvoiceGroupsByUpdatedAtDesc);
+}
+
+const INVOICE_STATUS_RANK = {
+  PAST_DUE: 5,
+  SENT: 4,
+  DRAFT: 3,
+  WRITTEN_OFF: 2,
+  VOIDED: 1,
+  PAID: 0,
+};
+
+function rollupInvoiceStatus(statuses) {
+  const unique = [...new Set((statuses || []).filter(Boolean))];
+  if (!unique.length) return "DRAFT";
+  if (unique.length === 1) return unique[0];
+  return unique.sort((a, b) => (INVOICE_STATUS_RANK[b] || 0) - (INVOICE_STATUS_RANK[a] || 0))[0];
 }
 
 function normalizePaymentStatus(paymentStatus) {
@@ -700,44 +722,47 @@ export async function updateInvoicePaymentStatus({
     throw new Error("isPaid must be a boolean");
   }
 
-  let data;
+  let normalizedPaidDate = "";
   if (isPaid) {
     const rawPaidDate =
       paidDate != null && String(paidDate).trim() !== ""
         ? String(paidDate).trim()
         : todayInvoiceDateString();
-    const normalizedPaidDate = normalizeInvoiceDateString(rawPaidDate);
+    normalizedPaidDate = normalizeInvoiceDateString(rawPaidDate);
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(normalizedPaidDate)) {
       throw new Error("paidDate must be a valid date (MM/DD/YYYY)");
     }
-
-    data = {
-      isPaid: true,
-      paidDate: normalizedPaidDate,
-    };
-    if (paymentNotes !== undefined) {
-      data.paymentNotes =
-        paymentNotes == null ? "" : String(paymentNotes).trim();
-    }
-  } else {
-    data = { isPaid: false, paidDate: "" };
   }
 
-  const result = await prisma.invoice.updateMany({
-    where: { id: { in: ids } },
-    data,
-  });
+  const notes =
+    paymentNotes === undefined
+      ? undefined
+      : paymentNotes == null
+        ? ""
+        : String(paymentNotes).trim();
 
-  if (result.count === 0) {
+  const existingRows = await prisma.invoice.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, status: true, invoiceDate: true, generatedDate: true },
+  });
+  if (!existingRows.length) {
     throw new Error("No matching invoices found for the provided invoiceIds");
   }
 
+  await prisma.$transaction(
+    existingRows.map((row) => {
+      const data = paymentWriteData(isPaid, row, normalizedPaidDate);
+      if (notes !== undefined) data.paymentNotes = notes;
+      return prisma.invoice.update({ where: { id: row.id }, data });
+    })
+  );
+
   const response = {
-    updatedCount: result.count,
-    invoiceIds: ids,
+    updatedCount: existingRows.length,
+    invoiceIds: existingRows.map((row) => row.id),
     isPaid,
-    paidDate: data.paidDate,
-    paymentNotes: data.paymentNotes,
+    paidDate: isPaid ? normalizedPaidDate : "",
+    paymentNotes: notes,
   };
 
   if (isPaid && sendAcknowledgementEmail) {

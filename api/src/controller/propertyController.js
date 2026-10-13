@@ -164,6 +164,8 @@ export const editProperty = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating property:", error);
+    const status = Number(error.statusCode) || 500;
+    if (status < 500) return sendError(res, status, error.message);
     sendError(res, 500, "Internal server error", error);
   }
 };

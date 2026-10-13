@@ -1029,6 +1029,20 @@ export async function sendInvoiceToClient({
       errorMessage: [smsError, storageWarning].filter(Boolean).join(" | ") || null,
     });
 
+    try {
+      const sentIds = (sentScope.invoiceIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0);
+      if (sentIds.length) {
+        await prisma.invoice.updateMany({
+          where: { id: { in: sentIds }, status: "DRAFT" },
+          data: { status: "SENT" },
+        });
+      }
+    } catch (statusErr) {
+      console.warn(`${logPrefix} invoice status was not updated: ${statusErr.message}`);
+    }
+
     const combinedWarning = [...warnings, smsError].filter(Boolean).join(" | ") || undefined;
 
     return {

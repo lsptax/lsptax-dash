@@ -20,6 +20,8 @@ import { currentOwnerMonth, emptyOwnerFilters, type OwnerFilters } from "@/utils
 import type { Clients } from "@/components/portal/clients/list/columns";
 import type { Properties } from "@/components/portal/properties/columns";
 import { formatClientNumberDisplay } from "@/utils/clientContact";
+import { PROPERTY_TYPES } from "@/constants/classification";
+import { authFetch, getApiBaseUrl } from "@/api/client";
 
 const ALL = "__all__";
 const ADVANCED_KEYS: (keyof OwnerFilters)[] = [
@@ -28,6 +30,8 @@ const ADVANCED_KEYS: (keyof OwnerFilters)[] = [
   "calendarYear",
   "clientId",
   "propertyId",
+  "propertyType",
+  "consultantId",
 ];
 
 type OwnerFiltersBarProps = {
@@ -40,7 +44,7 @@ type FilterOption = { value: string; label: string };
 
 function patch(
   value: OwnerFilters,
-  key: "from" | "to" | "calendarYear" | "clientId" | "propertyId",
+  key: "from" | "to" | "calendarYear" | "clientId" | "propertyId" | "propertyType" | "consultantId",
   next: string
 ): OwnerFilters {
   const copy = { ...value };
@@ -92,6 +96,18 @@ export default function OwnerFiltersBar({ value, onChange, actions }: OwnerFilte
   const optionsQuery = useQuery({
     queryKey: ["owner-dashboard-options"],
     queryFn: getOwnerDashboardOptions,
+    staleTime: 5 * 60 * 1000,
+  });
+  const staffQuery = useQuery({
+    queryKey: ["staff"],
+    queryFn: async () => {
+      const response = await authFetch(`${getApiBaseUrl()}/api/staff`);
+      if (!response.ok) throw new Error("Failed to load staff");
+      const data = (await response.json()) as {
+        staff: { id: number; name: string; email: string }[];
+      };
+      return data.staff ?? [];
+    },
     staleTime: 5 * 60 * 1000,
   });
 
@@ -213,6 +229,46 @@ export default function OwnerFiltersBar({ value, onChange, actions }: OwnerFilte
             displayKind="property"
             onChange={(id) => onChange(patch(value, "propertyId", id))}
           />
+          <Field label="Property type">
+            <Select
+              value={value.propertyType ?? ALL}
+              onValueChange={(next) =>
+                onChange(patch(value, "propertyType", next === ALL ? "" : next))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {PROPERTY_TYPES.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Consultant">
+            <Select
+              value={value.consultantId ?? ALL}
+              onValueChange={(next) =>
+                onChange(patch(value, "consultantId", next === ALL ? "" : next))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {(staffQuery.data ?? []).map((person) => (
+                  <SelectItem key={person.id} value={String(person.id)}>
+                    {person.name?.trim() || person.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
         </div>
       ) : null}
     </div>

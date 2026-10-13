@@ -69,6 +69,12 @@ function entityWhere(filters, invoiceAlias = "i", propertyAlias = "p", clientAli
   if (taxYears.length) parts.push(Prisma.sql`${invoice}.year IN (${Prisma.join(taxYears)})`);
   if (filters.clientId != null) parts.push(Prisma.sql`${property}."clientId" = ${filters.clientId}`);
   if (filters.propertyId != null) parts.push(Prisma.sql`${invoice}."propertyId" = ${filters.propertyId}`);
+  if (filters.propertyType) {
+    parts.push(Prisma.sql`${property}."propertyType"::text = ${filters.propertyType}`);
+  }
+  if (filters.consultantId != null) {
+    parts.push(Prisma.sql`${property}."consultantId" = ${filters.consultantId}`);
+  }
   const counties = countiesFromFilters(filters).map((county) => county.toLowerCase());
   if (counties.length) {
     parts.push(Prisma.sql`lower(btrim(${property}."cadCounty")) IN (${Prisma.join(counties)})`);
@@ -80,6 +86,8 @@ function propertyWhere(filters) {
   const parts = [Prisma.sql`NOT p."isArchived"`, Prisma.sql`NOT c."isArchived"`];
   if (filters.clientId != null) parts.push(Prisma.sql`p."clientId" = ${filters.clientId}`);
   if (filters.propertyId != null) parts.push(Prisma.sql`p.id = ${filters.propertyId}`);
+  if (filters.propertyType) parts.push(Prisma.sql`p."propertyType"::text = ${filters.propertyType}`);
+  if (filters.consultantId != null) parts.push(Prisma.sql`p."consultantId" = ${filters.consultantId}`);
   const counties = countiesFromFilters(filters).map((county) => county.toLowerCase());
   if (counties.length) {
     parts.push(Prisma.sql`lower(btrim(p."cadCounty")) IN (${Prisma.join(counties)})`);
@@ -133,6 +141,7 @@ export async function queryOwnerDashboard(filters, scope) {
       JOIN "Property" p ON p.id = i."propertyId"
       JOIN "Client" c ON c.id = p."clientId"
       WHERE ${entityWhere(filters)}
+        AND i.status::text NOT IN ('VOIDED', 'WRITTEN_OFF')
     ),
     billed_months AS (
       SELECT
@@ -346,6 +355,51 @@ export async function queryOwnerDashboard(filters, scope) {
       status: client.status === "Past due" ? "Past due" : "Not due",
     })),
   };
+}
+
+/**
+ * Tax-year protest pipeline. Counts are property-years, including years that have not been invoiced.
+ */
+export async function queryProtestByYear(filters) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      i.year AS year,
+      count(*) FILTER (
+        WHERE i."protestStatus" IS NOT NULL
+          OR NULLIF(btrim(COALESCE(i."protestDate", '')), '') IS NOT NULL
+      )::int AS protested,
+      count(*) FILTER (
+        WHERE COALESCE(
+          i."protestStatus"::text,
+          CASE
+            WHEN NULLIF(btrim(COALESCE(i."protestDate", '')), '') IS NOT NULL THEN 'PENDING'
+          END
+        ) = 'PENDING'
+      )::int AS pending,
+      count(*) FILTER (WHERE i."protestStatus"::text = 'RESULTS_PENDING')::int AS results_pending,
+      count(*) FILTER (WHERE i."protestStatus"::text = 'COMPLETED')::int AS completed,
+      count(*) FILTER (
+        WHERE i."protestStatus"::text = 'COMPLETED'
+          AND i.status::text = 'DRAFT'
+          AND NOT i."isPaid"
+      )::int AS awaiting_invoice
+    FROM "Invoice" i
+    JOIN "Property" p ON p.id = i."propertyId"
+    JOIN "Client" c ON c.id = p."clientId"
+    WHERE ${entityWhere(filters)}
+      AND i.year > 0
+    GROUP BY i.year
+    ORDER BY i.year DESC
+  `;
+
+  return rows.map((row) => ({
+    year: Number(row.year),
+    protested: Number(row.protested) || 0,
+    pending: Number(row.pending) || 0,
+    resultsPending: Number(row.results_pending) || 0,
+    completed: Number(row.completed) || 0,
+    awaitingInvoice: Number(row.awaiting_invoice) || 0,
+  }));
 }
 
 function asArray(value) {

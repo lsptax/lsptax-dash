@@ -46,10 +46,12 @@ import {
   removeEmailTemplate,
 } from "../controller/emailTemplateController.js";
 import { globalSearch } from "../controller/searchController.js";
+import { listStaff } from "../controller/staffController.js";
 
 const router = Router();
 
 router.get("/search", globalSearch);
+router.get("/staff", listStaff);
 router.get("/clients", getClients);
 router.get("/archive_clients", getArchiveClients);
 router.get("/client", getClientDetails);
