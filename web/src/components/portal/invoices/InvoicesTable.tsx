@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, type CellContext } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -293,7 +293,12 @@ const InvoicesTable = ({
       },
       ...columns.map((column) =>
         "accessorKey" in column && column.accessorKey === "invoiceStatus"
-          ? { ...column, cell: ({ row }) => <InvoiceStatusCell row={row.original} /> }
+          ? {
+              ...column,
+              cell: ({ row }: CellContext<InvoiceSummary, unknown>) => (
+                <InvoiceStatusCell row={row.original} />
+              ),
+            }
           : column
       ),
     ],

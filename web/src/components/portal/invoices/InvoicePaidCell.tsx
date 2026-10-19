@@ -9,7 +9,8 @@ import {
   hasPaymentAcknowledgementIssues,
 } from "@/utils/paymentAcknowledgementEmail";
 import { cn } from "@/lib/utils";
-import type { InvoiceSummary } from "@/types/types";
+import type { PaymentMethod } from "@/constants/paymentMethod";
+import type { InvoiceSummary, PaidInvoiceDetail } from "@/types/types";
 import type { PaginatedResponse } from "@/store/common";
 import {
   MarkInvoicePaidDialog,
@@ -28,7 +29,7 @@ function patchInvoicePaymentInCache(
   queryClient: ReturnType<typeof useQueryClient>,
   ids: number[],
   nextPaid: boolean,
-  paymentMethod?: string
+  paymentMethod?: PaymentMethod | null
 ) {
   const idSet = new Set(ids);
   const queries = queryClient.getQueriesData<PaginatedResponse<InvoiceSummary>>({
@@ -45,12 +46,17 @@ function patchInvoicePaymentInCache(
       if (!rowIds.some((id) => idSet.has(id))) return row;
 
       const invoiceCount = row.invoiceCount ?? rowIds.length;
-      const paidInvoices = nextPaid
-        ? (row.paidInvoices?.length ? row.paidInvoices : rowIds.map((id) => ({
-            id,
-            year: 0,
-            invoiceAmount: 0,
-          }))).map((entry) => ({
+      const existingPaid = row.paidInvoices?.length
+        ? row.paidInvoices
+        : rowIds.map(
+            (id): PaidInvoiceDetail => ({
+              id,
+              year: 0,
+              invoiceAmount: 0,
+            })
+          );
+      const paidInvoices: PaidInvoiceDetail[] = nextPaid
+        ? existingPaid.map((entry) => ({
             ...entry,
             paymentMethod: paymentMethod ?? entry.paymentMethod ?? null,
           }))
