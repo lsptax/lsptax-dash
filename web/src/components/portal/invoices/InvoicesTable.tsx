@@ -30,6 +30,7 @@ import { routes } from "@/routes/ROUTES";
 import { BulkInvoiceSendDialog } from "./BulkInvoiceSendDialog";
 import { InvoicePdfRenderSheets } from "./InvoicePdfRenderSheets";
 import { InvoiceStatusCell } from "./columns";
+import { InvoiceActionsCell } from "./InvoiceActionsCell";
 import {
   MarkInvoicePaidDialog,
   type MarkInvoicePaidPayload,
@@ -63,6 +64,7 @@ import {
 } from "@/utils/invoiceEmailStatus";
 import { PROPERTY_INVOICE_YEARS } from "@/components/portal/properties/propertyInvoiceYears";
 import {
+  defaultInvoiceListYears,
   mergeInvoiceListParams,
   parseInvoiceListParams,
 } from "./invoiceListSearchParams";
@@ -117,6 +119,7 @@ const InvoicesTable = ({
   const [markingPaid, setMarkingPaid] = useState(false);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<number>>(new Set());
   const [selectingAllFiltered, setSelectingAllFiltered] = useState(false);
+  const [refreshingTable, setRefreshingTable] = useState(false);
   const selectAllRequestRef = useRef(0);
   const [minAmountDraft, setMinAmountDraft] = useState(minAmount == null ? "" : String(minAmount));
   const [maxAmountDraft, setMaxAmountDraft] = useState(maxAmount == null ? "" : String(maxAmount));
@@ -291,18 +294,31 @@ const InvoicesTable = ({
         },
         enableSorting: false,
       },
-      ...columns.map((column) =>
-        "accessorKey" in column && column.accessorKey === "invoiceStatus"
-          ? {
-              ...column,
-              cell: ({ row }: CellContext<InvoiceSummary, unknown>) => (
-                <InvoiceStatusCell row={row.original} />
-              ),
-            }
-          : column
-      ),
+      ...columns.map((column) => {
+        if ("accessorKey" in column && column.accessorKey === "invoiceStatus") {
+          return {
+            ...column,
+            cell: ({ row }: CellContext<InvoiceSummary, unknown>) => (
+              <InvoiceStatusCell row={row.original} />
+            ),
+          };
+        }
+        if ("accessorKey" in column && column.accessorKey === "actions") {
+          return {
+            ...column,
+            cell: ({ row }: CellContext<InvoiceSummary, unknown>) => (
+              <InvoiceActionsCell
+                yearInvoices={row.original.yearInvoices}
+                years={years}
+                isArchived={row.original.isArchived}
+              />
+            ),
+          };
+        }
+        return column;
+      }),
     ],
-    [allCurrentPageSelected, allFilteredSelected, columns, currentPageSelectedCount, selectedInvoiceIds]
+    [allCurrentPageSelected, allFilteredSelected, columns, currentPageSelectedCount, selectedInvoiceIds, years]
   );
 
   const handleCsvDownload = async () => {
@@ -556,7 +572,7 @@ const InvoicesTable = ({
     paymentMethod !== "any" ||
     minAmount != null ||
     maxAmount != null ||
-    years.length > 0 ||
+    !sameYearSelection(years, defaultInvoiceListYears()) ||
     client !== "" ||
     appliedSearch !== "";
 
@@ -569,7 +585,7 @@ const InvoicesTable = ({
       paymentMethod: "any",
       minAmount: null,
       maxAmount: null,
-      years: [],
+      years: defaultInvoiceListYears(),
       client: "",
       search: "",
       offset: 0,
@@ -946,6 +962,11 @@ const InvoicesTable = ({
           description: "Invoices will appear here once you generate them for clients.",
           action: { label: "Go to clients", to: routes.clients.list() },
         }}
+        onRefresh={() => {
+          setRefreshingTable(true);
+          void refetch().finally(() => setRefreshingTable(false));
+        }}
+        refreshing={refreshingTable}
         serverPagination={{
           total,
           limit: effectiveLimit,
@@ -976,6 +997,10 @@ const InvoicesTable = ({
 };
 
 export default InvoicesTable;
+
+function sameYearSelection(left: number[], right: number[]): boolean {
+  return left.length === right.length && left.every((year, index) => year === right[index]);
+}
 
 function parseAmountDraft(value: string): number | null | "invalid" {
   const trimmed = value.trim().replace(/[$,]/g, "");

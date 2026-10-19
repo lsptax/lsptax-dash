@@ -290,6 +290,7 @@ function buildGroupedInvoices(invoices, useSet = true) {
     if (!acc[groupKey]) {
       acc[groupKey] = {
         id,
+        isArchived: Boolean(invoice.isArchived),
         clientId: invoice.property?.clientId ?? invoice.property?.client?.id ?? null,
         clientName: invoice.property?.client?.clientName ?? null,
         clientNumber:
@@ -297,6 +298,7 @@ function buildGroupedInvoices(invoices, useSet = true) {
         propertyId: invoice.propertyId ?? null,
         propertyNumbers: useSet ? new Set() : [],
         invoiceIds: useSet ? new Set([id]) : [id],
+        yearInvoices: [{ id, year: Number(invoice.year) }],
         invoiceStatuses: [invoiceStatus],
         paidCount: invoicePaid ? 1 : 0,
         paidInvoices: invoicePaid ? [buildPaidInvoiceDetail(invoice, feeDue)] : [],
@@ -314,15 +316,25 @@ function buildGroupedInvoices(invoices, useSet = true) {
       }
       if (useSet) acc[groupKey].invoiceIds.add(id);
       else acc[groupKey].invoiceIds.push(id);
+      if (!acc[groupKey].yearInvoices.some((entry) => entry.id === id)) {
+        acc[groupKey].yearInvoices.push({ id, year: Number(invoice.year) });
+      }
       acc[groupKey].invoiceStatuses.push(invoiceStatus);
       if (isAfter(invoice.updatedAt, acc[groupKey].updatedAt)) {
         acc[groupKey].updatedAt = invoice.updatedAt;
         acc[groupKey].id = invoice.id;
       }
     }
-    if (invoice.accountNumber) {
-      if (useSet) acc[groupKey].propertyNumbers.add(invoice.accountNumber);
-      else acc[groupKey].propertyNumbers.push(invoice.accountNumber);
+    // One list row is one property. Show that property's account number, not
+    // every accountNumber copied onto its year invoices (those copies can drift).
+    const accountNumber = String(
+      invoice.property?.accountNumber ?? invoice.accountNumber ?? ""
+    ).trim();
+    if (accountNumber) {
+      if (useSet) acc[groupKey].propertyNumbers.add(accountNumber);
+      else if (!acc[groupKey].propertyNumbers.includes(accountNumber)) {
+        acc[groupKey].propertyNumbers.push(accountNumber);
+      }
     }
     return acc;
   }, {});
@@ -337,6 +349,9 @@ function buildGroupedInvoices(invoices, useSet = true) {
         ...rest,
         propertyNumbers: useSet ? Array.from(item.propertyNumbers) : item.propertyNumbers,
         invoiceIds,
+        yearInvoices: (item.yearInvoices || [])
+          .filter((entry) => Number.isFinite(Number(entry.year)))
+          .sort((a, b) => Number(b.year) - Number(a.year)),
         invoiceCount,
         paidCount,
         paidInvoices: (item.paidInvoices || []).sort(
@@ -547,6 +562,7 @@ async function loadGroupedInvoices({
       property: {
         select: {
           clientId: true,
+          accountNumber: true,
           flatFee: true,
           client: {
             select: {
@@ -715,6 +731,51 @@ export async function expandGroupedInvoiceIds({
     }
   }
   return [...new Set(expanded)];
+}
+
+/**
+ * Set isArchived on every listed invoice in one update.
+ * A retry applies the same value again, so a failed attempt cannot flip rows that already changed.
+ */
+export async function setInvoicesArchived({ invoiceIds, isArchived, years }) {
+  const ids = [...new Set(
+    (Array.isArray(invoiceIds) ? invoiceIds : [invoiceIds])
+      .map((id) => parseInt(id, 10))
+      .filter((id) => Number.isFinite(id))
+  )];
+  const yearList = parseInvoiceYears(years);
+  if (!ids.length) {
+    throw new Error("invoiceIds is required");
+  }
+  if (!yearList.length) {
+    throw new Error("year is required");
+  }
+  if (typeof isArchived !== "boolean") {
+    throw new Error("isArchived must be a boolean");
+  }
+
+  const existing = await prisma.invoice.findMany({
+    where: { id: { in: ids }, year: { in: yearList } },
+    select: { id: true, year: true },
+  });
+  if (!existing.length) {
+    const error = new Error("No invoice found for the selected year");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const matchedIds = existing.map((row) => row.id);
+  await prisma.invoice.updateMany({
+    where: { id: { in: matchedIds }, year: { in: yearList } },
+    data: { isArchived },
+  });
+
+  return {
+    updatedCount: matchedIds.length,
+    invoiceIds: matchedIds,
+    years: yearList,
+    isArchived,
+  };
 }
 
 /**

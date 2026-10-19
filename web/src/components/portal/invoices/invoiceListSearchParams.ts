@@ -23,6 +23,10 @@ export type InvoiceListParams = {
 const SEND_STATUS_VALUES = new Set<string>(Object.values(INVOICE_EMAIL_FILTER));
 const PAYMENT_STATUS_VALUES = new Set<string>(["any", "paid", "unpaid"]);
 
+export function defaultInvoiceListYears(): number[] {
+  return [new Date().getFullYear()];
+}
+
 export const DEFAULT_INVOICE_LIST_PARAMS: InvoiceListParams = {
   search: "",
   sendStatus: "all",
@@ -30,15 +34,21 @@ export const DEFAULT_INVOICE_LIST_PARAMS: InvoiceListParams = {
   paymentMethod: "any",
   minAmount: null,
   maxAmount: null,
-  years: [],
+  years: defaultInvoiceListYears(),
   client: "",
   offset: 0,
   limit: 10,
   archived: false,
 };
 
+function sameYears(left: number[], right: number[]): boolean {
+  return left.length === right.length && left.every((year, index) => year === right[index]);
+}
+
 function parseYearsParam(value: string | null): number[] {
-  if (!value) return [];
+  if (value == null) return defaultInvoiceListYears();
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "all") return [];
   return [...new Set(
     value
       .split(",")
@@ -98,7 +108,10 @@ export function invoiceListParamsToSearchParams(
   }
   if (params.minAmount != null) usp.set("minAmount", String(params.minAmount));
   if (params.maxAmount != null) usp.set("maxAmount", String(params.maxAmount));
-  if (params.years.length > 0) usp.set("years", params.years.join(","));
+  if (params.years.length === 0) usp.set("years", "all");
+  else if (!sameYears(params.years, defaultInvoiceListYears())) {
+    usp.set("years", params.years.join(","));
+  }
   if (params.client) usp.set("client", params.client);
   if (params.offset > 0) usp.set("offset", String(params.offset));
   if (params.limit !== DEFAULT_INVOICE_LIST_PARAMS.limit) {

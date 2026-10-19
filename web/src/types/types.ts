@@ -156,6 +156,8 @@ export interface InvoiceSummary {
   propertyNumber?: string;
   propertyNumbers?: string[];
   invoiceIds?: Array<string | number>;
+  /** Year invoices in this row. Archive uses these to touch only the filtered year. */
+  yearInvoices?: Array<{ id: string | number; year: number }>;
   invoiceCount?: number;
   paidCount?: number;
   /** True when every year-invoice in this property group is paid. */

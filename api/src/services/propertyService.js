@@ -11,8 +11,6 @@ import { clientFilterWhere, clientNumberSearchTerm, sanitizeSearchTerm } from ".
 import { accountNumberSearchWhere, propertySearchWhere } from "../utils/propertySearch.js";
 import { buildCadMailingAddressDisplay } from "../utils/propertyAddress.js";
 import {
-  computeInvoiceAmount,
-  flatFeeForInvoiceYear,
   invoiceToApiDto,
   resolveClientContingencyDefault,
 } from "../utils/invoiceYearlyData.js";
@@ -314,31 +312,13 @@ export async function addPropertyToClient(clientId, propertyData) {
   const { clientId: _skipId, clientNumber: _skipNum, ...rest } = propertyData || {};
   const data = { ...defaults, ...rest };
   await applyPropertyClassification(data);
-  const newProperty = await prisma.property.create({
+  return prisma.property.create({
     data: {
       ...data,
       clientId: client.id,
       clientNumber: client.clientNumber,
     },
   });
-
-  const currentYear = new Date().getFullYear();
-  const startYear = currentYear - 4;
-  const clientPct = resolveClientContingencyDefault(client);
-  for (let year = startYear; year <= currentYear + 1; year++) {
-    const flatFee = flatFeeForInvoiceYear(newProperty.flatFee, year, currentYear);
-    await prisma.invoice.create({
-      data: {
-        propertyId: newProperty.id,
-        accountNumber: newProperty.accountNumber,
-        clientNumber: client.clientNumber,
-        year,
-        contingencyFee: clientPct,
-        invoiceAmount: computeInvoiceAmount(0, clientPct, 0, flatFee),
-      },
-    });
-  }
-  return newProperty;
 }
 
 async function applyPropertyClassification(data) {

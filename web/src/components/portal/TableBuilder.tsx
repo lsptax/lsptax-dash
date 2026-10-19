@@ -27,7 +27,7 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import type { LucideIcon } from "lucide-react";
 
@@ -58,6 +58,9 @@ interface TableBuilderProps<TData> {
   serverPagination?: ServerPaginationProps;
   /** When set, shown when data is empty instead of "No results." */
   emptyState?: EmptyStateConfig;
+  /** Reloads the current page of rows. Shown beside the page-size control. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 function TableBuilder<TData>({
@@ -68,6 +71,8 @@ function TableBuilder<TData>({
   setColumnFilters,
   serverPagination,
   emptyState,
+  onRefresh,
+  refreshing = false,
 }: TableBuilderProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -140,7 +145,20 @@ function TableBuilder<TData>({
     <div className="portal-table">
       <div className="pb-4 flex justify-between items-center gap-3">
         <h2 className="text-base font-semibold">{label}</h2>
-        <div className="text-sm">
+        <div className="flex items-center text-sm">
+          {onRefresh ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mr-2 h-8 w-8 p-0"
+              onClick={onRefresh}
+              disabled={refreshing}
+              aria-label="Refresh table"
+            >
+              <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            </Button>
+          ) : null}
           Showing{" "}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

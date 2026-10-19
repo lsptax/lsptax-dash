@@ -162,7 +162,7 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
     header: "Actions",
     cell: ({ row }) => (
       <InvoiceActionsCell
-        id={row.original.id}
+        yearInvoices={row.original.yearInvoices}
         isArchived={row.original.isArchived}
       />
     ),

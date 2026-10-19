@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
 import {
@@ -11,46 +12,69 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { archiveItem } from "@/api/api";
+import { setInvoicesArchived } from "@/store/invoices";
 import { useToast } from "@/hooks/use-toast";
+import { defaultInvoiceListYears } from "./invoiceListSearchParams";
 
 export function InvoiceActionsCell({
-  id,
+  yearInvoices,
+  years,
   isArchived,
 }: {
-  id: string | number;
+  yearInvoices?: Array<{ id: string | number; year: number }>;
+  /** Years chosen in the list filter. Empty means all years, which archives the current year only. */
+  years?: number[];
   isArchived?: boolean;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const targetYears = years?.length ? years : defaultInvoiceListYears();
+  const yearLabel = targetYears.join(", ");
+
+  const setArchived = async (archived: boolean) => {
+    const ids = [
+      ...new Set(
+        (yearInvoices ?? [])
+          .filter((entry) => targetYears.includes(Number(entry.year)))
+          .map((entry) => Number(entry.id))
+          .filter((invoiceId) => Number.isFinite(invoiceId))
+      ),
+    ];
+    if (!ids.length) {
+      throw new Error(`No ${yearLabel} invoice on this row`);
+    }
+    await setInvoicesArchived({ invoiceIds: ids, isArchived: archived, years: targetYears });
+    await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+  };
 
   const handleArchive = async () => {
     try {
-      await archiveItem("invoice", Number(id));
+      await setArchived(true);
       toast({
         title: "✓ Invoice archived successfully",
-        description: "The invoice has been archived.",
+        description: `The ${yearLabel} invoice has been archived.`,
       });
-    } catch {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to archive the invoice",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
       });
     }
   };
 
   const handleMoveToActive = async () => {
     try {
-      await archiveItem("invoice", Number(id));
+      await setArchived(false);
       toast({
         title: "✓ Invoice moved to active successfully",
-        description: "The invoice is now active.",
+        description: `The ${yearLabel} invoice is now active.`,
       });
-    } catch {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to move the invoice to active",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
       });
     }
   };
@@ -68,8 +92,7 @@ export function InvoiceActionsCell({
             <AlertDialogHeader>
               <AlertDialogTitle>Archive Invoice</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to archive this invoice (#{id})? This action can
-                be undone by restoring the invoice later.
+                Archive the {yearLabel} invoice only. Other years on this property stay unchanged.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -94,7 +117,7 @@ export function InvoiceActionsCell({
             <AlertDialogHeader>
               <AlertDialogTitle>Move Invoice to Active</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to move this invoice (#{id}) to active?
+                Move the {yearLabel} invoice back to active. Other years on this property stay unchanged.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

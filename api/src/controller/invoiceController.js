@@ -493,6 +493,21 @@ export const updateInvoiceTemplate = async (req, res) => {
   }
 };
 
+export const setInvoicesArchived = async (req, res) => {
+  try {
+    const { invoiceIds, isArchived, years } = req.body || {};
+    const result = await invoiceService.setInvoicesArchived({ invoiceIds, isArchived, years });
+    res.status(200).json({
+      success: true,
+      message: isArchived ? "Invoice(s) archived" : "Invoice(s) moved to active",
+      data: result,
+    });
+  } catch (error) {
+    const status = Number(error.statusCode) || (/required|must be/i.test(error.message || "") ? 400 : 500);
+    sendError(res, status, error.message || "Failed to update invoice archive state", error);
+  }
+};
+
 export const updateInvoicePaymentStatus = async (req, res) => {
   try {
     const {

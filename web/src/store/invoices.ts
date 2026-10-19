@@ -316,6 +316,26 @@ export const updateInvoiceTemplate = async (
   return json;
 };
 
+export const setInvoicesArchived = async (options: {
+  invoiceIds: number[];
+  isArchived: boolean;
+  years: number[];
+}) => {
+  const response = await authFetch(`${base()}/invoice/archive`, {
+    method: "PATCH",
+    headers: {
+      ...(getAuthHeaders() as Record<string, string>),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(options),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || "Failed to update invoice archive state");
+  }
+  return json;
+};
+
 export const updateInvoicePaymentStatus = async (options: {
   invoiceIds: number | number[];
   isPaid: boolean;
