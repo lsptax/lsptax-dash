@@ -14,10 +14,19 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmailTemplateSelect } from "@/components/portal/account/EmailTemplateSelect";
+import { PAYMENT_METHODS, type PaymentMethod } from "@/constants/paymentMethod";
 
 export type MarkInvoicePaidPayload = {
   paidDate: string;
+  paymentMethod: PaymentMethod;
   paymentNotes: string;
   sendAcknowledgementEmail: boolean;
   templateKey?: string;
@@ -39,6 +48,7 @@ export function MarkInvoicePaidDialog({
   onConfirm,
 }: MarkInvoicePaidDialogProps) {
   const [paidDate, setPaidDate] = useState<Date | undefined>(new Date());
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [sendAcknowledgementEmail, setSendAcknowledgementEmail] = useState(false);
   const [templateKey, setTemplateKey] = useState("payment_acknowledgement");
@@ -46,16 +56,18 @@ export function MarkInvoicePaidDialog({
   useEffect(() => {
     if (!open) return;
     setPaidDate(new Date());
+    setPaymentMethod("");
     setPaymentNotes("");
     setSendAcknowledgementEmail(false);
   }, [open]);
 
-  const canSubmit = Boolean(paidDate) && !submitting;
+  const canSubmit = Boolean(paidDate) && Boolean(paymentMethod) && !submitting;
 
   const handleConfirm = async () => {
-    if (!paidDate || submitting) return;
+    if (!paidDate || !paymentMethod || submitting) return;
     await onConfirm({
       paidDate: format(paidDate, "MM/dd/yyyy"),
+      paymentMethod,
       paymentNotes: paymentNotes.trim(),
       sendAcknowledgementEmail,
       templateKey: sendAcknowledgementEmail ? templateKey : undefined,
@@ -87,8 +99,8 @@ export function MarkInvoicePaidDialog({
           <DialogTitle>Mark as paid</DialogTitle>
           <DialogDescription>
             {invoiceCount > 1
-              ? `Add a paid date and optional notes for ${invoiceCount} invoices.`
-              : "Add a paid date and optional notes before marking this invoice paid."}
+              ? `Add a paid date, payment method, and optional notes for ${invoiceCount} invoices.`
+              : "Add a paid date, payment method, and optional notes before marking this invoice paid."}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,6 +113,26 @@ export function MarkInvoicePaidDialog({
               onChange={setPaidDate}
               disabled={submitting}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="payment-method">Payment method</Label>
+            <Select
+              value={paymentMethod || undefined}
+              onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+              disabled={submitting}
+            >
+              <SelectTrigger id="payment-method" aria-label="Payment method">
+                <SelectValue placeholder="Select method" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_METHODS.map((method) => (
+                  <SelectItem key={method.value} value={method.value}>
+                    {method.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-2">

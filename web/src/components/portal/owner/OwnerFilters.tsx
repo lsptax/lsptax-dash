@@ -21,6 +21,7 @@ import type { Clients } from "@/components/portal/clients/list/columns";
 import type { Properties } from "@/components/portal/properties/columns";
 import { formatClientNumberDisplay } from "@/utils/clientContact";
 import { PROPERTY_TYPES } from "@/constants/classification";
+import { PAYMENT_METHODS } from "@/constants/paymentMethod";
 import { authFetch, getApiBaseUrl } from "@/api/client";
 
 const ALL = "__all__";
@@ -44,7 +45,7 @@ type FilterOption = { value: string; label: string };
 
 function patch(
   value: OwnerFilters,
-  key: "from" | "to" | "calendarYear" | "clientId" | "propertyId" | "propertyType" | "consultantId",
+  key: "from" | "to" | "calendarYear" | "clientId" | "propertyId" | "propertyType" | "consultantId" | "paymentMethod",
   next: string
 ): OwnerFilters {
   const copy = { ...value };
@@ -157,6 +158,26 @@ export default function OwnerFiltersBar({ value, onChange, actions }: OwnerFilte
             emptyLabel="No county found"
             onChange={(next) => onChange(patchList(value, "county", next))}
           />
+        </Field>
+        <Field label="Payment method" className="min-w-[12rem] flex-[1_1_12rem]">
+          <Select
+            value={value.paymentMethod ?? ALL}
+            onValueChange={(next) =>
+              onChange(patch(value, "paymentMethod", next === ALL ? "" : next))
+            }
+          >
+            <SelectTrigger aria-label="Filter by payment method">
+              <SelectValue placeholder="All methods" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All methods</SelectItem>
+              {PAYMENT_METHODS.map((method) => (
+                <SelectItem key={method.value} value={method.value}>
+                  {method.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <div className="flex flex-wrap items-center gap-2 pt-5">
           <Button

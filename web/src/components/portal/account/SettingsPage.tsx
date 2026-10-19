@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Database, FileSignature, Mail, Send } from "lucide-react";
+import { Database, FileSignature, Mail, Send, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,8 +15,9 @@ import {
 } from "@/api/settings";
 import { currentUserCanViewOwnerDashboard } from "@/utils/ownerRole";
 import EmailTemplatesSection from "@/components/portal/account/EmailTemplatesSection";
+import UsersSection from "@/components/portal/account/UsersSection";
 
-type SectionId = "email" | "brevo" | "supabase" | "docusign";
+type SectionId = "users" | "email" | "brevo" | "supabase" | "docusign";
 
 const SECTIONS: {
   id: SectionId;
@@ -25,6 +26,13 @@ const SECTIONS: {
   hint: string;
   icon: typeof Mail;
 }[] = [
+  {
+    id: "users",
+    hash: "users",
+    label: "Users",
+    hint: "Portal logins and roles",
+    icon: Users,
+  },
   {
     id: "email",
     hash: "email-templates",
@@ -188,6 +196,15 @@ export default function SettingsPage() {
         </nav>
 
         <div className="min-w-0 flex-1">
+          {section === "users" ? (
+            <Panel
+              title="Users"
+              description="Change a name or role, or permanently remove a login."
+            >
+              <UsersSection />
+            </Panel>
+          ) : null}
+
           {section === "email" ? <EmailTemplatesSection logoUrl={brevo.invoiceLogoUrl} /> : null}
 
           {section === "brevo" ? (

@@ -29,6 +29,7 @@ import { TableSkeleton } from "../TableSkeleton";
 import { routes } from "@/routes/ROUTES";
 import { BulkInvoiceSendDialog } from "./BulkInvoiceSendDialog";
 import { InvoicePdfRenderSheets } from "./InvoicePdfRenderSheets";
+import { InvoiceStatusCell } from "./columns";
 import {
   MarkInvoicePaidDialog,
   type MarkInvoicePaidPayload,
@@ -75,6 +76,7 @@ import {
   type InvoicePdfRenderJob,
 } from "@/utils/bulkInvoicePdf";
 import { ListSearchField, useDebouncedListSearch } from "../ListSearchField";
+import { PAYMENT_METHODS, type PaymentMethodFilter } from "@/constants/paymentMethod";
 
 interface InvoicesTableProps {
   columns: ColumnDef<InvoiceSummary>[];
@@ -93,6 +95,7 @@ const InvoicesTable = ({
     search: appliedSearch,
     sendStatus,
     paymentStatus,
+    paymentMethod,
     minAmount,
     maxAmount,
     years,
@@ -135,6 +138,7 @@ const InvoicesTable = ({
     archived,
     sendStatus,
     paymentStatus,
+    paymentMethod,
     minAmount,
     maxAmount,
     years,
@@ -184,7 +188,7 @@ const InvoicesTable = ({
   const allFilteredSelected = total > 0 && selectedInvoiceIds.size === total;
   const canSelectAllFiltered = total > currentPageInvoiceIds.length;
 
-  const selectionFilterKey = `${archived}|${appliedSearch}|${sendStatus}|${paymentStatus}|${minAmount ?? ""}|${maxAmount ?? ""}|${years.join(",")}|${client}`;
+  const selectionFilterKey = `${archived}|${appliedSearch}|${sendStatus}|${paymentStatus}|${paymentMethod}|${minAmount ?? ""}|${maxAmount ?? ""}|${years.join(",")}|${client}`;
   const selectionFilterKeyRef = useRef(selectionFilterKey);
   useEffect(() => {
     if (selectionFilterKeyRef.current === selectionFilterKey) return;
@@ -203,6 +207,7 @@ const InvoicesTable = ({
         search: appliedSearch || undefined,
         sendStatus,
         paymentStatus,
+        paymentMethod,
         minAmount,
         maxAmount,
         years,
@@ -286,7 +291,11 @@ const InvoicesTable = ({
         },
         enableSorting: false,
       },
-      ...columns,
+      ...columns.map((column) =>
+        "accessorKey" in column && column.accessorKey === "invoiceStatus"
+          ? { ...column, cell: ({ row }) => <InvoiceStatusCell row={row.original} /> }
+          : column
+      ),
     ],
     [allCurrentPageSelected, allFilteredSelected, columns, currentPageSelectedCount, selectedInvoiceIds]
   );
@@ -309,6 +318,7 @@ const InvoicesTable = ({
       search: appliedSearch || undefined,
       sendStatus,
       paymentStatus,
+      paymentMethod,
       minAmount,
       maxAmount,
       years,
@@ -366,6 +376,7 @@ const InvoicesTable = ({
         search: appliedSearch || undefined,
         sendStatus,
         paymentStatus,
+        paymentMethod,
         minAmount,
         maxAmount,
         years,
@@ -404,6 +415,7 @@ const InvoicesTable = ({
         search: appliedSearch,
         sendStatus,
         paymentStatus,
+        paymentMethod,
         minAmount,
         maxAmount,
         years,
@@ -451,6 +463,7 @@ const InvoicesTable = ({
         invoiceIds: markPaidInvoiceIds,
         isPaid: true,
         paidDate: payload.paidDate,
+        paymentMethod: payload.paymentMethod,
         paymentNotes: payload.paymentNotes,
               sendAcknowledgementEmail: payload.sendAcknowledgementEmail,
               templateKey: payload.templateKey,
@@ -498,6 +511,11 @@ const InvoicesTable = ({
     setSelectedInvoiceIds(new Set());
   };
 
+  const handlePaymentMethodChange = (value: PaymentMethodFilter) => {
+    updateParams({ paymentMethod: value, offset: 0 });
+    setSelectedInvoiceIds(new Set());
+  };
+
   const applyAmountRange = () => {
     const parsedMin = parseAmountDraft(minAmountDraft);
     const parsedMax = parseAmountDraft(maxAmountDraft);
@@ -530,6 +548,7 @@ const InvoicesTable = ({
   const filtersActive =
     sendStatus !== "all" ||
     paymentStatus !== "any" ||
+    paymentMethod !== "any" ||
     minAmount != null ||
     maxAmount != null ||
     years.length > 0 ||
@@ -542,6 +561,7 @@ const InvoicesTable = ({
     updateParams({
       sendStatus: "all",
       paymentStatus: "any",
+      paymentMethod: "any",
       minAmount: null,
       maxAmount: null,
       years: [],
@@ -668,6 +688,24 @@ const InvoicesTable = ({
                 <SelectItem value="any">All payments</SelectItem>
                 <SelectItem value="unpaid">Unpaid</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="Method">
+            <Select
+              value={paymentMethod}
+              onValueChange={(value) => handlePaymentMethodChange(value as PaymentMethodFilter)}
+            >
+              <SelectTrigger className="h-9 w-[10.5rem]" aria-label="Filter by payment method">
+                <SelectValue placeholder="Method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">All methods</SelectItem>
+                {PAYMENT_METHODS.map((method) => (
+                  <SelectItem key={method.value} value={method.value}>
+                    {method.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FilterField>

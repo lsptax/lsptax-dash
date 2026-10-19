@@ -47,6 +47,7 @@ import {
 } from "../controller/emailTemplateController.js";
 import { globalSearch } from "../controller/searchController.js";
 import { listStaff } from "../controller/staffController.js";
+import { deleteUser, listUsers, updateUser } from "../controller/userController.js";
 
 const router = Router();
 
@@ -116,6 +117,9 @@ router.get("/dashboard/owner/options", requireOwner, getOwnerDashboardOptions);
 router.get("/profile", getProfile);
 router.patch("/profile", updateProfile);
 router.patch("/profile/password", updatePassword);
+router.get("/users", requireOwner, listUsers);
+router.patch("/users/:id", requireOwner, updateUser);
+router.delete("/users/:id", requireOwner, deleteUser);
 router.get("/settings", requireOwner, getInfraSettings);
 router.patch("/settings", requireOwner, updateInfraSettings);
 router.get("/email-templates", getEmailTemplates);

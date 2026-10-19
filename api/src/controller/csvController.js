@@ -443,6 +443,7 @@ function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
     paidDate: parsed.paidDate,
     isPaid: Boolean(String(parsed.paidDate || "").trim()),
     paymentNotes: parsed.paymentNotes,
+    ...(String(parsed.paidDate || "").trim() ? {} : { paymentMethod: null }),
     ...numericFields,
   };
 

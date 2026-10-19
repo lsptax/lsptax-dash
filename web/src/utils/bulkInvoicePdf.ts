@@ -73,6 +73,7 @@ export async function resolveInvoiceListRange(
     search?: string;
     sendStatus?: import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
     paymentStatus?: import("@/store/invoices").InvoicePaymentStatusFilter;
+    paymentMethod?: import("@/store/invoices").InvoicePaymentMethodFilter;
     minAmount?: number | null;
     maxAmount?: number | null;
     years?: number[];
@@ -90,6 +91,7 @@ export async function resolveInvoiceListRange(
   const search = options?.search?.trim() || undefined;
   const sendStatus = options?.sendStatus ?? "all";
   const paymentStatus = options?.paymentStatus ?? "any";
+  const paymentMethod = options?.paymentMethod ?? "any";
   const minAmount = options?.minAmount ?? null;
   const maxAmount = options?.maxAmount ?? null;
   const years = options?.years ?? [];
@@ -107,7 +109,8 @@ export async function resolveInvoiceListRange(
       minAmount,
       maxAmount,
       years,
-      client
+      client,
+      paymentMethod
     );
     (page.data as InvoiceSummary[]).forEach((row, index) => {
       const id = Number(row.id);

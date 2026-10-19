@@ -82,6 +82,12 @@ function entityWhere(filters, invoiceAlias = "i", propertyAlias = "p", clientAli
   return Prisma.join(parts, " AND ");
 }
 
+function paymentMethodFilter(filters, invoiceAlias = "i") {
+  if (!filters?.paymentMethod) return Prisma.empty;
+  const invoice = Prisma.raw(invoiceAlias);
+  return Prisma.sql`AND ${invoice}."paymentMethod" = ${filters.paymentMethod}::"PaymentMethod"`;
+}
+
 function propertyWhere(filters) {
   const parts = [Prisma.sql`NOT p."isArchived"`, Prisma.sql`NOT c."isArchived"`];
   if (filters.clientId != null) parts.push(Prisma.sql`p."clientId" = ${filters.clientId}`);
@@ -142,6 +148,7 @@ export async function queryOwnerDashboard(filters, scope) {
       JOIN "Client" c ON c.id = p."clientId"
       WHERE ${entityWhere(filters)}
         AND i.status::text NOT IN ('VOIDED', 'WRITTEN_OFF')
+        ${paymentMethodFilter(filters)}
     ),
     billed_months AS (
       SELECT

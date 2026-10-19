@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,7 +81,7 @@ const headerEntries: { prefix: string; label: string; desc: string }[] = [
   {
     prefix: "settings",
     label: "Settings",
-    desc: "Email templates, Brevo, Supabase, and DocuSign.",
+    desc: "Portal users, email templates, Brevo, Supabase, and DocuSign.",
   },
   {
     prefix: "owner",
@@ -192,7 +193,15 @@ const DashboardHeader = ({ onMenuToggle }: { onMenuToggle: () => void }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname.replace(/^\/portal\/?/, "").split("?")[0] ?? "";
-  const username = localStorage.getItem("username") || "User";
+  const [username, setUsername] = useState(() => localStorage.getItem("username") || "User");
+
+  useEffect(() => {
+    function syncName() {
+      setUsername(localStorage.getItem("username") || "User");
+    }
+    window.addEventListener("portal-user-updated", syncName);
+    return () => window.removeEventListener("portal-user-updated", syncName);
+  }, []);
   const currentHeader = resolveHeader(currentPath, username);
 
   async function logoutHandler() {

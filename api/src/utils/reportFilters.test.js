@@ -44,6 +44,9 @@ describe("parseReportFilters", () => {
     assert.equal(filters.propertyId, 44);
     assert.equal(parseReportFilters({ propertyType: "bpp", consultantId: "7" }).propertyType, "BPP");
     assert.equal(parseReportFilters({ propertyType: "bpp", consultantId: "7" }).consultantId, 7);
+    assert.equal(parseReportFilters({ paymentMethod: "Credit Card" }).paymentMethod, "CREDIT_CARD");
+    assert.equal(parseReportFilters({ paymentMethod: "all" }).paymentMethod, null);
+    assert.throws(() => parseReportFilters({ paymentMethod: "wire" }), /paymentMethod must be/);
   });
 
   it("rejects invalid dates and treats county All as empty", () => {

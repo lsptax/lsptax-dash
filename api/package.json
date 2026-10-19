@@ -29,6 +29,7 @@
     "sync-invoice-delivery-tracking:stale": "node scripts/syncInvoiceDeliveryTracking.js --only-stale",
     "update-contingency-to-25": "node scripts/updateContingencyTo25.js",
     "update-contingency-to-25:dry-run": "node scripts/updateContingencyTo25.js --dry-run",
+    "add-user": "node scripts/addUser.js",
     "dev": "NODE_ENV=development nodemon src/index.js",
     "test": "node --test",
     "postinstall": "prisma generate"

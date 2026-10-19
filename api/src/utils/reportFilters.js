@@ -1,5 +1,6 @@
 import { calendarDateInTz, BUSINESS_TZ, zonedDateTimeToUtc } from "./weekRange.js";
 import { parsePropertyType } from "./propertyClassification.js";
+import { parsePaymentMethod } from "./paymentMethod.js";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -72,6 +73,7 @@ export function parseReportFilters(query = {}) {
   const propertyIdRaw = firstQuery(query.propertyId);
   const propertyTypeRaw = firstQuery(query.propertyType);
   const consultantIdRaw = firstQuery(query.consultantId);
+  const paymentMethodRaw = firstQuery(query.paymentMethod);
   const format = firstQuery(query.format).toLowerCase();
 
   const errors = [];
@@ -131,6 +133,14 @@ export function parseReportFilters(query = {}) {
     else consultantId = n;
   }
 
+  let paymentMethod = null;
+  if (paymentMethodRaw && !["all", "any"].includes(paymentMethodRaw.toLowerCase())) {
+    paymentMethod = parsePaymentMethod(paymentMethodRaw);
+    if (!paymentMethod) {
+      errors.push("paymentMethod must be one of: Zelle, Cash, Check, Credit Card, Others");
+    }
+  }
+
   const counties = countiesRaw.filter((county) => county.toLowerCase() !== "all");
 
   if (format && format !== "csv" && format !== "json") {
@@ -159,6 +169,7 @@ export function parseReportFilters(query = {}) {
     propertyId,
     propertyType,
     consultantId,
+    paymentMethod,
     format: format || "json",
   };
 }
@@ -255,5 +266,6 @@ export function invoiceMatchesEntityFilters(invoice, filters) {
     const county = String(invoice.county || "").trim().toLowerCase();
     if (!counties.some((item) => item.toLowerCase() === county)) return false;
   }
+  if (filters.paymentMethod && invoice.paymentMethod !== filters.paymentMethod) return false;
   return true;
 }

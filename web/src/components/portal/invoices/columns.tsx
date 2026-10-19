@@ -11,6 +11,39 @@ import { InvoiceEmailStatusBadge } from "./InvoiceEmailStatusBadge";
 import { InvoicePaidCell } from "./InvoicePaidCell";
 import { InvoicePaidDetailsButton } from "./InvoicePaidDetailsButton";
 import { invoiceStatusBadgeClass, labelFor, INVOICE_STATUSES } from "@/constants/classification";
+import { paymentMethodLabel } from "@/constants/paymentMethod";
+
+export function paymentMethodLabels(row: InvoiceSummary): string[] {
+  return [
+    ...new Set(
+      (row.paidInvoices ?? [])
+        .map((entry) => paymentMethodLabel(entry.paymentMethod))
+        .filter(Boolean)
+    ),
+  ];
+}
+
+export function InvoiceStatusCell({ row }: { row: InvoiceSummary }) {
+  const status = row.invoiceStatus || (row.isPaid ? "PAID" : "DRAFT");
+  const methods = paymentMethodLabels(row);
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span
+        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(status)}`}
+      >
+        {labelFor(INVOICE_STATUSES, status)}
+      </span>
+      {methods.map((method) => (
+        <span
+          key={method}
+          className="inline-flex rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-400/15 dark:text-sky-300"
+        >
+          {method}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
   {
@@ -88,16 +121,7 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
   {
     accessorKey: "invoiceStatus",
     header: "Invoice Status",
-    cell: ({ row }) => {
-      const status = row.original.invoiceStatus || (row.original.isPaid ? "PAID" : "DRAFT");
-      return (
-        <span
-          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${invoiceStatusBadgeClass(status)}`}
-        >
-          {labelFor(INVOICE_STATUSES, status)}
-        </span>
-      );
-    },
+    cell: ({ row }) => <InvoiceStatusCell row={row.original} />,
   },
   {
     accessorKey: "isPaid",

@@ -376,7 +376,7 @@ export const getInvoiceSummary = async (req, res) => {
 
 export const getInvoiceIds = async (req, res) => {
   try {
-    const { search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, archived } = req.query;
+    const { search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, paymentMethod, archived } = req.query;
     const ids = await invoiceService.listFilteredInvoiceIds({
       archived: archived === "true",
       search,
@@ -386,17 +386,18 @@ export const getInvoiceIds = async (req, res) => {
       maxAmount,
       years,
       client,
+      paymentMethod,
     });
     res.status(200).json({ ids, total: ids.length });
   } catch (error) {
-    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
+    const status = /paymentStatus must be|paymentMethod must be|amount/i.test(error.message) ? 400 : 500;
     res.status(status).json({ message: error.message || "Failed to list invoice ids." });
   }
 };
 
 export const expandInvoiceIds = async (req, res) => {
   try {
-    const { ids, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, archived } = req.body || {};
+    const { ids, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, paymentMethod, archived } = req.body || {};
     const invoiceIds = await invoiceService.expandGroupedInvoiceIds({
       ids,
       archived: archived === true || archived === "true",
@@ -407,17 +408,18 @@ export const expandInvoiceIds = async (req, res) => {
       maxAmount,
       years,
       client,
+      paymentMethod,
     });
     res.status(200).json({ ids: invoiceIds, total: invoiceIds.length });
   } catch (error) {
-    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
+    const status = /paymentStatus must be|paymentMethod must be|amount/i.test(error.message) ? 400 : 500;
     res.status(status).json({ message: error.message || "Failed to expand invoice ids." });
   }
 };
 
 export const getAllInvoices = async (req, res) => {
   try {
-    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client } = req.query;
+    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, paymentMethod } = req.query;
     const result = await invoiceService.getAllInvoices(
       limit,
       offset,
@@ -427,18 +429,19 @@ export const getAllInvoices = async (req, res) => {
       minAmount,
       maxAmount,
       years,
-      client
+      client,
+      paymentMethod
     );
     res.status(200).json(result);
   } catch (error) {
-    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
+    const status = /paymentStatus must be|paymentMethod must be|amount/i.test(error.message) ? 400 : 500;
     res.status(status).json({ message: error.message || "Failed to fetch all invoices." });
   }
 };
 
 export const getArchiveInvoices = async (req, res) => {
   try {
-    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client } = req.query;
+    const { limit, offset, search, sendStatus, paymentStatus, minAmount, maxAmount, years, client, paymentMethod } = req.query;
     const result = await invoiceService.getArchiveInvoices(
       limit,
       offset,
@@ -448,11 +451,12 @@ export const getArchiveInvoices = async (req, res) => {
       minAmount,
       maxAmount,
       years,
-      client
+      client,
+      paymentMethod
     );
     res.status(200).json(result);
   } catch (error) {
-    const status = /paymentStatus must be|amount/i.test(error.message) ? 400 : 500;
+    const status = /paymentStatus must be|paymentMethod must be|amount/i.test(error.message) ? 400 : 500;
     res.status(status).json({ message: error.message || "Failed to fetch all invoices." });
   }
 };
@@ -464,6 +468,7 @@ export const getArchiveInvoices = async (req, res) => {
  *   isPaid: boolean,
  *   paidDate?: string,
  *   paymentNotes?: string,
+ *   paymentMethod?: string,
  *   sendAcknowledgementEmail?: boolean,
  *   customMessage?: string
  * }
@@ -495,6 +500,7 @@ export const updateInvoicePaymentStatus = async (req, res) => {
       isPaid,
       paidDate,
       paymentNotes,
+      paymentMethod,
       sendAcknowledgementEmail,
       customMessage,
       templateKey,
@@ -504,6 +510,7 @@ export const updateInvoicePaymentStatus = async (req, res) => {
       isPaid,
       paidDate,
       paymentNotes,
+      paymentMethod,
       sendAcknowledgementEmail: Boolean(sendAcknowledgementEmail),
       customMessage,
       templateKey,

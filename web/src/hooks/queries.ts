@@ -110,6 +110,7 @@ export function useInvoicesQuery({
   archived = false,
   sendStatus = "all",
   paymentStatus = "any",
+  paymentMethod = "any",
   minAmount = null,
   maxAmount = null,
   years = [],
@@ -121,13 +122,14 @@ export function useInvoicesQuery({
   archived?: boolean;
   sendStatus?: import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
   paymentStatus?: import("@/store/invoices").InvoicePaymentStatusFilter;
+  paymentMethod?: import("@/store/invoices").InvoicePaymentMethodFilter;
   minAmount?: number | null;
   maxAmount?: number | null;
   years?: number[];
   client?: string;
 }) {
   return useQuery({
-    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus, minAmount, maxAmount, years, client],
+    queryKey: ["invoices", limit, offset, search, archived, sendStatus, paymentStatus, minAmount, maxAmount, years, client, paymentMethod],
     queryFn: () =>
       archived
         ? getArchiveInvoices(
@@ -139,7 +141,8 @@ export function useInvoicesQuery({
             minAmount,
             maxAmount,
             years,
-            client || undefined
+            client || undefined,
+            paymentMethod
           )
         : getAllInvoices(
             limit,
@@ -150,7 +153,8 @@ export function useInvoicesQuery({
             minAmount,
             maxAmount,
             years,
-            client || undefined
+            client || undefined,
+            paymentMethod
           ),
     placeholderData: keepPreviousData,
     ...queryClientDefaults,

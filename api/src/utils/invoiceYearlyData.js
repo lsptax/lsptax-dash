@@ -543,9 +543,11 @@ export function buildInvoicePatchFromYearlyData(
       }
     } else {
       patch.paidDate = "";
+      patch.paymentMethod = null;
     }
   } else if (hasPaidDate) {
     patch.isPaid = Boolean(String(patch.paidDate || "").trim());
+    if (!patch.isPaid) patch.paymentMethod = null;
   }
 
   if (Object.prototype.hasOwnProperty.call(row, "status")) {
@@ -560,6 +562,7 @@ export function buildInvoicePatchFromYearlyData(
       } else {
         patch.isPaid = false;
         patch.paidDate = "";
+        patch.paymentMethod = null;
       }
     }
   } else if (patch.isPaid === true) {

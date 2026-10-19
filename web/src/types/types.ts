@@ -117,6 +117,7 @@ export interface Invoice {
   invoiceAmount?: number;
   paidDate?: string;
   isPaid?: boolean;
+  paymentMethod?: "ZELLE" | "CASH" | "CHECK" | "CREDIT_CARD" | "OTHER" | null;
   status?: "DRAFT" | "SENT" | "PAID" | "PAST_DUE" | "VOIDED" | "WRITTEN_OFF";
   protestStatus?: "PENDING" | "COMPLETED" | "RESULTS_PENDING" | null;
   protestCompletedDate?: string;
@@ -142,6 +143,7 @@ export type PaidInvoiceDetail = {
   paidDate?: string | null;
   invoiceAmount: number;
   paymentNotes?: string | null;
+  paymentMethod?: "ZELLE" | "CASH" | "CHECK" | "CREDIT_CARD" | "OTHER" | null;
 };
 
 export interface InvoiceSummary {

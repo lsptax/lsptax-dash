@@ -15,6 +15,7 @@ import {
   todayInvoiceDateString,
 } from "../utils/invoiceYearlyData.js";
 import { effectiveInvoiceStatus, paymentWriteData } from "../utils/invoiceStatus.js";
+import { parsePaymentMethod, requirePaymentMethod } from "../utils/paymentMethod.js";
 import { accountNumberSearchWhere, buildPropertySearchOrConditions } from "../utils/propertySearch.js";
 import {
   getLatestDeliveriesByClientIds,
@@ -272,6 +273,7 @@ function buildPaidInvoiceDetail(invoice, feeDue) {
     paidDate: invoice.paidDate?.trim() || null,
     invoiceAmount: feeDue,
     paymentNotes: invoice.paymentNotes?.trim() || null,
+    paymentMethod: invoice.paymentMethod || null,
   };
 }
 
@@ -504,6 +506,16 @@ function parseInvoiceYears(value) {
   )];
 }
 
+function paymentMethodWhere(paymentMethod) {
+  const raw = paymentMethod == null ? "" : String(paymentMethod).trim();
+  if (!raw || raw.toLowerCase() === "any" || raw.toLowerCase() === "all") return null;
+  const method = parsePaymentMethod(raw);
+  if (!method) {
+    throw new Error("paymentMethod must be one of: Zelle, Cash, Check, Credit Card, Others");
+  }
+  return method;
+}
+
 async function loadGroupedInvoices({
   archived = false,
   search,
@@ -513,16 +525,19 @@ async function loadGroupedInvoices({
   maxAmount = null,
   years = null,
   client = null,
+  paymentMethod = null,
   includeSendStatus = true,
 }) {
   const baseWhere = { isArchived: Boolean(archived) };
   const searchWhere = invoiceSearchWhere(search);
   const clientNumber = clientNumberSearchTerm(client);
   const clientWhere = clientNumber ? null : clientFilterWhere(client);
+  const method = paymentMethodWhere(paymentMethod);
   const and = [
     ...(Object.keys(searchWhere).length ? [searchWhere] : []),
     ...(clientNumber ? [invoiceDisplayedClientNumberWhere(clientNumber)] : []),
     ...(clientWhere ? [{ property: { client: clientWhere } }] : []),
+    ...(method ? [{ paymentMethod: method }] : []),
   ];
   const where = and.length ? { ...baseWhere, AND: and } : baseWhere;
 
@@ -580,7 +595,8 @@ export async function getAllInvoices(
   minAmount = null,
   maxAmount = null,
   years = null,
-  client = null
+  client = null,
+  paymentMethod = null
 ) {
   const grouped = await loadGroupedInvoices({
     archived: false,
@@ -591,6 +607,7 @@ export async function getAllInvoices(
     maxAmount,
     years,
     client,
+    paymentMethod,
     includeSendStatus: true,
   });
   return paginateResult(grouped, limit, offset);
@@ -605,7 +622,8 @@ export async function getArchiveInvoices(
   minAmount = null,
   maxAmount = null,
   years = null,
-  client = null
+  client = null,
+  paymentMethod = null
 ) {
   const grouped = await loadGroupedInvoices({
     archived: true,
@@ -616,6 +634,7 @@ export async function getArchiveInvoices(
     maxAmount,
     years,
     client,
+    paymentMethod,
     includeSendStatus: true,
   });
   return paginateResult(grouped, limit, offset);
@@ -631,6 +650,7 @@ export async function listFilteredInvoiceIds({
   maxAmount = null,
   years = null,
   client = null,
+  paymentMethod = null,
 } = {}) {
   const grouped = await loadGroupedInvoices({
     archived,
@@ -641,6 +661,7 @@ export async function listFilteredInvoiceIds({
     maxAmount,
     years,
     client,
+    paymentMethod,
     includeSendStatus: false,
   });
   return grouped
@@ -662,6 +683,7 @@ export async function expandGroupedInvoiceIds({
   maxAmount = null,
   years = null,
   client = null,
+  paymentMethod = null,
 } = {}) {
   const wanted = new Set(
     (Array.isArray(ids) ? ids : [])
@@ -679,6 +701,7 @@ export async function expandGroupedInvoiceIds({
     maxAmount,
     years,
     client,
+    paymentMethod,
     includeSendStatus: false,
   });
 
@@ -696,8 +719,8 @@ export async function expandGroupedInvoiceIds({
 
 /**
  * Mark one or more invoices paid/unpaid.
- * When marking paid, requires paidDate (MM/DD/YYYY) and optionally paymentNotes.
- * When marking unpaid, clears paidDate.
+ * When marking paid, requires paidDate (MM/DD/YYYY), a payment method, and optionally paymentNotes.
+ * When marking unpaid, clears paidDate and payment method.
  * When sendAcknowledgementEmail is true and isPaid is true, sends a Brevo acknowledgement email per client.
  */
 export async function updateInvoicePaymentStatus({
@@ -705,6 +728,7 @@ export async function updateInvoicePaymentStatus({
   isPaid,
   paidDate,
   paymentNotes,
+  paymentMethod,
   sendAcknowledgementEmail = false,
   customMessage = null,
   templateKey = null,
@@ -741,6 +765,8 @@ export async function updateInvoicePaymentStatus({
         ? ""
         : String(paymentNotes).trim();
 
+  const method = isPaid ? requirePaymentMethod(paymentMethod) : null;
+
   const existingRows = await prisma.invoice.findMany({
     where: { id: { in: ids } },
     select: { id: true, status: true, invoiceDate: true, generatedDate: true },
@@ -753,6 +779,7 @@ export async function updateInvoicePaymentStatus({
     existingRows.map((row) => {
       const data = paymentWriteData(isPaid, row, normalizedPaidDate);
       if (notes !== undefined) data.paymentNotes = notes;
+      data.paymentMethod = method;
       return prisma.invoice.update({ where: { id: row.id }, data });
     })
   );
@@ -763,6 +790,7 @@ export async function updateInvoicePaymentStatus({
     isPaid,
     paidDate: isPaid ? normalizedPaidDate : "",
     paymentNotes: notes,
+    paymentMethod: method,
   };
 
   if (isPaid && sendAcknowledgementEmail) {

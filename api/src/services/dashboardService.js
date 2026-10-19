@@ -52,6 +52,7 @@ function toMetricInvoice(row) {
     invoiceAmount: row.invoiceAmount,
     isPaid: row.isPaid,
     status: row.status,
+    paymentMethod: row.paymentMethod || null,
     appraisedReduction: row.appraisedReduction,
     taxableSavings: row.taxableSavings,
     accountNumber: property.accountNumber || row.accountNumber || "",
@@ -87,6 +88,7 @@ function prismaEntityWhere(filters = {}) {
   const taxYears = taxYearsFromFilters(filters);
   if (taxYears.length) where.year = { in: taxYears };
   if (filters.propertyId != null) where.propertyId = filters.propertyId;
+  if (filters.paymentMethod) where.paymentMethod = filters.paymentMethod;
   return where;
 }
 
@@ -117,6 +119,7 @@ async function loadInScopeInvoices(filters = {}) {
       invoiceAmount: true,
       isPaid: true,
       status: true,
+      paymentMethod: true,
       appraisedReduction: true,
       taxableSavings: true,
       accountNumber: true,
@@ -158,6 +161,7 @@ function publicFilters(filters = {}) {
     propertyId: filters.propertyId ?? null,
     propertyType: filters.propertyType ?? null,
     consultantId: filters.consultantId ?? null,
+    paymentMethod: filters.paymentMethod ?? null,
   };
 }
 
@@ -507,6 +511,7 @@ const INVOICE_EXPORT_SELECT = {
   paidDate: true,
   isPaid: true,
   paymentNotes: true,
+  paymentMethod: true,
   property: {
     select: {
       accountNumber: true,

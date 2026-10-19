@@ -3,6 +3,7 @@ import {
   INVOICE_EXPLICIT_DERIVED_PRESERVE_FIELDS,
   parseBppInvoiceAmount,
 } from "../utils/invoiceYearlyData.js";
+import { paymentMethodLabel } from "../utils/paymentMethod.js";
 
 export const INVOICE_EXPORT_FIELDS = [
   { label: "Invoice number", value: "invoiceNumber" },
@@ -34,6 +35,7 @@ export const INVOICE_EXPORT_FIELDS = [
   { label: "Invoice amount", value: "invoiceAmount" },
   { label: "Paid", value: "paid" },
   { label: "Paid date", value: "paidDate" },
+  { label: "Payment method", value: "paymentMethod" },
   { label: "Payment notes", value: "paymentNotes" },
   { label: "Under litigation", value: "underLitigation" },
   { label: "Under arbitration", value: "underArbitration" },
@@ -86,6 +88,7 @@ export function toInvoiceExportRow(row) {
     invoiceAmount: calculated.invoiceAmount,
     paid: yesNo(row.isPaid),
     paidDate: text(row.paidDate),
+    paymentMethod: paymentMethodLabel(row.paymentMethod),
     paymentNotes: text(row.paymentNotes),
     underLitigation: yesNo(row.underLitigation),
     underArbitration: yesNo(row.underArbitration),

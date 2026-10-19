@@ -10,7 +10,8 @@
     "install:web": "npm install --prefix web",
     "install:api": "npm install --prefix api",
     "install:all": "npm run setup:env && npm install && npm run install:api && npm run install:web",
-    "api:dev": "npm run dev --prefix api"
+    "api:dev": "npm run dev --prefix api",
+    "add-user": "npm run add-user --prefix api --"
   },
   "devDependencies": {
     "concurrently": "^9.2.4"

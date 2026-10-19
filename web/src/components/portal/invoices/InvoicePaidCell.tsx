@@ -27,7 +27,8 @@ type InvoicePaidCellProps = {
 function patchInvoicePaymentInCache(
   queryClient: ReturnType<typeof useQueryClient>,
   ids: number[],
-  nextPaid: boolean
+  nextPaid: boolean,
+  paymentMethod?: string
 ) {
   const idSet = new Set(ids);
   const queries = queryClient.getQueriesData<PaginatedResponse<InvoiceSummary>>({
@@ -44,22 +45,45 @@ function patchInvoicePaymentInCache(
       if (!rowIds.some((id) => idSet.has(id))) return row;
 
       const invoiceCount = row.invoiceCount ?? rowIds.length;
+      const paidInvoices = nextPaid
+        ? (row.paidInvoices?.length ? row.paidInvoices : rowIds.map((id) => ({
+            id,
+            year: 0,
+            invoiceAmount: 0,
+          }))).map((entry) => ({
+            ...entry,
+            paymentMethod: paymentMethod ?? entry.paymentMethod ?? null,
+          }))
+        : [];
       return {
         ...row,
         isPaid: nextPaid,
+        invoiceStatus: nextPaid ? "PAID" : row.invoiceStatus,
         paidCount: nextPaid ? invoiceCount : 0,
         invoiceCount,
+        paidInvoices,
       };
     });
 
     // Drop rows that no longer match the active payment filter.
     const paymentStatus = queryKey[6];
-    const filtered =
+    const methodFilter = queryKey[11];
+    const statusFiltered =
       paymentStatus === "paid"
         ? nextData.filter((row) => row.isPaid)
         : paymentStatus === "unpaid"
           ? nextData.filter((row) => !row.isPaid)
           : nextData;
+    const filtered =
+      typeof methodFilter === "string" && methodFilter !== "any"
+        ? statusFiltered.filter((row) => {
+            const rowIds = (row.invoiceIds?.length ? row.invoiceIds : [row.id])
+              .map((id) => Number(id))
+              .filter((id) => Number.isFinite(id));
+            if (!rowIds.some((id) => idSet.has(id))) return true;
+            return nextPaid && paymentMethod === methodFilter;
+          })
+        : statusFiltered;
 
     queryClient.setQueryData(queryKey, {
       ...page,
@@ -103,7 +127,7 @@ export function InvoicePaidCell({
     const previous = queryClient.getQueriesData<PaginatedResponse<InvoiceSummary>>({
       queryKey: ["invoices"],
     });
-    patchInvoicePaymentInCache(queryClient, ids, nextChecked);
+    patchInvoicePaymentInCache(queryClient, ids, nextChecked, extras?.paymentMethod);
 
     try {
       const result = await updateInvoicePaymentStatus({
@@ -112,6 +136,7 @@ export function InvoicePaidCell({
         ...(nextChecked
           ? {
               paidDate: extras?.paidDate,
+              paymentMethod: extras?.paymentMethod,
               paymentNotes: extras?.paymentNotes,
               sendAcknowledgementEmail: extras?.sendAcknowledgementEmail ?? false,
               templateKey: extras?.templateKey,

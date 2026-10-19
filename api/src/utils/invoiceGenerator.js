@@ -41,7 +41,10 @@ function pickGenerateDefaults(invoiceDefaults) {
   // Keep bulk-send paymentStatus (isPaid) in sync with generate metadata.
   if (Object.prototype.hasOwnProperty.call(picked, "isPaid")) {
     picked.isPaid = picked.isPaid === true || String(picked.isPaid).toLowerCase() === "true";
-    if (!picked.isPaid) picked.paidDate = "";
+    if (!picked.isPaid) {
+      picked.paidDate = "";
+      picked.paymentMethod = null;
+    }
     else if (!String(picked.paidDate || "").trim()) {
       picked.paidDate = todayInvoiceDateString();
     }

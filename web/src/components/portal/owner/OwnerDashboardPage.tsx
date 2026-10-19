@@ -143,6 +143,7 @@ export default function OwnerDashboardPage() {
       !filters.calendarYear &&
       !filters.clientId &&
       !filters.propertyId &&
+      !filters.paymentMethod &&
       !filters.county?.length &&
       years.length === 1 &&
       years[0] === currentOwnerTaxYear();
@@ -224,6 +225,7 @@ export default function OwnerDashboardPage() {
       filters.clientId ||
       filters.propertyId ||
       filters.county?.length ||
+      filters.paymentMethod ||
       filters.month?.length
   );
   const monthRate = stats?.billedThisMonth ? (stats.collectedThisMonth ?? 0) / stats.billedThisMonth : null;

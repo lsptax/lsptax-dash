@@ -1,13 +1,16 @@
 import type {
+  InvoicePaymentMethodFilter,
   InvoicePaymentStatusFilter,
   InvoiceSendStatusFilter,
 } from "@/store/invoices";
 import { INVOICE_EMAIL_FILTER } from "@/utils/invoiceEmailStatus";
+import { isPaymentMethod } from "@/constants/paymentMethod";
 
 export type InvoiceListParams = {
   search: string;
   sendStatus: InvoiceSendStatusFilter;
   paymentStatus: InvoicePaymentStatusFilter;
+  paymentMethod: InvoicePaymentMethodFilter;
   minAmount: number | null;
   maxAmount: number | null;
   years: number[];
@@ -24,6 +27,7 @@ export const DEFAULT_INVOICE_LIST_PARAMS: InvoiceListParams = {
   search: "",
   sendStatus: "all",
   paymentStatus: "any",
+  paymentMethod: "any",
   minAmount: null,
   maxAmount: null,
   years: [],
@@ -55,6 +59,7 @@ export function parseInvoiceListParams(
 ): InvoiceListParams {
   const sendStatus = searchParams.get("sendStatus");
   const paymentStatus = searchParams.get("paymentStatus");
+  const paymentMethod = searchParams.get("paymentMethod");
   const offset = Number(searchParams.get("offset") ?? "0");
   const limit = Number(searchParams.get("limit") ?? "10");
 
@@ -66,6 +71,7 @@ export function parseInvoiceListParams(
     paymentStatus: PAYMENT_STATUS_VALUES.has(paymentStatus ?? "")
       ? (paymentStatus as InvoicePaymentStatusFilter)
       : DEFAULT_INVOICE_LIST_PARAMS.paymentStatus,
+    paymentMethod: isPaymentMethod(paymentMethod) ? paymentMethod : "any",
     minAmount: parseAmountParam(searchParams.get("minAmount")),
     maxAmount: parseAmountParam(searchParams.get("maxAmount")),
     years: parseYearsParam(searchParams.get("years")),
@@ -86,6 +92,9 @@ export function invoiceListParamsToSearchParams(
   }
   if (params.paymentStatus !== DEFAULT_INVOICE_LIST_PARAMS.paymentStatus) {
     usp.set("paymentStatus", params.paymentStatus);
+  }
+  if (params.paymentMethod !== DEFAULT_INVOICE_LIST_PARAMS.paymentMethod) {
+    usp.set("paymentMethod", params.paymentMethod);
   }
   if (params.minAmount != null) usp.set("minAmount", String(params.minAmount));
   if (params.maxAmount != null) usp.set("maxAmount", String(params.maxAmount));

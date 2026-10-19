@@ -90,6 +90,7 @@ export const getClientInvoiceSummary = async (
 
 export type InvoiceSendStatusFilter = import("@/utils/invoiceEmailStatus").InvoiceEmailStatusFilter;
 export type InvoicePaymentStatusFilter = "any" | "paid" | "unpaid";
+export type InvoicePaymentMethodFilter = import("@/constants/paymentMethod").PaymentMethodFilter;
 
 export const getAllInvoices = async (
   limit = DEFAULT_PAGE_SIZE,
@@ -100,7 +101,8 @@ export const getAllInvoices = async (
   minAmount: number | null = null,
   maxAmount: number | null = null,
   years: number[] = [],
-  client?: string
+  client?: string,
+  paymentMethod: InvoicePaymentMethodFilter = "any"
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
@@ -111,6 +113,7 @@ export const getAllInvoices = async (
     if (maxAmount != null) params.set("maxAmount", String(maxAmount));
     if (years.length > 0) params.set("years", years.join(","));
     if (client?.trim()) params.set("client", client.trim());
+    if (paymentMethod && paymentMethod !== "any") params.set("paymentMethod", paymentMethod);
     const response = await authFetch(`${base()}/api/invoices?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch Invoices");
     const json = await response.json();
@@ -135,6 +138,7 @@ export const getFilteredInvoiceIds = async ({
   maxAmount = null,
   years = [],
   client,
+  paymentMethod = "any",
 }: {
   archived?: boolean;
   search?: string;
@@ -144,6 +148,7 @@ export const getFilteredInvoiceIds = async ({
   maxAmount?: number | null;
   years?: number[];
   client?: string;
+  paymentMethod?: InvoicePaymentMethodFilter;
 } = {}): Promise<number[]> => {
   const params = new URLSearchParams();
   if (archived) params.set("archived", "true");
@@ -154,6 +159,7 @@ export const getFilteredInvoiceIds = async ({
   if (maxAmount != null) params.set("maxAmount", String(maxAmount));
   if (years.length > 0) params.set("years", years.join(","));
   if (client?.trim()) params.set("client", client.trim());
+  if (paymentMethod && paymentMethod !== "any") params.set("paymentMethod", paymentMethod);
   const query = params.toString();
   const response = await authFetch(`${base()}/api/invoices/ids${query ? `?${query}` : ""}`);
   const json = await response.json().catch(() => ({}));
@@ -175,6 +181,7 @@ export const expandGroupedInvoiceIds = async ({
   maxAmount = null,
   years = [],
   client,
+  paymentMethod = "any",
 }: {
   ids: number[];
   archived?: boolean;
@@ -185,6 +192,7 @@ export const expandGroupedInvoiceIds = async ({
   maxAmount?: number | null;
   years?: number[];
   client?: string;
+  paymentMethod?: InvoicePaymentMethodFilter;
 }): Promise<number[]> => {
   const response = await authFetch(`${base()}/api/invoices/expand-ids`, {
     method: "POST",
@@ -202,6 +210,7 @@ export const expandGroupedInvoiceIds = async ({
       maxAmount,
       years,
       client: client?.trim() || undefined,
+      paymentMethod: paymentMethod !== "any" ? paymentMethod : undefined,
     }),
   });
   const json = await response.json().catch(() => ({}));
@@ -222,7 +231,8 @@ export const getArchiveInvoices = async (
   minAmount: number | null = null,
   maxAmount: number | null = null,
   years: number[] = [],
-  client?: string
+  client?: string,
+  paymentMethod: InvoicePaymentMethodFilter = "any"
 ): Promise<PaginatedResponse<unknown>> => {
   try {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
@@ -233,6 +243,7 @@ export const getArchiveInvoices = async (
     if (maxAmount != null) params.set("maxAmount", String(maxAmount));
     if (years.length > 0) params.set("years", years.join(","));
     if (client?.trim()) params.set("client", client.trim());
+    if (paymentMethod && paymentMethod !== "any") params.set("paymentMethod", paymentMethod);
     const response = await authFetch(`${base()}/api/archive-invoices?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch Invoices");
     const json = await response.json();
@@ -277,6 +288,7 @@ export type UpdateInvoicePaymentStatusData = {
   isPaid: boolean;
   paidDate: string;
   paymentNotes?: string;
+  paymentMethod?: string | null;
   acknowledgementEmail?: PaymentAcknowledgementEmailResult;
 };
 
@@ -309,6 +321,7 @@ export const updateInvoicePaymentStatus = async (options: {
   isPaid: boolean;
   paidDate?: string;
   paymentNotes?: string;
+  paymentMethod?: string;
   sendAcknowledgementEmail?: boolean;
   templateKey?: string;
 }): Promise<UpdateInvoicePaymentStatusResponse> => {

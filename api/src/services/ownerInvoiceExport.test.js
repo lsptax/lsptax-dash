@@ -87,8 +87,10 @@ describe("toInvoiceExportRow", () => {
       ...row,
       isPaid: true,
       paidDate: "2026-09-15",
+      paymentMethod: "CHECK",
     });
     assert.equal(exported.paid, "Yes");
     assert.equal(exported.paidDate, "2026-09-15");
+    assert.equal(exported.paymentMethod, "Check");
   });
 });

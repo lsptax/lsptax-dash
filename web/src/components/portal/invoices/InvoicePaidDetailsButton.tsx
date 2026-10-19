@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/popover";
 import { formatUSD } from "@/utils/formatCurrency";
 import { formatInvoiceDisplayDate } from "@/utils/invoiceDates";
+import { paymentMethodLabel } from "@/constants/paymentMethod";
 import type { PaidInvoiceDetail } from "@/types/types";
 
 type InvoicePaidDetailsButtonProps = {
@@ -32,6 +33,7 @@ function PaidInvoiceEntry({
   showYear: boolean;
 }) {
   const paidDate = formatInvoiceDisplayDate(entry.paidDate) || "—";
+  const method = paymentMethodLabel(entry.paymentMethod) || "—";
   const notes = entry.paymentNotes?.trim() || "—";
 
   return (
@@ -42,6 +44,7 @@ function PaidInvoiceEntry({
         </p>
       ) : null}
       <DetailRow label="Date" value={paidDate} />
+      <DetailRow label="Method" value={method} />
       <DetailRow label="Amount" value={formatUSD(entry.invoiceAmount)} />
       <DetailRow label="Notes" value={notes} />
     </div>
