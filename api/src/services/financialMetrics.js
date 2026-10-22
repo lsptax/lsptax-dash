@@ -6,13 +6,27 @@ import {
   parsedDateBefore,
 } from "../utils/invoiceDateWindows.js";
 
-/** v1: collected = full invoiceAmount on paidDate when isPaid. */
-export const COLLECTED_DEFINITION_V1 = "full_pay_on_paid_date";
+/** Collected on paidDate: the full invoice when paid, otherwise the amount received. */
+export const COLLECTED_DEFINITION_V1 = "amount_paid_on_paid_date";
 
 export const BILLED_GROUP_BY = new Set(["taxYear", "county", "client", "property"]);
 
 function money(value) {
   return roundMoney(Number(value) || 0);
+}
+
+/** Cash received: the amount due when the invoice is paid, otherwise amountPaid. */
+function collectedPortion(invoice) {
+  const due = money(invoice.invoiceAmount);
+  if (due <= 0) return 0;
+  if (invoice.isPaid) return due;
+  const paid = money(invoice.amountPaid);
+  if (paid <= 0) return 0;
+  return roundMoney(Math.min(paid, due));
+}
+
+function balanceDue(invoice) {
+  return roundMoney(Math.max(0, money(invoice.invoiceAmount) - collectedPortion(invoice)));
 }
 
 function monthKey(parsed) {
@@ -41,10 +55,11 @@ export function sumCollectedInRange(invoices, range) {
   if (!range) return 0;
   let amount = 0;
   for (const invoice of invoices) {
-    if (!invoice.isPaid) continue;
+    const portion = collectedPortion(invoice);
+    if (portion <= 0) continue;
     const parsed = parseInvoiceCalendarDate(invoice.paidDate);
     if (!dateInInclusiveRange(parsed, range.start, range.end)) continue;
-    amount = roundMoney(amount + money(invoice.invoiceAmount));
+    amount = roundMoney(amount + portion);
   }
   return amount;
 }
@@ -59,8 +74,9 @@ export function unpaidTotals(invoices) {
   let invoiceCount = 0;
   const clientIds = new Set();
   for (const invoice of invoices) {
-    if (invoice.isPaid) continue;
-    amount = roundMoney(amount + money(invoice.invoiceAmount));
+    const balance = balanceDue(invoice);
+    if (balance <= 0) continue;
+    amount = roundMoney(amount + balance);
     invoiceCount += 1;
     if (invoice.clientId != null) clientIds.add(invoice.clientId);
   }
@@ -75,10 +91,11 @@ export function pastDueTotals(invoices, asOfIso) {
   let amount = 0;
   let invoiceCount = 0;
   for (const invoice of invoices) {
-    if (invoice.isPaid) continue;
+    const balance = balanceDue(invoice);
+    if (balance <= 0) continue;
     const due = parseInvoiceCalendarDate(invoice.dueDate);
     if (!parsedDateBefore(due, asOfIso)) continue;
-    amount = roundMoney(amount + money(invoice.invoiceAmount));
+    amount = roundMoney(amount + balance);
     invoiceCount += 1;
   }
   return { pastDueReceivables: amount, pastDueInvoiceCount: invoiceCount };
@@ -127,7 +144,7 @@ export function invoicesMatchingBilledDate(invoices, range) {
 export function invoicesMatchingCollectedDate(invoices, range) {
   if (!range) return invoices;
   return invoices.filter((invoice) => {
-    if (!invoice.isPaid) return false;
+    if (collectedPortion(invoice) <= 0) return false;
     const parsed = parseInvoiceCalendarDate(invoice.paidDate);
     return dateInInclusiveRange(parsed, range.start, range.end);
   });
@@ -185,12 +202,13 @@ export function moneyWindows(invoices, windows, dateConstraint = null) {
 export function collectedByPaidMonth(invoices) {
   const byMonth = new Map();
   for (const invoice of invoices) {
-    if (!invoice.isPaid) continue;
+    const portion = collectedPortion(invoice);
+    if (portion <= 0) continue;
     const parsed = parseInvoiceCalendarDate(invoice.paidDate);
     if (!parsed) continue;
     const key = monthKey(parsed);
     const current = byMonth.get(key) || { year: parsed.y, month: parsed.m, collected: 0 };
-    current.collected = roundMoney(current.collected + money(invoice.invoiceAmount));
+    current.collected = roundMoney(current.collected + portion);
     byMonth.set(key, current);
   }
   return [...byMonth.values()].sort((a, b) =>
@@ -217,8 +235,9 @@ export function sentInvoiceTotals(invoices, scope = {}) {
     const amount = money(invoice.invoiceAmount);
     totalExpected = roundMoney(totalExpected + amount);
     sentInvoiceCount += 1;
-    if (!invoice.isPaid) {
-      stillToCollect = roundMoney(stillToCollect + amount);
+    const balance = balanceDue(invoice);
+    if (balance > 0) {
+      stillToCollect = roundMoney(stillToCollect + balance);
       unpaidSentCount += 1;
     }
   }
@@ -229,10 +248,11 @@ export function sentInvoiceTotals(invoices, scope = {}) {
 export function collectedThroughDate(invoices, scope = {}) {
   let amount = 0;
   for (const invoice of invoices) {
-    if (!invoice.isPaid) continue;
+    const portion = collectedPortion(invoice);
+    if (portion <= 0) continue;
     const paid = parseInvoiceCalendarDate(invoice.paidDate);
     if (!inCashflowScope(paid, scope)) continue;
-    amount = roundMoney(amount + money(invoice.invoiceAmount));
+    amount = roundMoney(amount + portion);
   }
   return amount;
 }
@@ -262,13 +282,15 @@ export function cashflowByMonth(invoices, scope = {}) {
       const row = touch(billed);
       const amount = money(invoice.invoiceAmount);
       row.billed = roundMoney(row.billed + amount);
-      if (!invoice.isPaid) row.outstanding = roundMoney(row.outstanding + amount);
+      const balance = balanceDue(invoice);
+      if (balance > 0) row.outstanding = roundMoney(row.outstanding + balance);
     }
-    if (!invoice.isPaid) continue;
+    const portion = collectedPortion(invoice);
+    if (portion <= 0) continue;
     const paid = parseInvoiceCalendarDate(invoice.paidDate);
     if (inCashflowScope(paid, scope)) {
       const row = touch(paid);
-      row.collected = roundMoney(row.collected + money(invoice.invoiceAmount));
+      row.collected = roundMoney(row.collected + portion);
     }
   }
 
@@ -368,7 +390,8 @@ export function billedByGroup(invoices, groupBy) {
 export function largestUnpaidClients(invoices, limit = 10, asOfIso = null) {
   const byClient = new Map();
   for (const invoice of invoices) {
-    if (invoice.isPaid || invoice.clientId == null) continue;
+    const balance = balanceDue(invoice);
+    if (balance <= 0 || invoice.clientId == null) continue;
     const current = byClient.get(invoice.clientId) || {
       clientId: invoice.clientId,
       clientName: invoice.clientName || "",
@@ -377,12 +400,11 @@ export function largestUnpaidClients(invoices, limit = 10, asOfIso = null) {
       unpaidInvoiceCount: 0,
       pastDueAmount: 0,
     };
-    const amount = money(invoice.invoiceAmount);
-    current.unpaidAmount = roundMoney(current.unpaidAmount + amount);
+    current.unpaidAmount = roundMoney(current.unpaidAmount + balance);
     current.unpaidInvoiceCount += 1;
     const due = parseInvoiceCalendarDate(invoice.dueDate);
     if (asOfIso && parsedDateBefore(due, asOfIso)) {
-      current.pastDueAmount = roundMoney(current.pastDueAmount + amount);
+      current.pastDueAmount = roundMoney(current.pastDueAmount + balance);
     }
     byClient.set(invoice.clientId, current);
   }

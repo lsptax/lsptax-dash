@@ -115,6 +115,8 @@ const InvoicesTable = ({
   const [bulkSendOpen, setBulkSendOpen] = useState(false);
   const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
   const [markPaidInvoiceIds, setMarkPaidInvoiceIds] = useState<number[]>([]);
+  const [markPaidInvoiceAmount, setMarkPaidInvoiceAmount] = useState<number | null>(null);
+  const [markPaidAlreadyPaid, setMarkPaidAlreadyPaid] = useState(0);
   const [resolvingMarkPaid, setResolvingMarkPaid] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<number>>(new Set());
@@ -364,6 +366,19 @@ const InvoicesTable = ({
         throw new Error("No invoice details were found for the selected rows.");
       }
       setMarkPaidInvoiceIds(invoiceIds);
+      if (invoiceIds.length === 1) {
+        const match = invoices.find((row) => {
+          const rowIds = (row.invoiceIds?.length ? row.invoiceIds : [row.id])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id));
+          return rowIds.length === 1 && rowIds[0] === invoiceIds[0];
+        });
+        setMarkPaidInvoiceAmount(match ? Number(match.totalInvoiceAmount) : null);
+        setMarkPaidAlreadyPaid(Number(match?.partialAmount) || 0);
+      } else {
+        setMarkPaidInvoiceAmount(null);
+        setMarkPaidAlreadyPaid(0);
+      }
       setMarkPaidDialogOpen(true);
     } catch (error) {
       toast({
@@ -482,12 +497,13 @@ const InvoicesTable = ({
     try {
       const result = await updateInvoicePaymentStatus({
         invoiceIds: markPaidInvoiceIds,
-        isPaid: true,
+        isPaid: !payload.partial,
         paidDate: payload.paidDate,
         paymentMethod: payload.paymentMethod,
         paymentNotes: payload.paymentNotes,
-              sendAcknowledgementEmail: payload.sendAcknowledgementEmail,
-              templateKey: payload.templateKey,
+        amountPaid: payload.partial ? payload.amountPaid : undefined,
+        sendAcknowledgementEmail: payload.sendAcknowledgementEmail,
+        templateKey: payload.templateKey,
       });
 
       setSelectedInvoiceIds(new Set());
@@ -495,7 +511,7 @@ const InvoicesTable = ({
       setMarkPaidDialogOpen(false);
       await refetch();
       toast({
-        title: "Marked as paid",
+        title: payload.partial ? "Partial payment recorded" : "Marked as paid",
         description: result.message,
       });
       const ack = result.data.acknowledgementEmail;
@@ -950,6 +966,8 @@ const InvoicesTable = ({
           if (!open) setMarkPaidInvoiceIds([]);
         }}
         invoiceCount={markPaidInvoiceIds.length}
+        invoiceAmount={markPaidInvoiceIds.length === 1 ? markPaidInvoiceAmount : null}
+        amountAlreadyPaid={markPaidInvoiceIds.length === 1 ? markPaidAlreadyPaid : 0}
         submitting={markingPaid}
         onConfirm={handleBulkMarkPaid}
       />

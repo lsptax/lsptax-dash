@@ -22,6 +22,12 @@ import { useToast } from "@/hooks/use-toast";
 import { getClientInvoiceSummary, getClientInvoiceSummaryYears } from "@/store/invoices";
 import { downloadInvoiceSummaryPdf } from "@/utils/invoiceSummaryPdf";
 
+function defaultSummaryYear(years: number[]): number {
+  const currentYear = new Date().getFullYear();
+  if (years.includes(currentYear)) return currentYear;
+  return years[0];
+}
+
 export function DownloadInvoiceSummaryButton({ clientId }: { clientId: number }) {
   const { toast } = useToast();
   const [downloading, setDownloading] = useState(false);
@@ -66,12 +72,13 @@ export function DownloadInvoiceSummaryButton({ clientId }: { clientId: number })
         });
         return;
       }
+      const yearToOpen = defaultSummaryYear(availableYears);
       if (availableYears.length === 1) {
-        await downloadYear(availableYears[0]);
+        await downloadYear(yearToOpen);
         return;
       }
       setYears(availableYears);
-      setYear(String(availableYears[0]));
+      setYear(String(yearToOpen));
       setPickerOpen(true);
     } catch (error) {
       toast({

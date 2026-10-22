@@ -52,7 +52,7 @@ describe("billed vs collected v1", () => {
     ];
     const money = moneyWindows(invoices, windows);
 
-    assert.equal(COLLECTED_DEFINITION_V1, "full_pay_on_paid_date");
+    assert.equal(COLLECTED_DEFINITION_V1, "amount_paid_on_paid_date");
     assert.equal(money.billedThisMonth, 0);
     assert.equal(money.billedLastMonth, 2500);
     assert.equal(money.billedYtd, 2500);
@@ -315,5 +315,26 @@ describe("expected and collected so far", () => {
     );
     assert.equal(rows[0].status, "Past due");
     assert.equal(rows[1].status, "Not due");
+  });
+
+  it("counts a partial payment as collected and leaves the balance outstanding", () => {
+    const rows = [
+      invoice({
+        invoiceDate: "09/01/2026",
+        paidDate: "09/05/2026",
+        dueDate: "09/15/2026",
+        invoiceAmount: 500,
+        amountPaid: 200,
+        isPaid: false,
+      }),
+    ];
+    assert.equal(unpaidTotals(rows).totalUnpaid, 300);
+    assert.equal(pastDueTotals(rows, "2026-10-01").pastDueReceivables, 300);
+    assert.equal(
+      collectedThroughDate(rows, { asOfIso: "2026-10-01" }),
+      200
+    );
+    const clients = largestUnpaidClients(rows, 10, "2026-10-01");
+    assert.equal(clients[0].unpaidAmount, 300);
   });
 });

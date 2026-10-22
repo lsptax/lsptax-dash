@@ -14,6 +14,12 @@ import { routes } from "@/routes/ROUTES";
 import { normalizeInvoiceData } from "@/utils/invoiceDataNormalization";
 import { BackToListLink } from "../../BackToListLink";
 
+function defaultOpenInvoiceYear(years: number[]): number {
+  const currentYear = new Date().getFullYear();
+  if (years.includes(currentYear)) return currentYear;
+  return years[0] ?? currentYear;
+}
+
 const InvoicePage = () => {
   const [searchParams] = useSearchParams();
   const propertyId = searchParams.get("propertyId");
@@ -37,7 +43,7 @@ const InvoicePage = () => {
 
   useEffect(() => {
     if (availableYears.length === 0) return;
-    setSelectedYear(availableYears[0]);
+    setSelectedYear(defaultOpenInvoiceYear(availableYears));
   }, [invoiceData, availableYears]);
 
   useEffect(() => {

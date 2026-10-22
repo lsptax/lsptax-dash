@@ -9,7 +9,6 @@ import { formatUSD } from "@/utils/formatCurrency";
 import { InvoiceActionsCell } from "./InvoiceActionsCell";
 import { InvoiceEmailStatusBadge } from "./InvoiceEmailStatusBadge";
 import { InvoicePaidCell } from "./InvoicePaidCell";
-import { InvoicePaidDetailsButton } from "./InvoicePaidDetailsButton";
 import { invoiceStatusBadgeClass, labelFor, INVOICE_STATUSES } from "@/constants/classification";
 import { paymentMethodLabel } from "@/constants/paymentMethod";
 
@@ -33,6 +32,11 @@ export function InvoiceStatusCell({ row }: { row: InvoiceSummary }) {
       >
         {labelFor(INVOICE_STATUSES, status)}
       </span>
+      {(row.partialAmount ?? 0) > 0 ? (
+        <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+          Partial
+        </span>
+      ) : null}
       {methods.map((method) => (
         <span
           key={method}
@@ -114,9 +118,22 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
   {
     accessorKey: "amount",
     header: "Amount",
-    cell: ({ row }) => (
-      <div className="font-bold">{formatUSD(row.original.totalInvoiceAmount)}</div>
-    ),
+    cell: ({ row }) => {
+      const total = Number(row.original.totalInvoiceAmount) || 0;
+      const paid = Number(row.original.partialAmount) || 0;
+      const balance = Math.max(0, Math.round((total - paid) * 100) / 100);
+      const partial = paid > 0 && balance > 0;
+      return (
+        <div>
+          <div className="font-bold">{formatUSD(partial ? balance : total)}</div>
+          {partial ? (
+            <div className="text-xs font-normal text-muted-foreground">
+              {formatUSD(paid)} paid of {formatUSD(total)}
+            </div>
+          ) : null}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "invoiceStatus",
@@ -127,19 +144,16 @@ export const invoicesColumn: ColumnDef<InvoiceSummary>[] = [
     accessorKey: "isPaid",
     header: "Paid",
     cell: ({ row }) => (
-      <div className="flex items-center gap-0.5">
-        <InvoicePaidCell
-          invoiceId={row.original.id}
-          invoiceIds={row.original.invoiceIds}
-          isPaid={row.original.isPaid}
-          paidCount={row.original.paidCount}
-          invoiceCount={row.original.invoiceCount}
-        />
-        <InvoicePaidDetailsButton
-          paidInvoices={row.original.paidInvoices}
-          paidCount={row.original.paidCount}
-        />
-      </div>
+      <InvoicePaidCell
+        invoiceId={row.original.id}
+        invoiceIds={row.original.invoiceIds}
+        isPaid={row.original.isPaid}
+        paidCount={row.original.paidCount}
+        invoiceCount={row.original.invoiceCount}
+        invoiceAmount={row.original.totalInvoiceAmount}
+        amountAlreadyPaid={row.original.partialAmount}
+        paidInvoices={row.original.paidInvoices}
+      />
     ),
   },
   {

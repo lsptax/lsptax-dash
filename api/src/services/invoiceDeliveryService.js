@@ -4,6 +4,7 @@ import {
   parseBppInvoiceAmount,
   resolveClientContingencyDefault,
   resolveInvoiceDueAmount,
+  roundMoney,
 } from "../utils/invoiceYearlyData.js";
 import { sendTransactionalEmail, sendTransactionalSms, getTransactionalEmailEvents } from "./brevoService.js";
 import {
@@ -1097,7 +1098,10 @@ function groupInvoicesByClient(invoices = []) {
     if (address) entry.propertyAddresses.add(address);
 
     const clientContingencyFee = resolveClientContingencyDefault(client);
-    entry.totalPaymentAmount += resolveInvoiceDueAmount(invoice, clientContingencyFee);
+    const due = resolveInvoiceDueAmount(invoice, clientContingencyFee);
+    const recorded = roundMoney(Number(invoice.amountPaid) || 0);
+    const paymentAmount = invoice.isPaid ? due : recorded > 0 ? Math.min(recorded, due) : due;
+    entry.totalPaymentAmount = roundMoney(entry.totalPaymentAmount + paymentAmount);
   }
 
   return grouped;

@@ -50,6 +50,7 @@ function toMetricInvoice(row) {
     paidDate: row.paidDate,
     dueDate: row.dueDate,
     invoiceAmount: row.invoiceAmount,
+    amountPaid: row.amountPaid,
     isPaid: row.isPaid,
     status: row.status,
     paymentMethod: row.paymentMethod || null,
@@ -117,6 +118,7 @@ async function loadInScopeInvoices(filters = {}) {
       paidDate: true,
       dueDate: true,
       invoiceAmount: true,
+      amountPaid: true,
       isPaid: true,
       status: true,
       paymentMethod: true,
@@ -510,6 +512,7 @@ const INVOICE_EXPORT_SELECT = {
   contingencyFee: true,
   paidDate: true,
   isPaid: true,
+  amountPaid: true,
   paymentNotes: true,
   paymentMethod: true,
   property: {

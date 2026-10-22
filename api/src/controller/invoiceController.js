@@ -469,6 +469,7 @@ export const getArchiveInvoices = async (req, res) => {
  *   paidDate?: string,
  *   paymentNotes?: string,
  *   paymentMethod?: string,
+ *   amountPaid?: number,
  *   sendAcknowledgementEmail?: boolean,
  *   customMessage?: string
  * }
@@ -516,6 +517,7 @@ export const updateInvoicePaymentStatus = async (req, res) => {
       paidDate,
       paymentNotes,
       paymentMethod,
+      amountPaid,
       sendAcknowledgementEmail,
       customMessage,
       templateKey,
@@ -526,12 +528,17 @@ export const updateInvoicePaymentStatus = async (req, res) => {
       paidDate,
       paymentNotes,
       paymentMethod,
+      amountPaid,
       sendAcknowledgementEmail: Boolean(sendAcknowledgementEmail),
       customMessage,
       templateKey,
     });
     const acknowledgement = result.acknowledgementEmail;
-    let message = isPaid ? "Invoice(s) marked as paid" : "Invoice(s) marked as unpaid";
+    let message = result.partial
+      ? "Partial payment recorded"
+      : result.isPaid
+        ? "Invoice(s) marked as paid"
+        : "Invoice(s) marked as unpaid";
     if (acknowledgement) {
       if (acknowledgement.sentCount > 0 && acknowledgement.failedCount === 0) {
         message += `; acknowledgement email sent to ${acknowledgement.sentCount} client(s)`;
@@ -552,7 +559,7 @@ export const updateInvoicePaymentStatus = async (req, res) => {
     console.error("Error updating invoice payment status:", error);
     const status = /No matching invoices/i.test(error.message)
       ? 404
-      : /required|must be|boolean|valid date/i.test(error.message)
+      : /required|must be|boolean|valid date|amount|balance|partial|one invoice|Closed/i.test(error.message)
         ? 400
         : 500;
     sendError(res, status, error.message || "Failed to update invoice payment status", error);

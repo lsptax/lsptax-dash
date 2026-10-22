@@ -477,6 +477,7 @@ function buildInvoiceCsvUploadData(parsed, existing, prop, clientPct) {
     data.bppInvoice,
     flatFeeForInvoiceYear(propertyFlatFee, parsed.year)
   );
+  data.amountPaid = data.isPaid ? data.invoiceAmount : 0;
 
   return data;
 }

@@ -14,6 +14,8 @@ import type { PaidInvoiceDetail } from "@/types/types";
 type InvoicePaidDetailsButtonProps = {
   paidInvoices?: PaidInvoiceDetail[];
   paidCount?: number;
+  onClear?: () => void;
+  clearing?: boolean;
 };
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -35,17 +37,28 @@ function PaidInvoiceEntry({
   const paidDate = formatInvoiceDisplayDate(entry.paidDate) || "—";
   const method = paymentMethodLabel(entry.paymentMethod) || "—";
   const notes = entry.paymentNotes?.trim() || "—";
+  const received = Number(entry.amountPaid);
+  const due = Number(entry.invoiceAmount);
+  const partial =
+    entry.partial === true ||
+    (Number.isFinite(received) && received > 0 && Number.isFinite(due) && received < due);
+  const amount = partial
+    ? `${formatUSD(received)} of ${formatUSD(due)}`
+    : formatUSD(entry.invoiceAmount);
 
   return (
     <div className="space-y-2">
       {showYear && entry.year ? (
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {entry.year}
+          {partial ? " · Partial" : ""}
         </p>
+      ) : partial ? (
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Partial</p>
       ) : null}
       <DetailRow label="Date" value={paidDate} />
       <DetailRow label="Method" value={method} />
-      <DetailRow label="Amount" value={formatUSD(entry.invoiceAmount)} />
+      <DetailRow label="Amount" value={amount} />
       <DetailRow label="Notes" value={notes} />
     </div>
   );
@@ -54,9 +67,11 @@ function PaidInvoiceEntry({
 export function InvoicePaidDetailsButton({
   paidInvoices,
   paidCount,
+  onClear,
+  clearing = false,
 }: InvoicePaidDetailsButtonProps) {
   const entries = paidInvoices ?? [];
-  const hasPaid = (paidCount ?? entries.length) > 0;
+  const hasPaid = (paidCount ?? 0) > 0 || entries.length > 0;
 
   if (!hasPaid || entries.length === 0) return null;
 
@@ -98,6 +113,20 @@ export function InvoicePaidDetailsButton({
             </div>
           ))}
         </div>
+        {onClear ? (
+          <div className="border-t px-4 py-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-muted-foreground"
+              disabled={clearing}
+              onClick={onClear}
+            >
+              Clear payment
+            </Button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

@@ -73,15 +73,61 @@ export function effectiveInvoiceStatus(invoice, asOf = new Date()) {
   return "SENT";
 }
 
-export function paymentWriteData(isPaid, existing, paidDate) {
+function moneyCents(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return NaN;
+  return Math.round(amount * 100);
+}
+
+/**
+ * Apply one payment against an open balance.
+ * A payment that covers the remaining balance completes the invoice.
+ */
+export function nextPaymentState({ due, alreadyPaid = 0, payment }) {
+  const dueCents = moneyCents(due);
+  const alreadyCents = moneyCents(alreadyPaid);
+  const paymentCents = moneyCents(payment);
+  if (!Number.isFinite(paymentCents) || paymentCents <= 0) {
+    return { ok: false, error: "amountPaid must be greater than zero" };
+  }
+  if (!Number.isFinite(dueCents) || dueCents <= 0) {
+    return { ok: false, error: "This invoice has no balance due" };
+  }
+  const paidSoFar = Number.isFinite(alreadyCents) && alreadyCents > 0 ? alreadyCents : 0;
+  const balanceCents = dueCents - paidSoFar;
+  if (balanceCents <= 0) {
+    return { ok: false, error: "This invoice is already paid in full" };
+  }
+  if (paymentCents > balanceCents) {
+    return {
+      ok: false,
+      error: `Amount is more than the balance due ($${(balanceCents / 100).toFixed(2)})`,
+    };
+  }
+  const nextCents = paidSoFar + paymentCents;
+  return {
+    ok: true,
+    completes: nextCents >= dueCents,
+    amountPaid: nextCents / 100,
+    balanceDue: (dueCents - nextCents) / 100,
+  };
+}
+
+export function paymentWriteData(isPaid, existing, paidDate, { partial = false } = {}) {
   if (isPaid) {
     return { isPaid: true, status: "PAID", paidDate };
   }
   if (isClosedInvoiceStatus(existing?.status)) {
-    return { isPaid: false, status: existing.status, paidDate: "" };
+    return { isPaid: false, status: existing.status, paidDate: partial ? paidDate : "" };
   }
   const issued =
-    hasIssuedDate(existing) || existing?.status === "SENT" || existing?.status === "PAST_DUE";
+    hasIssuedDate(existing) ||
+    existing?.status === "SENT" ||
+    existing?.status === "PAST_DUE" ||
+    existing?.status === "PAID";
+  if (partial) {
+    return { isPaid: false, status: issued ? "SENT" : "DRAFT", paidDate };
+  }
   return { isPaid: false, status: issued ? "SENT" : "DRAFT", paidDate: "" };
 }
 

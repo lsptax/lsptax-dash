@@ -286,9 +286,12 @@ export type UpdateInvoicePaymentStatusData = {
   updatedCount: number;
   invoiceIds: number[];
   isPaid: boolean;
+  partial?: boolean;
   paidDate: string;
   paymentNotes?: string;
   paymentMethod?: string | null;
+  amountPaid?: number;
+  balanceDue?: number;
   acknowledgementEmail?: PaymentAcknowledgementEmailResult;
 };
 
@@ -342,6 +345,7 @@ export const updateInvoicePaymentStatus = async (options: {
   paidDate?: string;
   paymentNotes?: string;
   paymentMethod?: string;
+  amountPaid?: number;
   sendAcknowledgementEmail?: boolean;
   templateKey?: string;
 }): Promise<UpdateInvoicePaymentStatusResponse> => {

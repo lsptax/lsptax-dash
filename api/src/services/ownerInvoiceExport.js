@@ -2,6 +2,7 @@ import {
   applyFullInvoiceCalculations,
   INVOICE_EXPLICIT_DERIVED_PRESERVE_FIELDS,
   parseBppInvoiceAmount,
+  roundMoney,
 } from "../utils/invoiceYearlyData.js";
 import { paymentMethodLabel } from "../utils/paymentMethod.js";
 
@@ -34,6 +35,7 @@ export const INVOICE_EXPORT_FIELDS = [
   { label: "Flat fee", value: "flatFee" },
   { label: "Invoice amount", value: "invoiceAmount" },
   { label: "Paid", value: "paid" },
+  { label: "Amount paid", value: "amountPaid" },
   { label: "Paid date", value: "paidDate" },
   { label: "Payment method", value: "paymentMethod" },
   { label: "Payment notes", value: "paymentNotes" },
@@ -87,6 +89,9 @@ export function toInvoiceExportRow(row) {
     flatFee: calculated.flatFee,
     invoiceAmount: calculated.invoiceAmount,
     paid: yesNo(row.isPaid),
+    amountPaid: row.isPaid
+      ? calculated.invoiceAmount
+      : roundMoney(Math.min(Number(row.amountPaid) || 0, calculated.invoiceAmount)),
     paidDate: text(row.paidDate),
     paymentMethod: paymentMethodLabel(row.paymentMethod),
     paymentNotes: text(row.paymentNotes),

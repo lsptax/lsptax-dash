@@ -134,6 +134,29 @@ export async function queryOwnerDashboard(filters, scope) {
         i."propertyId" AS property_id,
         i."isPaid" AS is_paid,
         i."invoiceAmount" AS amount,
+        LEAST(
+          GREATEST(
+            CASE
+              WHEN i."isPaid" THEN i."invoiceAmount"
+              ELSE COALESCE(i."amountPaid", 0)
+            END,
+            0
+          ),
+          GREATEST(i."invoiceAmount", 0)
+        ) AS collected_amount,
+        GREATEST(
+          i."invoiceAmount" - LEAST(
+            GREATEST(
+              CASE
+                WHEN i."isPaid" THEN i."invoiceAmount"
+                ELSE COALESCE(i."amountPaid", 0)
+              END,
+              0
+            ),
+            GREATEST(i."invoiceAmount", 0)
+          ),
+          0
+        ) AS balance_due,
         i."appraisedReduction" AS reduction,
         i."taxableSavings" AS savings,
         NULLIF(btrim(p."cadCounty"), '') AS county,
@@ -154,7 +177,7 @@ export async function queryOwnerDashboard(filters, scope) {
       SELECT
         date_trunc('month', billed_on)::date AS month_start,
         round(COALESCE(sum(amount), 0)::numeric, 2) AS billed,
-        round(COALESCE(sum(amount) FILTER (WHERE NOT is_paid), 0)::numeric, 2) AS outstanding
+        round(COALESCE(sum(balance_due), 0)::numeric, 2) AS outstanding
       FROM scoped
       WHERE billed_on IS NOT NULL
         AND billed_on <= ${actualAsOf}::date
@@ -164,9 +187,9 @@ export async function queryOwnerDashboard(filters, scope) {
     collected_months AS (
       SELECT
         date_trunc('month', paid_on)::date AS month_start,
-        round(COALESCE(sum(amount), 0)::numeric, 2) AS collected
+        round(COALESCE(sum(collected_amount), 0)::numeric, 2) AS collected
       FROM scoped
-      WHERE is_paid
+      WHERE collected_amount > 0
         AND paid_on IS NOT NULL
         AND paid_on <= ${actualAsOf}::date
         ${collectedRange}
@@ -196,20 +219,20 @@ export async function queryOwnerDashboard(filters, scope) {
       round(COALESCE(sum(amount) FILTER (WHERE ${dateRange("billed_on", windowsUsed.lastMonth)}), 0)::numeric, 2) AS billed_last_month,
       round(COALESCE(sum(amount) FILTER (WHERE ${dateRange("billed_on", windowsUsed.ytd)}), 0)::numeric, 2) AS billed_ytd,
       round(COALESCE(sum(amount) FILTER (WHERE ${dateRange("billed_on", windowsUsed.calendarYear)}), 0)::numeric, 2) AS billed_calendar_year,
-      round(COALESCE(sum(amount) FILTER (WHERE is_paid AND ${dateRange("paid_on", windowsUsed.thisMonth)}), 0)::numeric, 2) AS collected_this_month,
-      round(COALESCE(sum(amount) FILTER (WHERE is_paid AND ${dateRange("paid_on", windowsUsed.lastMonth)}), 0)::numeric, 2) AS collected_last_month,
-      round(COALESCE(sum(amount) FILTER (WHERE is_paid AND ${dateRange("paid_on", windowsUsed.ytd)}), 0)::numeric, 2) AS collected_ytd,
-      round(COALESCE(sum(amount) FILTER (WHERE is_paid AND ${dateRange("paid_on", windowsUsed.calendarYear)}), 0)::numeric, 2) AS collected_calendar_year,
+      round(COALESCE(sum(collected_amount) FILTER (WHERE collected_amount > 0 AND ${dateRange("paid_on", windowsUsed.thisMonth)}), 0)::numeric, 2) AS collected_this_month,
+      round(COALESCE(sum(collected_amount) FILTER (WHERE collected_amount > 0 AND ${dateRange("paid_on", windowsUsed.lastMonth)}), 0)::numeric, 2) AS collected_last_month,
+      round(COALESCE(sum(collected_amount) FILTER (WHERE collected_amount > 0 AND ${dateRange("paid_on", windowsUsed.ytd)}), 0)::numeric, 2) AS collected_ytd,
+      round(COALESCE(sum(collected_amount) FILTER (WHERE collected_amount > 0 AND ${dateRange("paid_on", windowsUsed.calendarYear)}), 0)::numeric, 2) AS collected_calendar_year,
       count(DISTINCT property_id) FILTER (WHERE ${dateRange("billed_on", windowsUsed.thisMonth)})::int AS properties_invoiced_this_month,
       count(DISTINCT property_id) FILTER (WHERE ${dateRange("billed_on", windowsUsed.ytd)})::int AS properties_invoiced_ytd,
       round(COALESCE(sum(amount) FILTER (WHERE billed_on IS NOT NULL AND billed_on <= ${actualAsOf}::date ${cashflowRange}), 0)::numeric, 2) AS total_expected,
-      round(COALESCE(sum(amount) FILTER (WHERE NOT is_paid AND billed_on IS NOT NULL AND billed_on <= ${actualAsOf}::date ${cashflowRange}), 0)::numeric, 2) AS still_to_collect,
+      round(COALESCE(sum(balance_due) FILTER (WHERE billed_on IS NOT NULL AND billed_on <= ${actualAsOf}::date ${cashflowRange}), 0)::numeric, 2) AS still_to_collect,
       count(*) FILTER (WHERE billed_on IS NOT NULL AND billed_on <= ${actualAsOf}::date ${cashflowRange})::int AS sent_invoice_count,
       count(*) FILTER (WHERE NOT is_paid AND billed_on IS NOT NULL AND billed_on <= ${actualAsOf}::date ${cashflowRange})::int AS unpaid_sent_count,
       round(COALESCE(sum(amount) FILTER (WHERE ${dateRange("billed_on", periodRange)}), 0)::numeric, 2) AS period_billed,
-      round(COALESCE(sum(amount) FILTER (WHERE is_paid AND ${dateRange("paid_on", periodRange)}), 0)::numeric, 2) AS period_collected,
+      round(COALESCE(sum(collected_amount) FILTER (WHERE collected_amount > 0 AND ${dateRange("paid_on", periodRange)}), 0)::numeric, 2) AS period_collected,
       (
-        SELECT round(COALESCE(sum(amount) FILTER (WHERE NOT is_paid), 0)::numeric, 2) FROM ar
+        SELECT round(COALESCE(sum(balance_due), 0)::numeric, 2) FROM ar
       ) AS total_unpaid,
       (
         SELECT count(*) FILTER (WHERE NOT is_paid)::int FROM ar
@@ -221,7 +244,7 @@ export async function queryOwnerDashboard(filters, scope) {
         SELECT count(*) FILTER (WHERE is_paid)::int FROM ar
       ) AS paid_invoice_count,
       (
-        SELECT round(COALESCE(sum(amount) FILTER (
+        SELECT round(COALESCE(sum(balance_due) FILTER (
           WHERE NOT is_paid AND due_on IS NOT NULL AND due_on < ${pastDueAsOf}::date
         ), 0)::numeric, 2) FROM ar
       ) AS past_due_receivables,
@@ -276,9 +299,9 @@ export async function queryOwnerDashboard(filters, scope) {
             client_id,
             max(client_name) AS client_name,
             max(client_number) AS client_number,
-            round(sum(amount)::numeric, 2) AS unpaid_amount,
+            round(sum(balance_due)::numeric, 2) AS unpaid_amount,
             count(*)::int AS unpaid_invoice_count,
-            round(COALESCE(sum(amount) FILTER (
+            round(COALESCE(sum(balance_due) FILTER (
               WHERE due_on IS NOT NULL AND due_on < ${pastDueAsOf}::date
             ), 0)::numeric, 2) AS past_due_amount
           FROM ar

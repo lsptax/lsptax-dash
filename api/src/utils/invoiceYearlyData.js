@@ -1,5 +1,5 @@
 import { parseContingencyFeePercent } from "../config/csvColumnMapping.js";
-import { effectiveInvoiceStatus, parseInvoiceStatus } from "./invoiceStatus.js";
+import { effectiveInvoiceStatus, isClosedInvoiceStatus, parseInvoiceStatus } from "./invoiceStatus.js";
 import { parseProtestStatus } from "./protestTracking.js";
 
 /** Preset contingency fee override values (percent). Other numeric percents are also allowed. */
@@ -560,9 +560,19 @@ export function buildInvoicePatchFromYearlyData(
           patch.paidDate = todayInvoiceDateString();
         }
       } else {
+        const submittedPaidDate = String(patch.paidDate || "").trim();
+        const keepPartial =
+          Boolean(submittedPaidDate) &&
+          !existing?.isPaid &&
+          Number(existing?.amountPaid) > 0 &&
+          !isClosedInvoiceStatus(parsed.value);
         patch.isPaid = false;
-        patch.paidDate = "";
-        patch.paymentMethod = null;
+        if (keepPartial) {
+          patch.paidDate = normalizeInvoiceDateString(submittedPaidDate);
+        } else {
+          patch.paidDate = "";
+          patch.paymentMethod = null;
+        }
       }
     }
   } else if (patch.isPaid === true) {
@@ -599,6 +609,9 @@ export function buildInvoicePatchFromYearlyData(
     out.bppInvoice ?? merged.bppInvoice,
     calculated.flatFee
   );
+
+  if (patch.isPaid === true) out.amountPaid = out.invoiceAmount;
+  else if (patch.isPaid === false && !String(patch.paidDate || "").trim()) out.amountPaid = 0;
 
   return out;
 }

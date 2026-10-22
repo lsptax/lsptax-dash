@@ -142,6 +142,9 @@ export type PaidInvoiceDetail = {
   year: number;
   paidDate?: string | null;
   invoiceAmount: number;
+  /** Amount received. Less than invoiceAmount when the payment is partial. */
+  amountPaid?: number | null;
+  partial?: boolean;
   paymentNotes?: string | null;
   paymentMethod?: "ZELLE" | "CASH" | "CHECK" | "CREDIT_CARD" | "OTHER" | null;
 };
@@ -160,11 +163,13 @@ export interface InvoiceSummary {
   yearInvoices?: Array<{ id: string | number; year: number }>;
   invoiceCount?: number;
   paidCount?: number;
+  /** Sum of partial payments on invoices in this row that are not paid in full. */
+  partialAmount?: number;
   /** True when every year-invoice in this property group is paid. */
   isPaid?: boolean;
   /** Rollup of Draft, Sent, Paid, Past Due, Voided, and Written Off. */
   invoiceStatus?: "DRAFT" | "SENT" | "PAID" | "PAST_DUE" | "VOIDED" | "WRITTEN_OFF";
-  /** Paid year-invoices only — used for payment detail popover in the list table. */
+  /** Paid and partially paid year-invoices — used for the payment detail popover. */
   paidInvoices?: PaidInvoiceDetail[];
   totalInvoiceAmount: number;
   isSent?: boolean;

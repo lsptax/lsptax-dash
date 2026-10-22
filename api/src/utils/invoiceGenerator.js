@@ -44,6 +44,7 @@ function pickGenerateDefaults(invoiceDefaults) {
     if (!picked.isPaid) {
       picked.paidDate = "";
       picked.paymentMethod = null;
+      picked.amountPaid = 0;
     }
     else if (!String(picked.paidDate || "").trim()) {
       picked.paidDate = todayInvoiceDateString();

@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { PaymentMethod } from "@/constants/paymentMethod";
 import type { InvoiceSummary, PaidInvoiceDetail } from "@/types/types";
+import { InvoicePaidDetailsButton } from "./InvoicePaidDetailsButton";
 import type { PaginatedResponse } from "@/store/common";
 import {
   MarkInvoicePaidDialog,
@@ -23,13 +24,17 @@ type InvoicePaidCellProps = {
   isPaid?: boolean;
   paidCount?: number;
   invoiceCount?: number;
+  invoiceAmount?: number | null;
+  amountAlreadyPaid?: number | null;
+  paidInvoices?: PaidInvoiceDetail[];
 };
 
 function patchInvoicePaymentInCache(
   queryClient: ReturnType<typeof useQueryClient>,
   ids: number[],
   nextPaid: boolean,
-  paymentMethod?: PaymentMethod | null
+  paymentMethod?: PaymentMethod | null,
+  partial?: { amountPaid: number; alreadyPaid: number }
 ) {
   const idSet = new Set(ids);
   const queries = queryClient.getQueriesData<PaginatedResponse<InvoiceSummary>>({
@@ -55,17 +60,29 @@ function patchInvoicePaymentInCache(
               invoiceAmount: 0,
             })
           );
+      const partialAmount = partial
+        ? Math.round(((partial.alreadyPaid || 0) + partial.amountPaid) * 100) / 100
+        : 0;
       const paidInvoices: PaidInvoiceDetail[] = nextPaid
         ? existingPaid.map((entry) => ({
             ...entry,
+            partial: false,
             paymentMethod: paymentMethod ?? entry.paymentMethod ?? null,
           }))
-        : [];
+        : partial
+          ? existingPaid.map((entry) => ({
+              ...entry,
+              partial: true,
+              amountPaid: partialAmount,
+              paymentMethod: paymentMethod ?? entry.paymentMethod ?? null,
+            }))
+          : [];
       return {
         ...row,
         isPaid: nextPaid,
         invoiceStatus: nextPaid ? "PAID" : row.invoiceStatus,
         paidCount: nextPaid ? invoiceCount : 0,
+        partialAmount: nextPaid ? 0 : partialAmount,
         invoiceCount,
         paidInvoices,
       };
@@ -87,7 +104,7 @@ function patchInvoicePaymentInCache(
               .map((id) => Number(id))
               .filter((id) => Number.isFinite(id));
             if (!rowIds.some((id) => idSet.has(id))) return true;
-            return nextPaid && paymentMethod === methodFilter;
+            return (nextPaid || Boolean(partial)) && paymentMethod === methodFilter;
           })
         : statusFiltered;
 
@@ -108,6 +125,9 @@ export function InvoicePaidCell({
   isPaid = false,
   paidCount,
   invoiceCount,
+  invoiceAmount = null,
+  amountAlreadyPaid = 0,
+  paidInvoices,
 }: InvoicePaidCellProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -121,7 +141,8 @@ export function InvoicePaidCell({
   const total = invoiceCount ?? ids.length;
   const paid = paidCount ?? (isPaid ? total : 0);
   const fullyPaid = total > 0 && paid === total;
-  const isPartial = paid > 0 && paid < total;
+  const recordedPartial = (Number(amountAlreadyPaid) || 0) > 0;
+  const isPartial = (paid > 0 && paid < total) || (!fullyPaid && recordedPartial);
 
   const applyPaymentStatus = async (
     nextChecked: boolean,
@@ -133,17 +154,27 @@ export function InvoicePaidCell({
     const previous = queryClient.getQueriesData<PaginatedResponse<InvoiceSummary>>({
       queryKey: ["invoices"],
     });
-    patchInvoicePaymentInCache(queryClient, ids, nextChecked, extras?.paymentMethod);
+    const recordingPartial = Boolean(extras?.partial) && !nextChecked;
+    patchInvoicePaymentInCache(
+      queryClient,
+      ids,
+      nextChecked,
+      extras?.paymentMethod,
+      recordingPartial
+        ? { amountPaid: Number(extras?.amountPaid) || 0, alreadyPaid: Number(amountAlreadyPaid) || 0 }
+        : undefined
+    );
 
     try {
       const result = await updateInvoicePaymentStatus({
         invoiceIds: ids,
         isPaid: nextChecked,
-        ...(nextChecked
+        ...(nextChecked || recordingPartial
           ? {
               paidDate: extras?.paidDate,
               paymentMethod: extras?.paymentMethod,
               paymentNotes: extras?.paymentNotes,
+              amountPaid: recordingPartial ? extras?.amountPaid : undefined,
               sendAcknowledgementEmail: extras?.sendAcknowledgementEmail ?? false,
               templateKey: extras?.templateKey,
             }
@@ -151,9 +182,9 @@ export function InvoicePaidCell({
       });
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
 
-      if (nextChecked) {
+      if (nextChecked || recordingPartial) {
         toast({
-          title: "Payment updated",
+          title: result.data.partial ? "Partial payment recorded" : "Payment updated",
           description: result.message,
         });
         const ack = result.data.acknowledgementEmail;
@@ -193,7 +224,7 @@ export function InvoicePaidCell({
 
   const handleConfirmPaid = async (payload: MarkInvoicePaidPayload) => {
     try {
-      await applyPaymentStatus(true, payload);
+      await applyPaymentStatus(!payload.partial, payload);
       setPaidDialogOpen(false);
     } catch {
       // Error toast already shown; keep dialog open for retry.
@@ -201,18 +232,32 @@ export function InvoicePaidCell({
   };
 
   return (
-    <div onClick={(event) => event.stopPropagation()}>
+    <div className="flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
       <Switch
         checked={fullyPaid}
         disabled={saving || ids.length === 0}
         onCheckedChange={handleToggle}
-        aria-label={fullyPaid ? "Mark invoice unpaid" : "Mark invoice paid"}
+        aria-label={
+          fullyPaid ? "Mark invoice unpaid" : isPartial ? "Record another payment" : "Mark invoice paid"
+        }
         className={cn(isPartial && "data-[state=unchecked]:bg-green-300")}
+      />
+      <InvoicePaidDetailsButton
+        paidInvoices={paidInvoices}
+        paidCount={paid}
+        clearing={saving}
+        onClear={
+          !fullyPaid && recordedPartial && ids.length === 1
+            ? () => void applyPaymentStatus(false)
+            : undefined
+        }
       />
       <MarkInvoicePaidDialog
         open={paidDialogOpen}
         onOpenChange={setPaidDialogOpen}
         invoiceCount={ids.length}
+        invoiceAmount={ids.length === 1 ? invoiceAmount : null}
+        amountAlreadyPaid={ids.length === 1 ? amountAlreadyPaid : 0}
         submitting={saving}
         onConfirm={handleConfirmPaid}
       />

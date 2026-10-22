@@ -13,7 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -23,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { EmailTemplateSelect } from "@/components/portal/account/EmailTemplateSelect";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/constants/paymentMethod";
+import { formatUSD } from "@/utils/formatCurrency";
 
 export type MarkInvoicePaidPayload = {
   paidDate: string;
@@ -30,20 +33,39 @@ export type MarkInvoicePaidPayload = {
   paymentNotes: string;
   sendAcknowledgementEmail: boolean;
   templateKey?: string;
+  partial: boolean;
+  amountPaid?: number;
 };
+
+type PaymentCoverage = "full" | "partial";
 
 type MarkInvoicePaidDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoiceCount?: number;
+  /** Amount due for a single invoice. Partial payment needs this to show the balance. */
+  invoiceAmount?: number | null;
+  /** Amount already recorded on that invoice. */
+  amountAlreadyPaid?: number | null;
   submitting?: boolean;
   onConfirm: (payload: MarkInvoicePaidPayload) => void | Promise<void>;
 };
+
+function parsePaymentAmount(raw: string): number | null {
+  const cleaned = raw.replace(/[$,\s]/g, "");
+  if (!cleaned) return null;
+  if (!/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
+  const amount = Number(cleaned);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return Math.round(amount * 100) / 100;
+}
 
 export function MarkInvoicePaidDialog({
   open,
   onOpenChange,
   invoiceCount = 1,
+  invoiceAmount = null,
+  amountAlreadyPaid = 0,
   submitting = false,
   onConfirm,
 }: MarkInvoicePaidDialogProps) {
@@ -52,6 +74,15 @@ export function MarkInvoicePaidDialog({
   const [paymentNotes, setPaymentNotes] = useState("");
   const [sendAcknowledgementEmail, setSendAcknowledgementEmail] = useState(false);
   const [templateKey, setTemplateKey] = useState("payment_acknowledgement");
+  const [coverage, setCoverage] = useState<PaymentCoverage>("full");
+  const [amountPaid, setAmountPaid] = useState("");
+
+  const partialAvailable = invoiceCount === 1;
+  const alreadyPaid = Math.max(0, Number(amountAlreadyPaid) || 0);
+  const due = invoiceAmount == null ? null : Math.max(0, Number(invoiceAmount) || 0);
+  const balanceDue = due == null ? null : Math.max(0, Math.round((due - alreadyPaid) * 100) / 100);
+  const parsedAmount = parsePaymentAmount(amountPaid);
+  const partial = partialAvailable && coverage === "partial";
 
   useEffect(() => {
     if (!open) return;
@@ -59,18 +90,40 @@ export function MarkInvoicePaidDialog({
     setPaymentMethod("");
     setPaymentNotes("");
     setSendAcknowledgementEmail(false);
+    setCoverage("full");
+    setAmountPaid("");
   }, [open]);
 
-  const canSubmit = Boolean(paidDate) && Boolean(paymentMethod) && !submitting;
+  const amountError = (() => {
+    if (!partial) return null;
+    if (!amountPaid.trim()) return null;
+    if (parsedAmount == null) return "Enter an amount greater than zero.";
+    if (balanceDue != null && Math.round(parsedAmount * 100) > Math.round(balanceDue * 100)) {
+      return `Amount is more than the balance due (${formatUSD(balanceDue)}).`;
+    }
+    if (balanceDue != null && Math.round(parsedAmount * 100) === Math.round(balanceDue * 100)) {
+      return "This covers the full balance. Choose full payment.";
+    }
+    return null;
+  })();
+
+  const canSubmit =
+    Boolean(paidDate) &&
+    Boolean(paymentMethod) &&
+    !submitting &&
+    (!partial || (parsedAmount != null && amountError == null));
 
   const handleConfirm = async () => {
     if (!paidDate || !paymentMethod || submitting) return;
+    if (partial && (parsedAmount == null || amountError)) return;
     await onConfirm({
       paidDate: format(paidDate, "MM/dd/yyyy"),
       paymentMethod,
       paymentNotes: paymentNotes.trim(),
       sendAcknowledgementEmail,
       templateKey: sendAcknowledgementEmail ? templateKey : undefined,
+      partial,
+      amountPaid: partial ? parsedAmount ?? undefined : undefined,
     });
   };
 
@@ -98,13 +151,96 @@ export function MarkInvoicePaidDialog({
         <DialogHeader>
           <DialogTitle>Mark as paid</DialogTitle>
           <DialogDescription>
-            {invoiceCount > 1
-              ? `Add a paid date, payment method, and optional notes for ${invoiceCount} invoices.`
-              : "Add a paid date, payment method, and optional notes before marking this invoice paid."}
+            {partial
+              ? "Record the amount received. The invoice stays open for whatever is still left."
+              : invoiceCount > 1
+                ? `Add a paid date, payment method, and optional notes for ${invoiceCount} invoices.`
+                : balanceDue != null
+                  ? "Full payment collects the remaining balance."
+                  : "Add a paid date, payment method, and optional notes before marking this invoice paid."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
+          {balanceDue != null ? (
+            <div className="rounded-md border bg-muted/40 px-3 py-2.5">
+              <p className="text-xs text-muted-foreground">Left to collect</p>
+              <p className="text-lg font-semibold tabular-nums text-foreground">{formatUSD(balanceDue)}</p>
+              {alreadyPaid > 0 && due != null ? (
+                <p className="text-xs text-muted-foreground">
+                  {formatUSD(alreadyPaid)} already paid of {formatUSD(due)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="grid gap-2">
+            <Label>Payment</Label>
+            <RadioGroup
+              value={partial ? "partial" : "full"}
+              onValueChange={(value) => setCoverage(value as PaymentCoverage)}
+              disabled={submitting}
+              className="gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="full" id="payment-full" />
+                <Label htmlFor="payment-full" className="cursor-pointer font-normal">
+                  Full payment
+                  {balanceDue != null ? (
+                    <span className="text-muted-foreground"> · {formatUSD(balanceDue)}</span>
+                  ) : null}
+                </Label>
+              </div>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem
+                  value="partial"
+                  id="payment-partial"
+                  disabled={!partialAvailable || submitting}
+                  className="mt-0.5"
+                />
+                <div className="grid gap-0.5">
+                  <Label
+                    htmlFor="payment-partial"
+                    className={partialAvailable ? "cursor-pointer font-normal" : "font-normal text-muted-foreground"}
+                  >
+                    Partial payment
+                  </Label>
+                  {partialAvailable ? null : (
+                    <p className="text-xs text-muted-foreground">
+                      Available when marking one invoice.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {partial ? (
+            <div className="grid gap-2">
+              <Label htmlFor="amount-paid">Amount paid</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="amount-paid"
+                  inputMode="decimal"
+                  value={amountPaid}
+                  onChange={(event) => setAmountPaid(event.target.value)}
+                  disabled={submitting}
+                  placeholder="0.00"
+                  className="pl-7"
+                  aria-invalid={amountError ? true : undefined}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {alreadyPaid > 0 ? `Already paid ${formatUSD(alreadyPaid)}. ` : null}
+                {balanceDue != null ? `Balance due ${formatUSD(balanceDue)}.` : "Enter the amount received toward the balance."}
+              </p>
+              {amountError ? <p className="text-xs text-destructive">{amountError}</p> : null}
+            </div>
+          ) : null}
+
           <div className="grid gap-2">
             <Label htmlFor="paid-date">Paid date</Label>
             <DatePicker
@@ -160,7 +296,7 @@ export function MarkInvoicePaidDialog({
                 Send payment acknowledgement email
               </Label>
               <p className="text-xs text-muted-foreground">
-                Emails the client billing address after marking paid. Payment status is saved even if
+                Emails the client billing address after the payment is saved. Payment status is saved even if
                 email delivery fails.
               </p>
               {sendAcknowledgementEmail ? (
@@ -192,7 +328,7 @@ export function MarkInvoicePaidDialog({
             onClick={() => void handleConfirm()}
           >
             {submitting ? <LoaderCircle className="animate-spin" /> : null}
-            Mark paid
+            {partial ? "Record payment" : "Mark paid"}
           </Button>
         </DialogFooter>
       </DialogContent>

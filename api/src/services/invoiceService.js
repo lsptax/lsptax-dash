@@ -12,9 +12,15 @@ import {
   normalizeInvoiceDateString,
   resolveClientContingencyDefault,
   resolveInvoiceDueAmount,
+  roundMoney,
   todayInvoiceDateString,
 } from "../utils/invoiceYearlyData.js";
-import { effectiveInvoiceStatus, paymentWriteData } from "../utils/invoiceStatus.js";
+import {
+  effectiveInvoiceStatus,
+  isClosedInvoiceStatus,
+  nextPaymentState,
+  paymentWriteData,
+} from "../utils/invoiceStatus.js";
 import { parsePaymentMethod, requirePaymentMethod } from "../utils/paymentMethod.js";
 import { accountNumberSearchWhere, buildPropertySearchOrConditions } from "../utils/propertySearch.js";
 import {
@@ -266,12 +272,19 @@ function compareInvoiceGroupsByUpdatedAtDesc(a, b) {
   return bTime - aTime || (Number(b.id) || 0) - (Number(a.id) || 0);
 }
 
-function buildPaidInvoiceDetail(invoice, feeDue) {
+function recordedAmount(invoice) {
+  return roundMoney(Number(invoice?.amountPaid) || 0);
+}
+
+function buildPaidInvoiceDetail(invoice, feeDue, { partial = false } = {}) {
+  const paid = partial ? Math.min(recordedAmount(invoice), feeDue) : feeDue;
   return {
     id: invoice.id,
     year: invoice.year,
     paidDate: invoice.paidDate?.trim() || null,
     invoiceAmount: feeDue,
+    amountPaid: paid,
+    partial,
     paymentNotes: invoice.paymentNotes?.trim() || null,
     paymentMethod: invoice.paymentMethod || null,
   };
@@ -301,7 +314,14 @@ function buildGroupedInvoices(invoices, useSet = true) {
         yearInvoices: [{ id, year: Number(invoice.year) }],
         invoiceStatuses: [invoiceStatus],
         paidCount: invoicePaid ? 1 : 0,
-        paidInvoices: invoicePaid ? [buildPaidInvoiceDetail(invoice, feeDue)] : [],
+        partialAmount: !invoicePaid && recordedAmount(invoice) > 0
+          ? Math.min(recordedAmount(invoice), feeDue)
+          : 0,
+        paidInvoices: invoicePaid
+          ? [buildPaidInvoiceDetail(invoice, feeDue)]
+          : recordedAmount(invoice) > 0
+            ? [buildPaidInvoiceDetail(invoice, feeDue, { partial: true })]
+            : [],
         invoiceCount: 1,
         totalInvoiceAmount: feeDue,
         createdAt: invoice.createdAt,
@@ -313,6 +333,11 @@ function buildGroupedInvoices(invoices, useSet = true) {
       if (invoicePaid) {
         acc[groupKey].paidCount += 1;
         acc[groupKey].paidInvoices.push(buildPaidInvoiceDetail(invoice, feeDue));
+      } else if (recordedAmount(invoice) > 0) {
+        acc[groupKey].partialAmount = roundMoney(
+          (acc[groupKey].partialAmount || 0) + Math.min(recordedAmount(invoice), feeDue)
+        );
+        acc[groupKey].paidInvoices.push(buildPaidInvoiceDetail(invoice, feeDue, { partial: true }));
       }
       if (useSet) acc[groupKey].invoiceIds.add(id);
       else acc[groupKey].invoiceIds.push(id);
@@ -354,6 +379,7 @@ function buildGroupedInvoices(invoices, useSet = true) {
           .sort((a, b) => Number(b.year) - Number(a.year)),
         invoiceCount,
         paidCount,
+        partialAmount: roundMoney(item.partialAmount || 0),
         paidInvoices: (item.paidInvoices || []).sort(
           (a, b) => (Number(b.year) || 0) - (Number(a.year) || 0)
         ),
@@ -778,11 +804,20 @@ export async function setInvoicesArchived({ invoiceIds, isArchived, years }) {
   };
 }
 
+function invoiceDueAmount(row) {
+  return resolveInvoiceDueAmount(
+    row,
+    resolveClientContingencyDefault(row.property?.client)
+  );
+}
+
 /**
- * Mark one or more invoices paid/unpaid.
- * When marking paid, requires paidDate (MM/DD/YYYY), a payment method, and optionally paymentNotes.
- * When marking unpaid, clears paidDate and payment method.
- * When sendAcknowledgementEmail is true and isPaid is true, sends a Brevo acknowledgement email per client.
+ * Mark one or more invoices paid or unpaid, or record a partial payment on one invoice.
+ * Paid and partial payments require paidDate (MM/DD/YYYY), a payment method, and optionally paymentNotes.
+ * A partial payment is isPaid false plus a positive amountPaid. It is added to the amount already received.
+ * A payment that covers the remaining balance marks the invoice paid.
+ * Marking unpaid clears paidDate, payment method, and amountPaid.
+ * When sendAcknowledgementEmail is true, sends a Brevo acknowledgement email per client.
  */
 export async function updateInvoicePaymentStatus({
   invoiceIds,
@@ -790,6 +825,7 @@ export async function updateInvoicePaymentStatus({
   paidDate,
   paymentNotes,
   paymentMethod,
+  amountPaid,
   sendAcknowledgementEmail = false,
   customMessage = null,
   templateKey = null,
@@ -807,8 +843,15 @@ export async function updateInvoicePaymentStatus({
     throw new Error("isPaid must be a boolean");
   }
 
+  const recordingPartial =
+    !isPaid && amountPaid != null && String(amountPaid).trim() !== "";
+  if (recordingPartial && ids.length !== 1) {
+    throw new Error("Partial payment can only be recorded for one invoice");
+  }
+
+  const recordingPayment = isPaid || recordingPartial;
   let normalizedPaidDate = "";
-  if (isPaid) {
+  if (recordingPayment) {
     const rawPaidDate =
       paidDate != null && String(paidDate).trim() !== ""
         ? String(paidDate).trim()
@@ -826,21 +869,50 @@ export async function updateInvoicePaymentStatus({
         ? ""
         : String(paymentNotes).trim();
 
-  const method = isPaid ? requirePaymentMethod(paymentMethod) : null;
+  const method = recordingPayment ? requirePaymentMethod(paymentMethod) : null;
 
   const existingRows = await prisma.invoice.findMany({
     where: { id: { in: ids } },
-    select: { id: true, status: true, invoiceDate: true, generatedDate: true },
+    include: {
+      property: {
+        select: {
+          flatFee: true,
+          client: { select: { contingencyFee: true } },
+        },
+      },
+    },
   });
   if (!existingRows.length) {
     throw new Error("No matching invoices found for the provided invoiceIds");
   }
 
+  let partialResult = null;
+  if (recordingPartial) {
+    const row = existingRows[0];
+    if (isClosedInvoiceStatus(row.status)) {
+      throw new Error("Closed invoices cannot take a partial payment");
+    }
+    const due = invoiceDueAmount(row);
+    partialResult = nextPaymentState({
+      due,
+      alreadyPaid: recordedAmount(row),
+      payment: amountPaid,
+    });
+    if (!partialResult.ok) throw new Error(partialResult.error);
+  }
+
+  const settledInFull = isPaid || Boolean(partialResult?.completes);
+
   await prisma.$transaction(
     existingRows.map((row) => {
-      const data = paymentWriteData(isPaid, row, normalizedPaidDate);
+      const data = paymentWriteData(settledInFull, row, normalizedPaidDate, {
+        partial: recordingPartial && !settledInFull,
+      });
       if (notes !== undefined) data.paymentNotes = notes;
       data.paymentMethod = method;
+      if (settledInFull) data.amountPaid = invoiceDueAmount(row);
+      else if (recordingPartial) data.amountPaid = partialResult.amountPaid;
+      else data.amountPaid = 0;
       return prisma.invoice.update({ where: { id: row.id }, data });
     })
   );
@@ -848,13 +920,23 @@ export async function updateInvoicePaymentStatus({
   const response = {
     updatedCount: existingRows.length,
     invoiceIds: existingRows.map((row) => row.id),
-    isPaid,
-    paidDate: isPaid ? normalizedPaidDate : "",
+    isPaid: settledInFull,
+    partial: recordingPartial && !settledInFull,
+    paidDate: recordingPayment ? normalizedPaidDate : "",
     paymentNotes: notes,
     paymentMethod: method,
+    amountPaid:
+      existingRows.length === 1
+        ? settledInFull
+          ? invoiceDueAmount(existingRows[0])
+          : recordingPartial
+            ? partialResult.amountPaid
+            : 0
+        : undefined,
+    balanceDue: recordingPartial && !settledInFull ? partialResult.balanceDue : 0,
   };
 
-  if (isPaid && sendAcknowledgementEmail) {
+  if (recordingPayment && sendAcknowledgementEmail) {
     response.acknowledgementEmail =
       await sendPaymentAcknowledgementEmailsForInvoices({
         invoiceIds: ids,

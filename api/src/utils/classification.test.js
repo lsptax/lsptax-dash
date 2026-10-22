@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   effectiveInvoiceStatus,
   parseInvoiceStatus,
+  nextPaymentState,
   paymentWriteData,
   statusAfterIssue,
 } from "./invoiceStatus.js";
@@ -48,6 +49,27 @@ describe("invoice status", () => {
       "SENT"
     );
     assert.equal(paymentWriteData(false, { status: "VOIDED" }, "").status, "VOIDED");
+    assert.deepEqual(
+      paymentWriteData(false, { status: "SENT", invoiceDate: "09/01/2026" }, "10/22/2026", {
+        partial: true,
+      }),
+      { isPaid: false, status: "SENT", paidDate: "10/22/2026" }
+    );
+  });
+
+  it("adds a partial payment until the balance is covered", () => {
+    const partial = nextPaymentState({ due: 500, alreadyPaid: 200, payment: 100 });
+    assert.equal(partial.ok, true);
+    assert.equal(partial.completes, false);
+    assert.equal(partial.amountPaid, 300);
+    assert.equal(partial.balanceDue, 200);
+
+    const full = nextPaymentState({ due: 500, alreadyPaid: 200, payment: 300 });
+    assert.equal(full.completes, true);
+    assert.equal(full.balanceDue, 0);
+
+    const over = nextPaymentState({ due: 500, alreadyPaid: 200, payment: 301 });
+    assert.equal(over.ok, false);
   });
 
   it("moves a draft to sent when the invoice is issued", () => {
@@ -113,5 +135,36 @@ describe("yearly invoice patch", () => {
     assert.equal(patch.status, "VOIDED");
     assert.equal(patch.isPaid, false);
     assert.equal(patch.paidDate, "");
+    assert.equal(patch.amountPaid, 0);
+  });
+
+  it("keeps a partial payment when the tax year is saved as sent", () => {
+    const patch = buildInvoicePatchFromYearlyData(
+      {
+        status: "Sent",
+        paidDate: "10/22/2026",
+        noticeLandValue: 0,
+        noticeImprovementValue: 0,
+        noticeAppraisedValue: 0,
+        finalLandValue: 0,
+        finalImprovementValue: 0,
+        finalAppraisedValue: 0,
+        taxRate: 0,
+      },
+      {
+        status: "SENT",
+        isPaid: false,
+        amountPaid: 200,
+        paidDate: "10/22/2026",
+        paymentMethod: "CHECK",
+        year: 2026,
+      },
+      25
+    );
+    assert.equal(patch.isPaid, false);
+    assert.equal(patch.status, "SENT");
+    assert.equal(patch.paidDate, "10/22/2026");
+    assert.equal(patch.amountPaid, undefined);
+    assert.equal(patch.paymentMethod, undefined);
   });
 });
