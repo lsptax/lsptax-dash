@@ -46,6 +46,8 @@ export type InvoiceSummaryRow = {
   contingencyFee: number;
   invoiceAmount: number;
   paid: boolean;
+  /** BPP or Real for this property. Not the client's account type. */
+  typeOfAcct: string;
 };
 
 export type ClientInvoiceSummary = {

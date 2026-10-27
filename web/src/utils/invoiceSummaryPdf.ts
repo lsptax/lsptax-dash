@@ -18,7 +18,7 @@ const MIN_BODY_ROW_HEIGHT = 10;
 const HEADER_ROW_HEIGHT = 12;
 const TOTAL_ROW_HEIGHT = 7;
 
-type SummaryContext = { year: number; typeOfAcct: string };
+type SummaryContext = { year: number };
 
 type Column = {
   header: string;
@@ -29,7 +29,7 @@ type Column = {
 const SERVICE_LABELS = { current: "Protest", arbitration: "Arbitration", homestead: "Homestead" };
 
 const COLUMNS: Column[] = [
-  { header: "Type of Acct", weight: 11, value: (_row, ctx) => ctx.typeOfAcct },
+  { header: "Type of Acct", weight: 11, value: (row) => row.typeOfAcct },
   { header: "Property Addresses", weight: 40, value: (row) => row.propertyAddress },
   { header: "County", weight: 14, value: (row) => row.county },
   { header: "Account Number", weight: 24, value: (row) => row.accountNumber },
@@ -149,7 +149,7 @@ export async function buildInvoiceSummaryPdf(summary: ClientInvoiceSummary): Pro
   const tableWidth = pageWidth - MARGIN * 2;
   const totalWeight = COLUMNS.reduce((sum, column) => sum + column.weight, 0);
   const widths = COLUMNS.map((column) => (column.weight / totalWeight) * tableWidth);
-  const ctx: SummaryContext = { year: summary.year, typeOfAcct: summary.client.typeOfAcct };
+  const ctx: SummaryContext = { year: summary.year };
 
   const logo = await loadImageDataUrl(brandLogo);
   let y = drawTableHeader(doc, widths, drawHeader(doc, summary, logo));

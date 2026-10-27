@@ -1,4 +1,4 @@
-import { invoiceToApiDto } from "../utils/invoiceYearlyData.js";
+import { invoiceToApiDto, parseBppInvoiceAmount } from "../utils/invoiceYearlyData.js";
 
 function text(value) {
   return value == null ? "" : String(value).trim();
@@ -7,6 +7,42 @@ function text(value) {
 function toNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+const REAL_PROPERTY_TYPES = new Set(["RESIDENTIAL", "COMMERCIAL", "LAND"]);
+const APPRAISAL_FIELDS = [
+  "noticeLandValue",
+  "noticeImprovementValue",
+  "noticeMarketValue",
+  "noticeAppraisedValue",
+  "finalLandValue",
+  "finalImprovementValue",
+  "finalMarketValue",
+  "finalAppraisedValue",
+];
+
+/** Client account types are stored as BPP / Real with inconsistent casing. */
+function normalizeAccountTypeLabel(value) {
+  const raw = text(value);
+  const key = raw.toLowerCase();
+  if (key === "bpp") return "BPP";
+  if (key === "real") return "Real";
+  return raw;
+}
+
+/**
+ * Type of Acct is per property. `propertyType` is the stored classification.
+ * Older rows only recorded BPP, so an unclassified property is read from that
+ * property's own invoice: a BPP fee means BPP, appraisal values mean Real.
+ * The client account type is used only when the property has neither.
+ */
+export function accountTypeForInvoiceRow(property, invoice, clientType) {
+  const propertyType = text(property?.propertyType).toUpperCase();
+  if (propertyType === "BPP") return "BPP";
+  if (REAL_PROPERTY_TYPES.has(propertyType)) return "Real";
+  if (parseBppInvoiceAmount(invoice?.bppInvoice) > 0) return "BPP";
+  if (APPRAISAL_FIELDS.some((field) => toNumber(invoice?.[field]) > 0)) return "Real";
+  return normalizeAccountTypeLabel(clientType);
 }
 
 /** Client header plus one row per property for the client-level invoice summary PDF. */
@@ -41,6 +77,7 @@ export function buildInvoiceSummary(client, invoices, year, clientContingencyFee
       contingencyFee: toNumber(dto.contingencyFeePercent),
       invoiceAmount: toNumber(dto.invoiceAmount),
       paid: Boolean(invoice.isPaid),
+      typeOfAcct: accountTypeForInvoiceRow(property, invoice, client.typeOfAcct),
     };
   });
 

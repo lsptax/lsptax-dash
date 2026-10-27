@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildInvoiceSummary } from "./invoiceSummary.js";
+import { accountTypeForInvoiceRow, buildInvoiceSummary } from "./invoiceSummary.js";
 
 const year = 2024;
 
@@ -83,6 +83,74 @@ describe("buildInvoiceSummary", () => {
       25
     );
     assert.equal(summary.client.mailingAddress, "PO Box 1");
+  });
+
+  it("uses each property's account type instead of repeating the client type", () => {
+    const summary = buildInvoiceSummary(
+      { ...client, typeOfAcct: "BPP" },
+      [
+        invoice(1, 1, {
+          bppInvoice: "125",
+          noticeLandValue: 0,
+          noticeImprovementValue: 0,
+          noticeAppraisedValue: 0,
+          finalLandValue: 0,
+          finalImprovementValue: 0,
+          finalAppraisedValue: 0,
+          property: {
+            id: 1,
+            accountNumber: "2284643",
+            propertyAddress: "8800 West Rd",
+            cadCounty: "Harris",
+            flatFee: null,
+            propertyType: "BPP",
+          },
+        }),
+        invoice(2, 2, {
+          bppInvoice: null,
+          property: {
+            id: 2,
+            accountNumber: "1295810010017",
+            propertyAddress: "66 S Badger Lodge Cir",
+            cadCounty: "Harris",
+            flatFee: null,
+            propertyType: null,
+          },
+        }),
+        invoice(3, 3, {
+          bppInvoice: "80",
+          noticeLandValue: 0,
+          noticeImprovementValue: 0,
+          noticeAppraisedValue: 0,
+          finalLandValue: 0,
+          finalImprovementValue: 0,
+          finalAppraisedValue: 0,
+          property: {
+            id: 3,
+            accountNumber: "2402521",
+            propertyAddress: "13110 Veterans Memorial Dr",
+            cadCounty: "Harris",
+            flatFee: null,
+            propertyType: null,
+          },
+        }),
+      ],
+      year,
+      25
+    );
+
+    assert.deepEqual(
+      summary.rows.map((row) => row.typeOfAcct),
+      ["BPP", "Real", "BPP"]
+    );
+    assert.equal(summary.client.typeOfAcct, "BPP");
+  });
+
+  it("maps residential, commercial, and land properties to Real", () => {
+    assert.equal(accountTypeForInvoiceRow({ propertyType: "RESIDENTIAL" }, {}, "BPP"), "Real");
+    assert.equal(accountTypeForInvoiceRow({ propertyType: "COMMERCIAL" }, {}, "BPP"), "Real");
+    assert.equal(accountTypeForInvoiceRow({ propertyType: "LAND" }, {}, "BPP"), "Real");
+    assert.equal(accountTypeForInvoiceRow({ propertyType: null }, { bppInvoice: "0" }, "REAL"), "Real");
   });
 
   it("returns an empty summary when there are no invoices for the year", () => {

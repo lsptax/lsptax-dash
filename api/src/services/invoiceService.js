@@ -250,6 +250,7 @@ export async function getInvoiceSummaryForClient(clientId, year) {
           propertyAddress: true,
           cadCounty: true,
           flatFee: true,
+          propertyType: true,
           mailingAddress: true,
           mailingAddressCityTxZip: true,
         },
