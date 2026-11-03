@@ -14,6 +14,7 @@ import {
   resolveClientContingencyDefault,
 } from "../utils/invoiceYearlyData.js";
 import { parseEntityId } from "../utils/http.js";
+import { realOrBppLabel } from "../utils/propertyClassification.js";
 
 function logEditPropertyDebug(label, data) {
   console.log(`[edit-property] ${label}:`, JSON.stringify(data, null, 2));
@@ -246,6 +247,13 @@ export const getPropertyDetails = async (req, res) => {
   }
 };
 
+function withRealOrBppType(properties) {
+  return properties.map((property) => ({
+    ...property,
+    propertyType: realOrBppLabel(property.propertyType),
+  }));
+}
+
 function propertyExportFilters(query = {}) {
   return {
     accountType: query.accountType,
@@ -259,7 +267,9 @@ function propertyExportFilters(query = {}) {
 export const downloadPropertiesXLSX = async (req, res) => {
   try {
     const { accountType } = req.query;
-    const properties = await propertyService.getPropertiesForExport(propertyExportFilters(req.query));
+    const properties = withRealOrBppType(
+      await propertyService.getPropertiesForExport(propertyExportFilters(req.query))
+    );
     const buffer = convertToXLSX(properties, EXPORT_FIELDS.properties, "Properties");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     const suffix = accountType ? `-${String(accountType).toLowerCase()}` : "";
@@ -274,7 +284,9 @@ export const downloadPropertiesXLSX = async (req, res) => {
 export const downloadPropertiesCSV = async (req, res) => {
   try {
     const { accountType } = req.query;
-    const properties = await propertyService.getPropertiesForExport(propertyExportFilters(req.query));
+    const properties = withRealOrBppType(
+      await propertyService.getPropertiesForExport(propertyExportFilters(req.query))
+    );
     const csv = convertToCSV(properties, EXPORT_FIELDS.properties);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     const suffix = accountType ? `-${String(accountType).toLowerCase()}` : "";

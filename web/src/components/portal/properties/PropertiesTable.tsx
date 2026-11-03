@@ -19,7 +19,7 @@ import {
 import {
   mergePropertyListParams,
   parsePropertyListParams,
-  type AccountTypeFilter,
+  type PropertyAccountTypeFilter,
 } from "@/utils/listParams/properties";
 import { useListSearchParams } from "@/hooks/useListSearchParams";
 import { useToast } from "@/hooks/use-toast";
@@ -163,18 +163,19 @@ const PropertiesTable = <TData extends Properties, TValue>({
             value={accountType}
             onValueChange={(value) =>
               updateParams({
-                accountType: value as AccountTypeFilter,
+                accountType: value as PropertyAccountTypeFilter,
                 offset: 0,
               })
             }
           >
-            <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Filter by account type">
+            <SelectTrigger className="h-9 w-[11.5rem]" aria-label="Filter by account type">
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="real">Real</SelectItem>
               <SelectItem value="bpp">BPP</SelectItem>
+              <SelectItem value="unassigned">Not assigned</SelectItem>
             </SelectContent>
           </Select>
         </div>

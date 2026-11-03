@@ -46,6 +46,7 @@ export const EXPORT_FIELDS = {
     "id",
     "clientNumber",
     "accountNumber",
+    "propertyType",
     "cadCounty",
     "mailingAddress",
     "mailingAddressCityTxZip",

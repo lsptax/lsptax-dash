@@ -14,7 +14,11 @@ import {
   invoiceToApiDto,
   resolveClientContingencyDefault,
 } from "../utils/invoiceYearlyData.js";
-import { isAssignableStaffType, parsePropertyType } from "../utils/propertyClassification.js";
+import {
+  isAssignableStaffType,
+  parsePropertyType,
+  propertyAccountTypeWhere,
+} from "../utils/propertyClassification.js";
 
 const propertyToDto = (p) => {
   const cadMailing = buildCadMailingAddressDisplay(p);
@@ -47,21 +51,14 @@ function normalizeAccountType(accountType) {
   const v = raw.toLowerCase();
   if (v === "real") return "real";
   if (v === "bpp") return "bpp";
+  if (v === "unassigned") return "unassigned";
   return "__invalid__";
 }
 
-function propertyAccountTypeWhere(accountType) {
+function propertyAccountTypeFilter(accountType) {
   const normalized = normalizeAccountType(accountType);
-  if (!normalized) return {};
   if (normalized === "__invalid__") return { __invalidAccountType: true };
-  return {
-    client: {
-      typeOfAcct: {
-        equals: normalized,
-        mode: "insensitive",
-      },
-    },
-  };
+  return propertyAccountTypeWhere(normalized);
 }
 
 function buildPropertyWhere({ isArchived, search, accountType, client = null, property = null }) {
@@ -82,7 +79,7 @@ function buildPropertyWhere({ isArchived, search, accountType, client = null, pr
   const propertyWhere = accountNumberSearchWhere(property);
   if (Object.keys(propertyWhere).length) and.push(propertyWhere);
 
-  const accountTypeWhere = propertyAccountTypeWhere(accountType);
+  const accountTypeWhere = propertyAccountTypeFilter(accountType);
   if (accountTypeWhere.__invalidAccountType) return { __invalidAccountType: true };
   if (Object.keys(accountTypeWhere).length) and.push(accountTypeWhere);
 
@@ -92,7 +89,7 @@ function buildPropertyWhere({ isArchived, search, accountType, client = null, pr
 export async function getProperties(limit, offset, search, accountType, client = null, property = null) {
   const where = buildPropertyWhere({ isArchived: false, search, accountType, client, property });
   if (where.__invalidAccountType) {
-    const err = new Error("Invalid accountType. Allowed values: real, bpp");
+    const err = new Error("Invalid accountType. Allowed values: real, bpp, unassigned");
     err.statusCode = 400;
     throw err;
   }
@@ -122,7 +119,7 @@ export async function getProperties(limit, offset, search, accountType, client =
 export async function getArchiveProperties(limit, offset, search, accountType, client = null, property = null) {
   const where = buildPropertyWhere({ isArchived: true, search, accountType, client, property });
   if (where.__invalidAccountType) {
-    const err = new Error("Invalid accountType. Allowed values: real, bpp");
+    const err = new Error("Invalid accountType. Allowed values: real, bpp, unassigned");
     err.statusCode = 400;
     throw err;
   }
@@ -401,7 +398,7 @@ export async function getPropertiesForExport({
     property,
   });
   if (where.__invalidAccountType) {
-    const err = new Error("Invalid accountType. Allowed values: real, bpp");
+    const err = new Error("Invalid accountType. Allowed values: real, bpp, unassigned");
     err.statusCode = 400;
     throw err;
   }

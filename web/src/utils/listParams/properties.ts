@@ -8,20 +8,19 @@ import {
   parseOffsetParam,
   parseSearchParam,
 } from "./common";
-import type { AccountTypeFilter } from "./clients";
-export type { AccountTypeFilter } from "./clients";
+export type PropertyAccountTypeFilter = "all" | "real" | "bpp" | "unassigned";
 
 export type PropertyListParams = {
   search: string;
   client: string;
   property: string;
-  accountType: AccountTypeFilter;
+  accountType: PropertyAccountTypeFilter;
   offset: number;
   limit: number;
   archived: boolean;
 };
 
-const ACCOUNT_TYPE_VALUES = new Set<string>(["all", "real", "bpp"]);
+const ACCOUNT_TYPE_VALUES = new Set<string>(["all", "real", "bpp", "unassigned"]);
 
 export const DEFAULT_PROPERTY_LIST_PARAMS: PropertyListParams = {
   search: "",
