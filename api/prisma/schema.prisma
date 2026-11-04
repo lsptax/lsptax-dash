@@ -165,7 +165,7 @@ model Property {
   lifecycleNotes         String?   @db.Text
   /// General notes for this property, separate from the client's notes
   notes                  String?   @db.Text
-  /// Residential, commercial, business personal property, or land
+  /// Residential, commercial, business personal property, or land. Blank is Real.
   propertyType           PropertyType?
   /// Portal user (owner, admin, or staff) responsible for this property
   consultantId           Int?

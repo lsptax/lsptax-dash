@@ -141,7 +141,7 @@ describe("buildInvoiceSummary", () => {
 
     assert.deepEqual(
       summary.rows.map((row) => row.typeOfAcct),
-      ["BPP", "Real", "BPP"]
+      ["BPP", "Real", "Real"]
     );
     assert.equal(summary.client.typeOfAcct, "BPP");
   });
@@ -149,8 +149,8 @@ describe("buildInvoiceSummary", () => {
   it("maps residential, commercial, and land properties to Real", () => {
     assert.equal(accountTypeForInvoiceRow({ propertyType: "RESIDENTIAL" }, {}, "BPP"), "Real");
     assert.equal(accountTypeForInvoiceRow({ propertyType: "COMMERCIAL" }, {}, "BPP"), "Real");
-    assert.equal(accountTypeForInvoiceRow({ propertyType: "LAND" }, {}, "BPP"), "Real");
-    assert.equal(accountTypeForInvoiceRow({ propertyType: null }, { bppInvoice: "0" }, "REAL"), "Real");
+    assert.equal(accountTypeForInvoiceRow({ propertyType: "LAND" }), "Real");
+    assert.equal(accountTypeForInvoiceRow({ propertyType: null }), "Real");
   });
 
   it("returns an empty summary when there are no invoices for the year", () => {

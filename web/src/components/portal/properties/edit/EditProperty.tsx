@@ -765,7 +765,7 @@ export default function EditProperty() {
                       <SelectValue placeholder="Select property type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NONE">Unclassified</SelectItem>
+                      <SelectItem value="NONE">Real</SelectItem>
                       {PROPERTY_TYPES.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}

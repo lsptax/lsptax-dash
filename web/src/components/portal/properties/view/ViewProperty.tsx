@@ -399,7 +399,7 @@ const ViewProperty = () => {
               </EntityDetailRow>
               <EntityDetailRow label="County:">{cadCounty || "—"}</EntityDetailRow>
               <EntityDetailRow label="Property Type:">
-                {labelFor(PROPERTY_TYPES, prop?.propertyType)}
+                {prop?.propertyType ? labelFor(PROPERTY_TYPES, prop.propertyType) : "Real"}
               </EntityDetailRow>
               <EntityDetailRow label="Consultant:">
                 {prop?.consultant?.name?.trim() || prop?.consultant?.email || "—"}

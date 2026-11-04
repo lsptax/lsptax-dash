@@ -7,9 +7,12 @@ describe("property account type filter", () => {
     assert.deepEqual(propertyAccountTypeWhere("bpp"), { propertyType: "BPP" });
   });
 
-  it("matches only residential, commercial, and land properties for Real", () => {
+  it("matches blank, residential, commercial, and land properties for Real", () => {
     assert.deepEqual(propertyAccountTypeWhere("real"), {
-      propertyType: { in: ["RESIDENTIAL", "COMMERCIAL", "LAND"] },
+      OR: [
+        { propertyType: null },
+        { propertyType: { in: ["RESIDENTIAL", "COMMERCIAL", "LAND"] } },
+      ],
     });
   });
 
@@ -22,7 +25,7 @@ describe("property account type filter", () => {
     assert.equal(realOrBppLabel("COMMERCIAL"), "Real");
     assert.equal(realOrBppLabel("LAND"), "Real");
     assert.equal(realOrBppLabel("BPP"), "BPP");
-    assert.equal(realOrBppLabel(null), "");
+    assert.equal(realOrBppLabel(null), "Real");
   });
 
   it("does not filter when no account type is selected", () => {
