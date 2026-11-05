@@ -15,6 +15,8 @@ export type InvoiceListParams = {
   maxAmount: number | null;
   years: number[];
   client: string;
+  /** Selected client row id. Set when one client is chosen from search. */
+  clientId: number | null;
   offset: number;
   limit: number;
   archived: boolean;
@@ -36,6 +38,7 @@ export const DEFAULT_INVOICE_LIST_PARAMS: InvoiceListParams = {
   maxAmount: null,
   years: defaultInvoiceListYears(),
   client: "",
+  clientId: null,
   offset: 0,
   limit: 10,
   archived: false,
@@ -55,6 +58,13 @@ function parseYearsParam(value: string | null): number[] {
       .map((part) => Number(part.trim()))
       .filter((year) => Number.isInteger(year) && year >= 1900 && year <= 2100)
   )].sort((a, b) => b - a);
+}
+
+function parseClientIdParam(value: string | null): number | null {
+  if (value == null || value.trim() === "") return null;
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return id;
 }
 
 function parseAmountParam(value: string | null): number | null {
@@ -86,6 +96,7 @@ export function parseInvoiceListParams(
     maxAmount: parseAmountParam(searchParams.get("maxAmount")),
     years: parseYearsParam(searchParams.get("years")),
     client: searchParams.get("client")?.trim() ?? "",
+    clientId: parseClientIdParam(searchParams.get("clientId")),
     offset: Number.isFinite(offset) && offset >= 0 ? offset : 0,
     limit: Number.isFinite(limit) && limit > 0 ? limit : 10,
     archived: searchParams.get("archived") === "true",
@@ -113,6 +124,7 @@ export function invoiceListParamsToSearchParams(
     usp.set("years", params.years.join(","));
   }
   if (params.client) usp.set("client", params.client);
+  if (params.clientId != null) usp.set("clientId", String(params.clientId));
   if (params.offset > 0) usp.set("offset", String(params.offset));
   if (params.limit !== DEFAULT_INVOICE_LIST_PARAMS.limit) {
     usp.set("limit", String(params.limit));

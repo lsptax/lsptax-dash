@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Download,
   FileArchive,
+  FileDown,
   LoaderCircle,
   Mail,
   RefreshCw,
@@ -40,9 +41,12 @@ import { useToast } from "@/hooks/use-toast";
 import {
   expandGroupedInvoiceIds,
   getBulkInvoiceRecipients,
+  getClientInvoiceSummary,
+  getClientInvoiceSummaryYears,
   getFilteredInvoiceIds,
   syncAllInvoiceDeliveriesFromBrevo,
   updateInvoicePaymentStatus,
+  type ClientInvoiceSummary,
 } from "@/store/invoices";
 import {
   describePaymentAcknowledgementIssues,
@@ -78,7 +82,9 @@ import {
   type InvoicePdfRenderJob,
 } from "@/utils/bulkInvoicePdf";
 import { ListSearchField, useDebouncedListSearch } from "../ListSearchField";
+import { InvoiceClientFilter } from "./InvoiceClientFilter";
 import { PAYMENT_METHODS, type PaymentMethodFilter } from "@/constants/paymentMethod";
+import { downloadInvoiceSummaryPdf } from "@/utils/invoiceSummaryPdf";
 
 interface InvoicesTableProps {
   columns: ColumnDef<InvoiceSummary>[];
@@ -102,11 +108,13 @@ const InvoicesTable = ({
     maxAmount,
     years,
     client,
+    clientId,
     offset,
     limit,
     archived,
   } = params;
   const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [downloadingSummary, setDownloadingSummary] = useState(false);
   const [downloadingPdfs, setDownloadingPdfs] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ completed: number; total: number } | null>(null);
   const [renderJobs, setRenderJobs] = useState<InvoicePdfRenderJob[]>([]);
@@ -133,7 +141,6 @@ const InvoicesTable = ({
     setMaxAmountDraft(maxAmount == null ? "" : String(maxAmount));
   }, [minAmount, maxAmount]);
 
-  const [loadedClient, setLoadedClient] = useState(client);
   const [loadedProperty, setLoadedProperty] = useState(appliedSearch);
 
   const { data, isLoading, isError, isPlaceholderData, refetch } = useInvoicesQuery({
@@ -152,16 +159,10 @@ const InvoicesTable = ({
 
   useEffect(() => {
     if (data && !isPlaceholderData) {
-      setLoadedClient(client);
       setLoadedProperty(appliedSearch);
     }
-  }, [data, isPlaceholderData, client, appliedSearch]);
+  }, [data, isPlaceholderData, appliedSearch]);
 
-  const clientSearch = useDebouncedListSearch(
-    client,
-    (next) => updateParams({ client: next, offset: 0 }),
-    !isError && loadedClient !== client
-  );
   const propertySearch = useDebouncedListSearch(
     appliedSearch,
     (next) => updateParams({ search: next, offset: 0 }),
@@ -170,6 +171,17 @@ const InvoicesTable = ({
 
   const invoices = (data?.data ?? []) as InvoiceSummary[];
   const total = data?.total ?? 0;
+  const selectedClientId = useMemo(() => {
+    if (clientId != null) return clientId;
+    const number = client.startsWith("#") ? client.slice(1).trim() : client.trim();
+    if (!/^\d+$/.test(number) || isPlaceholderData || invoices.length === 0) return null;
+    const ids = new Set(
+      invoices
+        .map((invoice) => Number(invoice.clientId))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    );
+    return ids.size === 1 ? [...ids][0] : null;
+  }, [clientId, client, invoices, isPlaceholderData]);
   const hasMore = data?.hasMore ?? false;
   /** API caps page size at 100 even if the UI requests more (e.g. 300). */
   const effectiveLimit = data?.limit ?? Math.min(limit, MAX_API_PAGE_SIZE);
@@ -347,6 +359,72 @@ const InvoicesTable = ({
       years,
       client,
     });
+  };
+
+  const handleDownloadInvoiceSummary = async () => {
+    if (selectedClientId == null) {
+      toast({
+        title: "Select a client",
+        description: "Search and select one client before downloading the summary.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDownloadingSummary(true);
+    try {
+      const yearsToUse =
+        years.length > 0 ? years : await getClientInvoiceSummaryYears(selectedClientId);
+      if (yearsToUse.length === 0) {
+        toast({
+          title: "Nothing to download",
+          description: "This client has no invoices.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const selectedIds =
+        selectedInvoiceIdList.length > 0
+          ? new Set(await resolveSelectedYearInvoiceIds())
+          : null;
+      if (selectedIds && selectedIds.size === 0) {
+        toast({
+          title: "Nothing to download",
+          description: "No invoice details were found for the selected rows.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let downloaded = 0;
+      for (const year of [...yearsToUse].sort((a, b) => b - a)) {
+        const summary = limitSummaryToInvoices(
+          await getClientInvoiceSummary(selectedClientId, year),
+          selectedIds
+        );
+        if (summary.rows.length === 0) continue;
+        await downloadInvoiceSummaryPdf(summary);
+        downloaded += 1;
+      }
+      if (downloaded === 0) {
+        toast({
+          title: "Nothing to download",
+          description: selectedIds
+            ? "None of the selected invoices are in this summary."
+            : "This client has no invoices for the selected year.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Could not download invoice summary",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingSummary(false);
+    }
   };
 
   const openMarkPaidDialog = async () => {
@@ -590,6 +668,7 @@ const InvoicesTable = ({
     maxAmount != null ||
     !sameYearSelection(years, defaultInvoiceListYears()) ||
     client !== "" ||
+    clientId != null ||
     appliedSearch !== "";
 
   const clearFilters = () => {
@@ -603,6 +682,7 @@ const InvoicesTable = ({
       maxAmount: null,
       years: defaultInvoiceListYears(),
       client: "",
+      clientId: null,
       search: "",
       offset: 0,
     });
@@ -678,13 +758,20 @@ const InvoicesTable = ({
         </div>
 
         <div className="order-last flex w-full flex-wrap items-end gap-3 border-t pt-3">
-          <ListSearchField
-            label="Client"
-            placeholder="Name or #"
-            value={clientSearch.draft}
-            onValueChange={clientSearch.setDraft}
-            onCommit={clientSearch.commitNow}
-            searching={clientSearch.searching}
+          <InvoiceClientFilter
+            client={client}
+            clientId={selectedClientId}
+            onSelect={(selected) => {
+              const nextClient = selected.clientNumber
+                ? `#${selected.clientNumber}`
+                : selected.clientName;
+              updateParams({
+                client: nextClient,
+                clientId: selected.id,
+                ...(nextClient !== client ? { offset: 0 } : {}),
+              });
+            }}
+            onClear={() => updateParams({ client: "", clientId: null, offset: 0 })}
           />
           <ListSearchField
             label="Property"
@@ -879,38 +966,49 @@ const InvoicesTable = ({
             <Button
               variant="outline"
               disabled={
-                selectedInvoiceIdList.length === 0 ||
+                (selectedInvoiceIdList.length === 0 && selectedClientId == null) ||
                 downloadingPdfs ||
+                downloadingSummary ||
                 markingPaid ||
                 resolvingMarkPaid
               }
             >
-              {downloadingPdfs || markingPaid || resolvingMarkPaid ? (
+              {downloadingPdfs || downloadingSummary || markingPaid || resolvingMarkPaid ? (
                 <LoaderCircle className="animate-spin" />
               ) : (
                 <ChevronDown />
               )}
               {downloadingPdfs && downloadProgress
                 ? `Preparing ${downloadProgress.completed}/${downloadProgress.total}...`
-                : markingPaid
-                  ? "Marking paid..."
-                  : resolvingMarkPaid
-                    ? "Preparing..."
-                    : selectedInvoiceIdList.length > 0
-                      ? `Actions (${selectedInvoiceIdList.length})`
-                      : "Actions"}
+                : downloadingSummary
+                  ? "Preparing summary..."
+                  : markingPaid
+                    ? "Marking paid..."
+                    : resolvingMarkPaid
+                      ? "Preparing..."
+                      : selectedInvoiceIdList.length > 0
+                        ? `Actions (${selectedInvoiceIdList.length})`
+                        : "Actions"}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuItem
-              disabled={downloadingPdfs}
+              disabled={selectedClientId == null || downloadingSummary}
+              onClick={() => void handleDownloadInvoiceSummary()}
+            >
+              <FileDown />
+              Download Invoice Summary
+              {selectedInvoiceIdList.length > 0 ? ` (${selectedInvoiceIdList.length})` : ""}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={selectedInvoiceIdList.length === 0 || downloadingPdfs}
               onClick={() => void handleBulkPdfDownload()}
             >
               <FileArchive />
               Bulk Download ({selectedInvoiceIdList.length})
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={markingPaid || resolvingMarkPaid}
+              disabled={selectedInvoiceIdList.length === 0 || markingPaid || resolvingMarkPaid}
               onClick={() => void openMarkPaidDialog()}
             >
               <CheckCircle2 />
@@ -1015,6 +1113,16 @@ const InvoicesTable = ({
 };
 
 export default InvoicesTable;
+
+function limitSummaryToInvoices(
+  summary: ClientInvoiceSummary,
+  invoiceIds: Set<number> | null
+): ClientInvoiceSummary {
+  if (!invoiceIds) return summary;
+  const rows = summary.rows.filter((row) => invoiceIds.has(row.invoiceId));
+  const total = Math.round(rows.reduce((sum, row) => sum + row.invoiceAmount, 0) * 100) / 100;
+  return { ...summary, rows, total };
+}
 
 function sameYearSelection(left: number[], right: number[]): boolean {
   return left.length === right.length && left.every((year, index) => year === right[index]);
