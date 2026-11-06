@@ -418,7 +418,7 @@ export function BulkInvoiceSendDialog({
             <DialogDescription>
               {isInvoiceTemplate
                 ? selectionMix === "zero"
-                  ? "All selected invoices have $0 tax savings. Each contact gets one email using the 0 Savings template."
+                  ? "All selected invoices have $0 tax savings. Each contact gets one email. The 0 Savings template is selected, and you can choose the normal invoice email when a BPP fee is still due."
                   : selectionMix === "mixed"
                     ? "This selection has tax savings and $0 savings. Each contact gets one email for each, and you choose both templates."
                     : selectionMix === "savings"
@@ -450,6 +450,7 @@ export function BulkInvoiceSendDialog({
                     id="bulk-zero-template"
                     label="0 savings template"
                     purpose="invoice_zero_savings"
+                    extraPurposes={["invoice"]}
                     value={zeroSavingsTemplateKey}
                     onChange={setZeroSavingsTemplateKey}
                     disabled={isSending}
@@ -460,7 +461,8 @@ export function BulkInvoiceSendDialog({
                 <div className="space-y-1.5">
                   {selectionMix === "zero" ? (
                     <p className="text-sm text-muted-foreground">
-                      All selected invoices have $0 tax savings, so the 0 Savings template is selected.
+                      These invoices have $0 tax savings, so the 0 Savings template is selected. Choose
+                      the normal invoice email when a BPP fee is still due.
                     </p>
                   ) : null}
                   {selectionMix === "savings" ? (
@@ -471,7 +473,11 @@ export function BulkInvoiceSendDialog({
                   <EmailTemplateSelect
                     id="bulk-invoice-template"
                     purpose={selectionMix === "zero" ? "invoice_zero_savings" : "invoice"}
-                    extraPurposes={["payment_acknowledgement"]}
+                    extraPurposes={
+                      selectionMix === "zero"
+                        ? ["invoice", "payment_acknowledgement"]
+                        : ["payment_acknowledgement"]
+                    }
                     value={templateKey}
                     onChange={setTemplateKey}
                     disabled={isSending}
@@ -522,13 +528,13 @@ export function BulkInvoiceSendDialog({
                         ? `${selectedInvoiceIds.length} invoices selected. ${matchedInvoiceCount} are for ${year} and go out as ${recipients.length} ${recipients.length === 1 ? "email" : "emails"}. ${omittedInvoiceCount} ${omittedInvoiceCount === 1 ? "is" : "are"} a different year, so ${omittedInvoiceCount === 1 ? "it is" : "they are"} left out.`
                         : `${selectedInvoiceIds.length} invoices${year === "all" ? "" : ` for ${year}`}, combined into ${recipients.length} ${recipients.length === 1 ? "email" : "emails"}. ${
                             selectionMix === "zero"
-                              ? "Same contact, one email, using the 0 Savings template."
+                              ? "Same contact, one email. Use the 0 Savings template, or the normal invoice email when a BPP fee is still due."
                               : selectionMix === "savings"
                                 ? "Same contact, one email."
                                 : "Same contact, one email for savings and a separate email for $0 savings."
                           }`
                       : selectionMix === "zero"
-                        ? `One email per contact${year === "all" ? "" : ` for ${year}`}, using the 0 Savings template.`
+                        ? `One email per contact${year === "all" ? "" : ` for ${year}`}. Use the 0 Savings template, or the normal invoice email when a BPP fee is still due.`
                         : selectionMix === "savings"
                           ? `One email per contact${year === "all" ? "" : ` for ${year}`}. Invoices for the same contact go together.`
                           : `One savings email per contact${year === "all" ? "" : ` for ${year}`}, plus a separate email when that contact has $0 savings invoices.`}

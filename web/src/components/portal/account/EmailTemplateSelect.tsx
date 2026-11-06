@@ -43,6 +43,7 @@ export function EmailTemplateSelect({
     if (!purpose) return true;
     return allowedPurposes.has(template.purpose);
   });
+  const showPurpose = !purpose || extraPurposes.length > 0;
 
   return (
     <div className="space-y-1.5">
@@ -55,7 +56,7 @@ export function EmailTemplateSelect({
           {templates.map((template) => (
             <SelectItem key={template.key} value={template.key}>
               {template.name}
-              {purpose ? "" : ` · ${EMAIL_TEMPLATE_PURPOSE_LABELS[template.purpose]}`}
+              {showPurpose ? ` · ${EMAIL_TEMPLATE_PURPOSE_LABELS[template.purpose]}` : ""}
               {template.isBuiltin ? " (default)" : ""}
             </SelectItem>
           ))}

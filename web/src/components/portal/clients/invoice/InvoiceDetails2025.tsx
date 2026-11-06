@@ -565,6 +565,7 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
                       id="client-zero-savings-template"
                       label="0 savings template"
                       purpose="invoice_zero_savings"
+                      extraPurposes={["invoice"]}
                       value={zeroSavingsTemplateKey}
                       onChange={setZeroSavingsTemplateKey}
                       disabled={isSending}
@@ -572,10 +573,14 @@ const InvoiceDetails2025: React.FC<InvoiceDetails2025Props> = ({
                   </>
                 ) : savingsProperties.length === 0 ? (
                   <>
-                    <p>All of these invoices have $0 tax savings, so the 0 Savings template is selected.</p>
+                    <p>
+                      These invoices have $0 tax savings, so the 0 Savings template is selected. Choose
+                      the normal invoice email when a BPP fee is still due.
+                    </p>
                     <EmailTemplateSelect
                       id="client-zero-savings-template"
                       purpose="invoice_zero_savings"
+                      extraPurposes={["invoice"]}
                       value={zeroSavingsTemplateKey}
                       onChange={setZeroSavingsTemplateKey}
                       disabled={isSending}
