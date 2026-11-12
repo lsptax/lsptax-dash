@@ -19,6 +19,11 @@ import {
   parsePropertyType,
   propertyAccountTypeWhere,
 } from "../utils/propertyClassification.js";
+import {
+  contactArchivePropertyChange,
+  propertyArchiveData,
+  propertyVisibilityWhere,
+} from "../utils/propertyVisibility.js";
 
 const propertyToDto = (p) => {
   const cadMailing = buildCadMailingAddressDisplay(p);
@@ -62,7 +67,7 @@ function propertyAccountTypeFilter(accountType) {
 }
 
 function buildPropertyWhere({ isArchived, search, accountType, client = null, property = null }) {
-  const baseWhere = { isArchived };
+  const baseWhere = propertyVisibilityWhere(Boolean(isArchived));
   const and = [];
 
   const searchWhere = propertySearchWhere(search);
@@ -363,12 +368,35 @@ export async function deleteProperty(propertyId) {
   return property;
 }
 
-export async function toggleArchive(model, id) {
-  const record = await model.findUnique({ where: { id: parseInt(id) } });
+const CONTACT_ARCHIVE_TABLES = new Set(["client", "prospect"]);
+
+export async function toggleArchive(model, id, tableName) {
+  const recordId = parseInt(id, 10);
+  if (!Number.isFinite(recordId)) return null;
+  const record = await model.findUnique({ where: { id: recordId } });
   if (!record) return null;
-  return model.update({
-    where: { id: parseInt(id) },
-    data: { isArchived: !record.isArchived },
+  const nextArchived = !record.isArchived;
+
+  if (!CONTACT_ARCHIVE_TABLES.has(tableName)) {
+    const data =
+      tableName === "property" || tableName === "prospectProperty"
+        ? propertyArchiveData(nextArchived)
+        : { isArchived: nextArchived };
+    return model.update({
+      where: { id: recordId },
+      data,
+    });
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.client.update({
+      where: { id: recordId },
+      data: { isArchived: nextArchived },
+    });
+    const properties = await tx.property.updateMany(
+      contactArchivePropertyChange(recordId, nextArchived)
+    );
+    return { ...updated, archivedPropertyCount: properties.count };
   });
 }
 

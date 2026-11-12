@@ -6,6 +6,7 @@ const base = getApiBaseUrl;
 export interface DashboardStats {
   numOfClients: number;
   numOfProspects: number;
+  numOfProperties: number;
   numOfAgents: number;
   hearings?: HearingStats;
 }

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Trash2, Archive } from "lucide-react";
 import {
@@ -36,10 +37,24 @@ export function ClientActionsCell({
   isArchived: boolean;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const refreshCounts = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["properties"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["hearings"] }),
+      queryClient.invalidateQueries({ queryKey: ["owner-dashboard"] }),
+    ]);
+
+  const propertyCountFrom = (result: { record?: { archivedPropertyCount?: number } }) =>
+    Number(result?.record?.archivedPropertyCount ?? 0);
 
   const handleDelete = async () => {
     try {
       await deleteClient(Number(clientId));
+      await refreshCounts();
       toast({
         title: "✓ Client deleted successfully",
         description: "The client has been deleted from the system.",
@@ -55,10 +70,15 @@ export function ClientActionsCell({
 
   const handleArchive = async () => {
     try {
-      await archiveItem("client", Number(clientId));
+      const result = await archiveItem("client", Number(clientId));
+      const propertyCount = propertyCountFrom(result);
+      await refreshCounts();
       toast({
         title: "✓ Client archived successfully",
-        description: "The client has been archived.",
+        description:
+          propertyCount > 0
+            ? `The client and ${propertyCount} ${propertyCount === 1 ? "property" : "properties"} are archived.`
+            : "The client has been archived.",
       });
     } catch {
       toast({
@@ -71,10 +91,15 @@ export function ClientActionsCell({
 
   const handleMoveToActive = async () => {
     try {
-      await archiveItem("client", Number(clientId));
+      const result = await archiveItem("client", Number(clientId));
+      const propertyCount = propertyCountFrom(result);
+      await refreshCounts();
       toast({
         title: "✓ Client moved to active successfully",
-        description: "The client is now active.",
+        description:
+          propertyCount > 0
+            ? `The client and ${propertyCount} ${propertyCount === 1 ? "property" : "properties"} are active again.`
+            : "The client is now active.",
       });
     } catch {
       toast({
@@ -98,8 +123,9 @@ export function ClientActionsCell({
             <AlertDialogHeader>
               <AlertDialogTitle>Archive Client</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to archive client {clientName} (#{clientNum}
-                )? This action can be undone by restoring the client later.
+                Are you sure you want to archive client {clientName} (#{clientNum})?
+                Active properties are archived with the client. Properties that
+                were already archived stay archived.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -126,7 +152,8 @@ export function ClientActionsCell({
                 <AlertDialogTitle>Move Client to Active</AlertDialogTitle>
                 <AlertDialogDescription>
                   Are you sure you want to move client {clientName} (#{clientNum}) to
-                  active?
+                  active? Properties archived with the client come back. Properties
+                  archived on their own stay archived.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

@@ -170,6 +170,7 @@ function propertyOrder(parsed) {
 function propertiesWhere(parsed) {
   return Prisma.sql`
     p."isArchived" = false
+    AND c."isArchived" = false
     AND (${propertyMatch(parsed)})
   `;
 }

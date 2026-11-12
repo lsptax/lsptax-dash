@@ -4,11 +4,12 @@ import prospectLogo from "@/assets/dashboard/prospects-logo.svg";
 import { NavLink } from "react-router-dom";
 import { routes } from "@/routes/ROUTES";
 import type { HearingStats } from "@/types/hearings";
-import { Calendar, CalendarClock, CalendarDays } from "lucide-react";
+import { Building2, Calendar, CalendarClock, CalendarDays } from "lucide-react";
 
 interface Stats {
   numOfClients: number;
   numOfProspects: number;
+  numOfProperties?: number;
   hearings?: HearingStats;
 }
 
@@ -47,6 +48,12 @@ const DashboardStats = ({
       link: routes.clients.list(),
     },
     {
+      label: "Active Properties",
+      icon: <Building2 className="h-9 w-9 text-primary" strokeWidth={1.5} />,
+      number: loading ? null : (stats.numOfProperties ?? 0),
+      link: routes.properties.list(),
+    },
+    {
       label: "New Prospects",
       icon: prospectLogo,
       number: loading ? null : stats.numOfProspects,
@@ -74,7 +81,7 @@ const DashboardStats = ({
   ];
 
   return (
-    <div className="grid w-full grid-cols-1 gap-3 px-4 pt-3 sm:grid-cols-2 sm:px-5 lg:grid-cols-3 2xl:grid-cols-5">
+    <div className="grid w-full grid-cols-1 gap-3 px-4 pt-3 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
       {items.map((item) => (
         <StatsItem key={item.label} {...item} loading={loading} />
       ))}

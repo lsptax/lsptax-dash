@@ -152,6 +152,8 @@ model Property {
   aoaSigned              String    @default("") // old: AOASigned
   hearingDate            String    @default("") // old: HearingDate
   isArchived             Boolean   @default(false) // old: IsArchived
+  /// True when this property was archived because its client or prospect was archived.
+  archivedWithClient     Boolean   @default(false)
 
   /// Current roadmap phase (`phaseId` string); allowed values defined in `lifecycleConstants.js`
   lifecyclePhase         String?

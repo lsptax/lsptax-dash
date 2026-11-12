@@ -245,7 +245,12 @@ export function useDashboardDataQuery() {
   };
 
   return {
-    stats: dashboardStats.data ?? { numOfClients: 0, numOfProspects: 0, numOfAgents: 0 },
+    stats: dashboardStats.data ?? {
+      numOfClients: 0,
+      numOfProspects: 0,
+      numOfProperties: 0,
+      numOfAgents: 0,
+    },
     propData: (propertiesRes.data?.data ?? []) as unknown[],
     clientData: (clientsRes.data?.data ?? []) as unknown[],
     prospectData: (prospectsRes.data?.data ?? []) as unknown[],

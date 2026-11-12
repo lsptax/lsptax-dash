@@ -561,7 +561,9 @@ export function BulkInvoiceSendDialog({
                 </div>
               ) : recipients.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
-                  No clients with invoice email addresses matched these filters.
+                  {effectiveFilters.clientIds?.length
+                    ? "No invoices with an email address matched this contact."
+                    : "No clients with invoice email addresses matched these filters."}
                 </div>
               ) : (
                 recipients.map((recipient) => (

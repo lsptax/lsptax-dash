@@ -37,7 +37,7 @@ const Dashboard = () => {
     return (
       <div className="flex flex-col">
         <DashboardStats
-          stats={{ numOfClients: 0, numOfProspects: 0, hearings: undefined }}
+          stats={{ numOfClients: 0, numOfProspects: 0, numOfProperties: 0, hearings: undefined }}
           loading={true}
         />
         <TableSkeleton rows={5} columns={4} />

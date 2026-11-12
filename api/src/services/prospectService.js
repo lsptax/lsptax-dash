@@ -194,10 +194,16 @@ export async function convertProspectToClient(prospectId, clientNumber) {
     });
   }
 
-  await prisma.client.update({
-    where: { id: parseInt(prospectId) },
-    data: { isArchived: true },
-  });
+  await prisma.$transaction([
+    prisma.property.updateMany({
+      where: { clientId: prospect.id },
+      data: { isArchived: true, archivedWithClient: false },
+    }),
+    prisma.client.update({
+      where: { id: prospect.id },
+      data: { isArchived: true },
+    }),
+  ]);
 
   return newClient;
 }

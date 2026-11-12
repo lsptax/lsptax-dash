@@ -31,6 +31,7 @@ import {
   sendPaymentAcknowledgementEmailsForInvoices,
 } from "./invoiceDeliveryService.js";
 import { buildInvoiceSummary } from "./invoiceSummary.js";
+import { activeOwnedPropertyWhere } from "../utils/propertyVisibility.js";
 
 /** propertyId = Property.id (system id). Use this for GET /api/invoice/:id. */
 export async function getInvoiceByPropertyId(propertyId) {
@@ -968,20 +969,22 @@ export async function updateInvoiceTemplate({ invoiceId, invoiceTemplate }) {
   });
 }
 
-/** Dashboard stats: client/prospect counts + hearing schedule summary. */
+/** Dashboard stats: active client/prospect/property counts + hearing schedule summary. */
 export async function getCounts() {
-  const [rows, hearings] = await Promise.all([
+  const [rows, numOfProperties, hearings] = await Promise.all([
     prisma.client.groupBy({
       by: ["type"],
-      where: { type: { in: ["CLIENT", "PROSPECT"] } },
+      where: { isArchived: false, type: { in: ["CLIENT", "PROSPECT"] } },
       _count: { id: true },
     }),
+    prisma.property.count({ where: activeOwnedPropertyWhere() }),
     getHearingStats(),
   ]);
   const byType = Object.fromEntries(rows.map((r) => [r.type, r._count.id]));
   return {
     numOfClients: byType.CLIENT ?? 0,
     numOfProspects: byType.PROSPECT ?? 0,
+    numOfProperties,
     hearings,
   };
 }

@@ -12,7 +12,7 @@ export const toggleArchiveEntity = async (req, res) => {
     if (!model) {
       return sendError(res, 400, `Invalid table name: ${tableName}`);
     }
-    const updatedRecord = await propertyService.toggleArchive(model, id);
+    const updatedRecord = await propertyService.toggleArchive(model, id, tableName);
     if (!updatedRecord) {
       return sendError(res, 404, `${tableName} not found with ID: ${id}`);
     }

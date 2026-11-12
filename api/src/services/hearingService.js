@@ -10,6 +10,7 @@ import {
 import { paginate } from "../utils/pagination.js";
 import { clientFilterWhere } from "../utils/search.js";
 import { accountNumberSearchWhere } from "../utils/propertySearch.js";
+import { activeHearingPropertyWhere } from "../utils/propertyVisibility.js";
 import {
   getDayRange,
   getMeetingsThisWeekRange,
@@ -90,6 +91,7 @@ async function findPropertyForHearing(propertyId) {
       id: true,
       isArchived: true,
       lifecyclePhase: true,
+      client: { select: { isArchived: true } },
     },
   });
 }
@@ -100,7 +102,7 @@ function assertPropertyCanSchedule(property) {
     err.statusCode = 404;
     throw err;
   }
-  if (property.isArchived) {
+  if (property.isArchived || property.client?.isArchived) {
     const err = new Error("Cannot add hearing for archived property");
     err.statusCode = 400;
     throw err;
@@ -270,9 +272,7 @@ export async function getHearingsByPropertyId(propertyId) {
 }
 
 function buildListWhere({ from, to, status, client = null, property = null }) {
-  const propertyWhere = { isArchived: false };
-  const clientMatch = clientFilterWhere(client);
-  if (clientMatch) propertyWhere.client = clientMatch;
+  const propertyWhere = activeHearingPropertyWhere(clientFilterWhere(client));
   const accountMatch = accountNumberSearchWhere(property);
   if (Object.keys(accountMatch).length) propertyWhere.AND = [accountMatch];
 
@@ -310,7 +310,7 @@ export async function listHearings({ limit, offset, from, to, status, client = n
 
 const weekListWhere = (rangeStart, rangeEnd) => ({
   ...notDeleted,
-  property: { isArchived: false },
+  property: activeHearingPropertyWhere(),
   date: { gte: rangeStart, lte: rangeEnd },
 });
 
@@ -327,7 +327,7 @@ export async function getHearingStats() {
 
   const baseWhere = {
     ...notDeleted,
-    property: { isArchived: false },
+    property: activeHearingPropertyWhere(),
   };
 
   const weekWhere = weekListWhere(weekStart, weekEnd);

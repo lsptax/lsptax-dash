@@ -112,6 +112,14 @@ function hasUsableEmail(client) {
   return Boolean((client?.billingEmail || client?.email || "").trim());
 }
 
+function isEmailableContact(client) {
+  return Boolean(
+    client &&
+      (client.type === "CLIENT" || client.type === "PROSPECT") &&
+      !client.isArchived
+  );
+}
+
 function normalizeBulkInvoiceFilters(filters = {}) {
   const paymentStatus = String(filters.paymentStatus || "any").toLowerCase();
   if (!["any", "paid", "unpaid"].includes(paymentStatus)) {
@@ -140,7 +148,9 @@ function normalizeBulkInvoiceFilters(filters = {}) {
 function bulkInvoiceWhere(filters) {
   const where = {};
   const propertyWhere = {};
-  const clientWhere = { type: "CLIENT" };
+  const clientWhere = filters.clientIds.length
+    ? { type: { in: ["CLIENT", "PROSPECT"] } }
+    : { type: "CLIENT" };
 
   if (!filters.includeArchivedInvoices) where.isArchived = false;
   if (filters.invoiceIds.length) where.id = { in: filters.invoiceIds };
@@ -888,7 +898,7 @@ export async function sendInvoiceToClient({
     },
   });
 
-  if (!client || client.type !== "CLIENT" || client.isArchived) {
+  if (!isEmailableContact(client)) {
     throw new Error("Client not found");
   }
 
@@ -1144,7 +1154,7 @@ function paymentAcknowledgementContactsFromInvoices(invoices = []) {
     const { client } = entry;
     const recipientEmail = (client.billingEmail || client.email || "").trim();
     let skipReason = null;
-    if (client.type !== "CLIENT" || client.isArchived) {
+    if (!isEmailableContact(client)) {
       skipReason = "Client not found or archived";
     } else if (!recipientEmail) {
       skipReason = "No email on file";
@@ -1260,7 +1270,7 @@ export async function sendPaymentAcknowledgementEmailsForInvoices({
     const propertyAddresses = [...entry.propertyAddresses];
     const years = [...entry.years];
 
-    if (client.type !== "CLIENT" || client.isArchived) {
+    if (!isEmailableContact(client)) {
       skipped.push({
         clientId,
         clientNumber: client.clientNumber,
@@ -1842,7 +1852,7 @@ export async function getInvoiceDeliveriesForClient(clientId, limit = 20) {
     where: { id: idNum },
     select: { id: true, type: true, isArchived: true },
   });
-  if (!client || client.type !== "CLIENT" || client.isArchived) return null;
+  if (!isEmailableContact(client)) return null;
 
   const take = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
 
