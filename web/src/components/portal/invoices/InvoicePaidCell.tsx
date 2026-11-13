@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { updateInvoicePaymentStatus } from "@/store/invoices";
@@ -133,6 +143,7 @@ export function InvoicePaidCell({
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [paidDialogOpen, setPaidDialogOpen] = useState(false);
+  const [unpaidDialogOpen, setUnpaidDialogOpen] = useState(false);
 
   const ids = (invoiceIds?.length ? invoiceIds : [invoiceId])
     .map((id) => Number(id))
@@ -219,7 +230,16 @@ export function InvoicePaidCell({
       return;
     }
 
-    void applyPaymentStatus(false);
+    setUnpaidDialogOpen(true);
+  };
+
+  const handleConfirmUnpaid = async () => {
+    try {
+      await applyPaymentStatus(false);
+      setUnpaidDialogOpen(false);
+    } catch {
+      // Error toast already shown; keep dialog open for retry.
+    }
   };
 
   const handleConfirmPaid = async (payload: MarkInvoicePaidPayload) => {
@@ -261,6 +281,37 @@ export function InvoicePaidCell({
         submitting={saving}
         onConfirm={handleConfirmPaid}
       />
+      <AlertDialog
+        open={unpaidDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && saving) return;
+          setUnpaidDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as unpaid?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {ids.length === 1
+                ? "This invoice is paid. Marking it unpaid clears the paid date, payment method, and recorded amount."
+                : `These ${ids.length} invoices are paid. Marking them unpaid clears the paid date, payment method, and recorded amount for each one.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              className="bg-red-600 hover:bg-red-700"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmUnpaid();
+              }}
+            >
+              {saving ? "Marking unpaid..." : "Mark unpaid"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
