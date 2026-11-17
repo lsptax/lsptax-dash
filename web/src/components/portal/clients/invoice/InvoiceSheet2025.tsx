@@ -65,8 +65,8 @@ const FeeInvoiceSheet = React.forwardRef<
           <img src={brandLogo} alt="LSP Tax logo" className="h-[76px] w-[76px] object-contain" />
           <div className="pt-1 text-[13px] leading-[1.25] font-semibold">
             <p className="text-[17px] font-black tracking-wide leading-[1.1]">LONE STAR PROPERTY TAX</p>
-            <p>16107 KENSINGTON DRIVE, STE. 194</p>
-            <p>SUGARLAND, TX 77479</p>
+            <p>1449 HWY 6, STE 330</p>
+            <p>SUGAR LAND, TX 77478</p>
             <p>info@lsptax.com</p>
             <p>{FEE_LETTERHEAD_PHONE}</p>
           </div>
@@ -154,8 +154,8 @@ const FeeInvoiceSheet = React.forwardRef<
 
         <div className="font-semibold">
           <p>LONE STAR PROPERTY TAX</p>
-          <p>16107 KENSINGTON DRIVE, STE. 194</p>
-          <p>SUGARLAND, TX 77479</p>
+          <p>1449 HWY 6, STE 330</p>
+          <p>SUGAR LAND, TX 77478</p>
         </div>
         <div />
       </div>
@@ -190,8 +190,8 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
         <img src={brandLogo} alt="LSP Tax logo" className="h-[76px] w-[76px] object-contain" />
         <div className="pt-1 text-[13px] leading-[1.25] font-semibold">
           <p className="text-[17px] font-black tracking-wide leading-[1.1]">LONE STAR PROPERTY TAX</p>
-          <p>16107 KENSINGTON DRIVE, STE. 194</p>
-          <p>SUGARLAND, TX 77479</p>
+          <p>1449 HWY 6, STE 330</p>
+          <p>SUGAR LAND, TX 77478</p>
           <p>info@lsptax.com</p>
           <p>832-847-3911</p>
         </div>
@@ -325,8 +325,8 @@ const InvoiceSheet2025 = React.forwardRef<HTMLDivElement, InvoiceSheet2025Props>
         <div>
           <p>Please remit payment to adress below:</p>
           <p className="mt-1">LONE STAR PROPERTY TAX</p>
-          <p>16107 KENSINGTON DRIVE, STE. 194</p>
-          <p>SUGARLAND, TX 77479</p>
+          <p>1449 HWY 6, STE 330</p>
+          <p>SUGAR LAND, TX 77478</p>
         </div>
         <div>
           <p>OR&nbsp;&nbsp; ZELLE: (Include Invoice number)</p>

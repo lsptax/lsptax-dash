@@ -55,8 +55,8 @@ const INVOICE_BODY_HTML = `<p>Dear {{clientName}},</p>
 Kindly include the invoice number for reference.</p>
 <p><strong>Mail Check:</strong><br/>
 Lone Star Property Tax<br/>
-16107 Kensington Drive, Ste #194<br/>
-Sugar Land, TX 77479</p>
+1449 Hwy 6, Ste 330<br/>
+Sugar Land, TX 77478</p>
 <p>Thank you for choosing Lone Star Property Tax. If you have any questions, please do not hesitate to contact us. We appreciate your business and look forward to serving you again next year.</p>
 <p>Best regards,<br/>
 Lavanya Sharma<br/>
@@ -78,8 +78,8 @@ const ZERO_SAVINGS_BODY_HTML = `<p>Dear {{clientName}},</p>
 Kindly include the invoice number for reference.</p>
 <p><strong>Mail Check:</strong><br/>
 Lone Star Property Tax<br/>
-16107 Kensington Drive, Ste #194<br/>
-Sugar Land, TX 77479</p>
+1449 Hwy 6, Ste 330<br/>
+Sugar Land, TX 77478</p>
 <p>Thank you for choosing Lone Star Property Tax. If you have any questions, please do not hesitate to contact us. We appreciate your business and look forward to serving you again next year.</p>
 <p>Best regards,<br/>
 Lavanya Sharma<br/>

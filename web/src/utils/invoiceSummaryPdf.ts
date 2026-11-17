@@ -87,7 +87,7 @@ function drawHeader(doc: jsPDF, summary: ClientInvoiceSummary, logo: string | nu
   doc.text("LONE STAR PROPERTY TAX", companyX, top + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  ["16107 KENSINGTON DRIVE, STE. 194", "SUGARLAND, TX 77479", "info@lsptax.com", "832-847-3911"].forEach(
+  ["1449 HWY 6, STE 330", "SUGAR LAND, TX 77478", "info@lsptax.com", "832-847-3911"].forEach(
     (line, index) => doc.text(line, companyX, top + 11.5 + index * 4.5)
   );
 

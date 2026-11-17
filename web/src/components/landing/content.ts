@@ -3,12 +3,13 @@
  * the previous site; update them here rather than in the section components.
  */
 
-const ADDRESS_LINES = ["16107 Kensington Dr. #194", "Sugar Land, TX 77479"];
+const ADDRESS_LINES = ["1449 Hwy 6, Ste 330", "Sugar Land, TX 77478"];
 
 export const SITE_CONTACT = {
-  phone: "(833) 577-8291",
-  phoneHref: "tel:+18335778291",
+  phone: "(832) 847-3911",
+  phoneHref: "tel:+18328473911",
   email: "info@lsptax.com",
+  hours: "Monday–Friday, 9am–5pm",
   addressLines: ADDRESS_LINES,
   addressInline: ADDRESS_LINES.join(", "),
 };

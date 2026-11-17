@@ -1,4 +1,4 @@
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SITE_CONTACT } from "./content";
 
@@ -44,6 +44,10 @@ export function ContactLinks({
         ) : (
           <span>{SITE_CONTACT.addressInline}</span>
         )}
+      </li>
+      <li className="flex items-start gap-3">
+        <Clock className={cn(icon, "mt-0.5")} aria-hidden />
+        <span>{SITE_CONTACT.hours}</span>
       </li>
     </ul>
   );
