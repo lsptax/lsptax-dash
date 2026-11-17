@@ -10,7 +10,7 @@ import { AssociatedPropertiesSection } from "../shared/AssociatedPropertiesSecti
 import { ContractsAoasSection } from "../shared/ContractsAoasSection";
 import { EntityDetailRow, EntityDetailsCard } from "../shared/EntityDetailRow";
 import { SendEnvelopeDialog } from "../shared/SendEnvelopeDialog";
-import { SendClientEmailDialog } from "../clients/SendClientEmailDialog";
+import { SendProspectEmailDialog } from "./SendProspectEmailDialog";
 import { useEntityContracts } from "@/hooks/useEntityContracts";
 
 interface ProspectData {
@@ -121,10 +121,9 @@ const ProspectPage = () => {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <SendClientEmailDialog
-            clientId={prospect.id}
-            clientName={prospect.clientName ?? ""}
-            entityLabel="prospect"
+          <SendProspectEmailDialog
+            prospectId={prospect.id}
+            prospectName={prospect.clientName ?? ""}
           />
           <SendEnvelopeDialog
             kind="docs"

@@ -12,6 +12,8 @@ import {
   convertProspectToClient,
   addPropertyToProspect,
   deleteProspectProperty,
+  getProspectEmailRecipients,
+  sendProspectEmail,
 } from "../controller/prospectController.js";
 import {
   addPropertyToClient,
@@ -40,6 +42,8 @@ router.post("/move-to-client", convertProspectToClient);
 router.post("/change-prospect-status", changeProspectStatus);
 router.post("/add-prospect-property", addPropertyToProspect);
 router.post("/delete-prospect-property", deleteProspectProperty);
+router.post("/prospect-email/recipients", getProspectEmailRecipients);
+router.post("/prospect-email/send", sendProspectEmail);
 
 router.post("/add-property", addPropertyToClient);
 router.post("/delete-property", deleteProperty);

@@ -18,6 +18,7 @@ export function EmailTemplateSelect({
   id,
   purpose,
   extraPurposes = [],
+  excludePurposes = [],
   label = "Email template",
   value,
   onChange,
@@ -26,6 +27,7 @@ export function EmailTemplateSelect({
   id: string;
   purpose?: EmailTemplatePurpose;
   extraPurposes?: EmailTemplatePurpose[];
+  excludePurposes?: EmailTemplatePurpose[];
   label?: string;
   value: string;
   onChange: (key: string) => void;
@@ -40,6 +42,7 @@ export function EmailTemplateSelect({
     purpose ? [purpose, "unassigned" as const, ...extraPurposes] : null
   );
   const templates = (templatesQuery.data ?? []).filter((template) => {
+    if (excludePurposes.includes(template.purpose)) return false;
     if (!purpose) return true;
     return allowedPurposes.has(template.purpose);
   });

@@ -142,7 +142,7 @@ export async function updateEmailTemplate(key, input, updatedBy = null) {
     const nextPurpose = resolveEmailTemplatePurpose(input.purpose);
     if (!nextPurpose) {
       return {
-        error: "Choose unassigned, invoice sending, 0 savings invoice, or payment acknowledgement",
+        error: "Choose unassigned, invoice sending, 0 savings invoice, payment acknowledgement, or prospect",
         status: 400,
       };
     }
@@ -164,7 +164,7 @@ export async function createEmailTemplate(input, updatedBy = null) {
   const purpose = resolveEmailTemplatePurpose(input?.purpose, { allowMissing: true });
   if (!purpose) {
     return {
-      error: "Choose unassigned, invoice sending, 0 savings invoice, or payment acknowledgement",
+      error: "Choose unassigned, invoice sending, 0 savings invoice, payment acknowledgement, or prospect",
       status: 400,
     };
   }

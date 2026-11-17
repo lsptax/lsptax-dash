@@ -2,6 +2,10 @@ import { CLIENT_UPDATE_FIELDS } from "../config/constants.js";
 import * as prospectService from "../services/prospectService.js";
 import * as propertyService from "../services/propertyService.js";
 import {
+  getProspectEmailRecipients as loadProspectEmailRecipients,
+  sendProspectEmail as deliverProspectEmail,
+} from "../services/prospectEmailService.js";
+import {
   sendError,
   convertToXLSX,
   EXPORT_FIELDS,
@@ -60,6 +64,39 @@ export const deleteProspect = async (req, res) => {
     res.status(200).json({ message: "Prospect deleted successfully", prospect });
   } catch (error) {
     console.error("Error deleting prospect:", error);
+    sendError(res, 500, "Internal server error", error);
+  }
+};
+
+export const getProspectEmailRecipients = async (req, res) => {
+  try {
+    const prospectId = parseEntityId(req.body, "prospectId", "id");
+    if (Number.isNaN(prospectId)) return sendError(res, 400, "Prospect ID is required");
+    const data = await loadProspectEmailRecipients(prospectId);
+    res.status(200).json(data);
+  } catch (error) {
+    if (error?.status) return sendError(res, error.status, error.message);
+    console.error("Error loading prospect email recipients:", error);
+    sendError(res, 500, "Internal server error", error);
+  }
+};
+
+export const sendProspectEmail = async (req, res) => {
+  try {
+    const prospectId = parseEntityId(req.body, "prospectId", "id");
+    if (Number.isNaN(prospectId)) return sendError(res, 400, "Prospect ID is required");
+    const { templateKey, recipientEmails } = req.body;
+    const data = await deliverProspectEmail({ prospectId, templateKey, recipientEmails });
+    const message =
+      data.failed.length === 0
+        ? `Email sent to ${data.sent.length} recipient${data.sent.length === 1 ? "" : "s"}`
+        : data.sent.length === 0
+          ? data.failed.map((failure) => `${failure.email}: ${failure.error}`).join("; ")
+          : `${data.sent.length} sent, ${data.failed.length} failed`;
+    res.status(data.sent.length ? 200 : 502).json({ message, data });
+  } catch (error) {
+    if (error?.status) return sendError(res, error.status, error.message);
+    console.error("Error sending prospect email:", error);
     sendError(res, 500, "Internal server error", error);
   }
 };

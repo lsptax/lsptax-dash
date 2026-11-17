@@ -11,13 +11,15 @@ export type EmailTemplatePurpose =
   | "unassigned"
   | "invoice"
   | "invoice_zero_savings"
-  | "payment_acknowledgement";
+  | "payment_acknowledgement"
+  | "prospect";
 
 export const EMAIL_TEMPLATE_PURPOSE_OPTIONS: EmailTemplatePurpose[] = [
   "unassigned",
   "invoice",
   "invoice_zero_savings",
   "payment_acknowledgement",
+  "prospect",
 ];
 
 export const EMAIL_TEMPLATE_PURPOSE_LABELS: Record<EmailTemplatePurpose, string> = {
@@ -25,12 +27,34 @@ export const EMAIL_TEMPLATE_PURPOSE_LABELS: Record<EmailTemplatePurpose, string>
   invoice: "Invoice sending",
   invoice_zero_savings: "0 savings invoice",
   payment_acknowledgement: "Payment acknowledgement",
+  prospect: "Prospect",
 };
+
+/** Prospect emails have no built-in template; mirrors PROSPECT_PLACEHOLDERS on the API. */
+const PROSPECT_PLACEHOLDERS: EmailTemplatePlaceholder[] = [
+  {
+    token: "clientName",
+    label: "Prospect name, without a title such as Mr. or Mrs.",
+    sample: "Jane Smith",
+  },
+  {
+    token: "propertyAddress",
+    label: 'Property address, or "your property" when none is available',
+    sample: "123 Main St",
+  },
+  {
+    token: "logo",
+    label: "Logo image. Uses the invoice logo URL from Brevo settings.",
+    sample: "",
+    raw: true,
+  },
+];
 
 export function placeholdersForPurpose(
   purpose: EmailTemplatePurpose,
   templates: EmailTemplate[] | undefined
 ): EmailTemplatePlaceholder[] {
+  if (purpose === "prospect") return PROSPECT_PLACEHOLDERS;
   if (!templates?.length) return [];
   if (purpose === "unassigned") {
     const seen = new Set<string>();

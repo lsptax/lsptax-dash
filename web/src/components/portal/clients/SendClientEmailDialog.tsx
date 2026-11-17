@@ -29,11 +29,9 @@ import { QUERY_META_SUPPRESS_GLOBAL_ERROR_TOAST } from "@/routes/ROUTES";
 export function SendClientEmailDialog({
   clientId,
   clientName,
-  entityLabel = "client",
 }: {
   clientId: number;
   clientName: string;
-  entityLabel?: "client" | "prospect";
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -81,11 +79,12 @@ export function SendClientEmailDialog({
           <DialogHeader>
             <DialogTitle>Send email</DialogTitle>
             <DialogDescription>
-              Choose a template for {clientName || `this ${entityLabel}`}. Invoice templates also need a tax year.
+              Choose a template for {clientName || "this client"}. Invoice templates also need a tax year.
             </DialogDescription>
           </DialogHeader>
           <EmailTemplateSelect
             id="client-send-template"
+            excludePurposes={["prospect"]}
             value={templateKey}
             onChange={setTemplateKey}
             disabled={sending}

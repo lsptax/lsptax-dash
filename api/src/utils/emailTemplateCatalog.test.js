@@ -2,13 +2,20 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   getEmailTemplateDefinition,
+  placeholdersForEmailTemplatePurpose,
   renderEmailTemplate,
+  resolveEmailTemplatePurpose,
+  starterForEmailTemplatePurpose,
   validateEmailTemplateInput,
 } from "./emailTemplateCatalog.js";
 import {
   renderInvoiceEmailHtml,
   renderInvoiceEmailSubject,
 } from "./invoiceEmailTemplate.js";
+import {
+  renderProspectEmailHtml,
+  renderProspectEmailSubject,
+} from "./prospectEmailTemplate.js";
 import {
   renderPaymentAcknowledgementHtml,
   renderPaymentAcknowledgementSubject,
@@ -128,5 +135,31 @@ describe("validateEmailTemplateInput", () => {
     assert.deepEqual(result.errors, []);
     assert.equal(result.subject, "Thanks");
     assert.equal(result.bodyHtml, "<p>Hello</p>");
+  });
+});
+
+describe("prospect email templates", () => {
+  it("accepts the prospect purpose and gives it a starter and placeholders", () => {
+    assert.equal(resolveEmailTemplatePurpose("prospect"), "prospect");
+    assert.ok(starterForEmailTemplatePurpose("prospect").bodyHtml.includes("{{clientName}}"));
+    assert.deepEqual(
+      placeholdersForEmailTemplatePurpose("prospect").map((placeholder) => placeholder.token),
+      ["clientName", "propertyAddress", "logo"]
+    );
+  });
+
+  it("fills prospect placeholders and escapes the body", () => {
+    const subject = renderProspectEmailSubject("Hello {{clientName}} - {{propertyAddress}}", {
+      clientName: "Mr. Bob <Jones>",
+      propertyAddresses: ["1 Elm St"],
+    });
+    assert.equal(subject, "Hello Bob <Jones> - 1 Elm St");
+
+    const html = renderProspectEmailHtml("<p>Dear {{clientName}}, {{propertyAddress}}</p>{{logo}}", {
+      clientName: "Bob <Jones>",
+      propertyAddresses: [],
+      logoUrl: "",
+    });
+    assert.equal(html, "<p>Dear Bob &lt;Jones&gt;, your property</p>");
   });
 });

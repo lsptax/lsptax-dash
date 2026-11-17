@@ -6,13 +6,44 @@ export const EMAIL_TEMPLATE_PURPOSES = [
   "invoice",
   "invoice_zero_savings",
   "payment_acknowledgement",
+  "prospect",
 ];
 export const UNASSIGNED_EMAIL_TEMPLATE_PURPOSE = "unassigned";
+export const PROSPECT_EMAIL_TEMPLATE_PURPOSE = "prospect";
 
 const UNASSIGNED_STARTER = {
   subject: "New email",
   bodyHtml: "<p>Write your message here.</p>",
 };
+
+const PROSPECT_STARTER = {
+  subject: "Lone Star Property Tax",
+  bodyHtml: `<p>Dear {{clientName}},</p>
+<p>Write your message here.</p>
+<p>Best regards,<br/>
+Lone Star Property Tax</p>
+{{logo}}`,
+};
+
+/** Prospect emails have no built-in template, so their placeholders live here. */
+const PROSPECT_PLACEHOLDERS = [
+  {
+    token: "clientName",
+    label: "Prospect name, without a title such as Mr. or Mrs.",
+    sample: "Jane Smith",
+  },
+  {
+    token: "propertyAddress",
+    label: "Property address, or \"your property\" when none is available",
+    sample: "123 Main St",
+  },
+  {
+    token: "logo",
+    label: "Logo image. Uses the invoice logo URL from Brevo settings.",
+    sample: "",
+    raw: true,
+  },
+];
 
 const SUBJECT_MAX = 300;
 const BODY_MAX = 100_000;
@@ -186,11 +217,13 @@ export function placeholdersForEmailTemplatePurpose(purpose) {
     }
     return placeholders;
   }
+  if (purpose === PROSPECT_EMAIL_TEMPLATE_PURPOSE) return PROSPECT_PLACEHOLDERS;
   return getBuiltinTemplateForPurpose(purpose)?.placeholders ?? [];
 }
 
 export function starterForEmailTemplatePurpose(purpose) {
   if (purpose === UNASSIGNED_EMAIL_TEMPLATE_PURPOSE) return UNASSIGNED_STARTER;
+  if (purpose === PROSPECT_EMAIL_TEMPLATE_PURPOSE) return PROSPECT_STARTER;
   const builtin = getBuiltinTemplateForPurpose(purpose);
   if (!builtin) return null;
   return { subject: builtin.subject, bodyHtml: builtin.bodyHtml };
