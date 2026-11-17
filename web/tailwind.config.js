@@ -13,6 +13,20 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        /** Public website palette (navy + gold). The public pages are light-only. */
+        site: {
+          navy: "#0E2240",
+          "navy-2": "#16325C",
+          "navy-3": "#22457A",
+          gold: "#D2A04A",
+          "gold-hover": "#C08A32",
+          "gold-ink": "#875B12",
+          cream: "#F8F5EF",
+          sand: "#EFE8DA",
+          ink: "#1A2333",
+          slate: "#4A5568",
+          line: "#E3DCCD",
+        },
         brand: {
           primary: "var(--brand-primary)",
           secondary: "var(--brand-secondary)",
@@ -77,6 +91,7 @@ export default {
       },
       fontFamily: {
         sans: ["Nunito", "sans-serif"],
+        serif: ['"Source Serif 4"', "Georgia", "serif"],
       },
     },
   },
