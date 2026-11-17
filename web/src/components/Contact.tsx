@@ -1,5 +1,5 @@
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react"; 
+import { useState } from "react";
 import { ToastAction } from "@/components/ui/toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +7,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
@@ -15,6 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { addProspect } from "@/api/api";
 import { LoaderCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ContactLinks } from "@/components/landing/ContactLinks";
 
 const formSchema = z.object({
   ProspectName: z.string().min(1, "Prospect name is required"),
@@ -24,9 +27,18 @@ const formSchema = z.object({
   MAILINGADDRESSCITYTXZIP: z.string().optional(),
 });
 
+const NEXT_STEPS = [
+  "We review your property and appraisal details",
+  "We contact you to explain your options",
+  "You sign up and we handle the protest",
+];
+
+const inputClass =
+  "h-11 border-site-line bg-white focus-visible:ring-2 focus-visible:ring-site-gold focus-visible:ring-offset-0";
+
 const Contact = () => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false); // Track loading state
+  const [loading, setLoading] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -71,63 +83,52 @@ const Contact = () => {
   }
 
   return (
-    <div
-      id="contact"
-      className="bg-muted/60 flex flex-col items-center p-8 mx-4 my-8 rounded-xl border"
-    >
-      <div className="text-center max-w-2xl mb-8">
-        <h1 className="text-3xl font-semibold text-foreground mb-4">
-          Start Your Property Tax Savings Journey
-        </h1>
-        <p className="text-gray-600 mb-4">
-          Join thousands of property owners who have successfully reduced their
-          tax burden
-        </p>
-        <div className="flex justify-center flex-wrap gap-4 text-sm text-gray-700 mb-6">
-          <span className="flex items-center bg-white px-4 py-2 rounded-full shadow-sm">
-            ✓ No Win, No Fee
-          </span>
-          <span className="flex items-center bg-white px-4 py-2 rounded-full shadow-sm">
-            ✓ Average Savings 12-15%
-          </span>
-          <span className="flex items-center bg-white px-4 py-2 rounded-full shadow-sm">
-            ✓ Expert Representation
-          </span>
-        </div>
-      </div>
+    <section id="contact" className="scroll-mt-20 bg-site-cream px-4 py-20 sm:px-6 sm:py-24 lg:px-8" aria-labelledby="contact-title">
+      <div className="mx-auto grid max-w-[76rem] overflow-hidden rounded-3xl border border-site-line bg-white shadow-xl shadow-site-navy/5 lg:grid-cols-[1fr_1.3fr]">
+        <div className="bg-site-navy p-8 text-white sm:p-10">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-site-gold">Get started</p>
+          <h2 id="contact-title" className="mt-3 font-serif text-3xl font-semibold leading-tight sm:text-4xl">
+            Find out if you're paying too much
+          </h2>
+          <p className="mt-4 leading-relaxed text-white/75">
+            Tell us about your property and we'll get back to you with a free review. No savings,
+            no fee.
+          </p>
 
-      <div className="w-full max-w-3xl">
-        <div className="bg-card p-6 rounded-t-xl border-b">
-          <h4 className="font-medium text-foreground mb-3">
-            Why Choose Our Services?
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground">
-            <div>• Professional ARB hearing representation</div>
-            <div>• Detailed property value analysis</div>
-            <div>• Proven success track record</div>
-            <div>• Transparent process & updates</div>
-          </div>
+          <ol className="mt-8 space-y-4">
+            {NEXT_STEPS.map((step, index) => (
+              <li key={step} className="flex items-start gap-3 text-sm text-white/85">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-site-gold text-xs font-bold text-site-navy">
+                  {index + 1}
+                </span>
+                <span className="pt-1">{step}</span>
+              </li>
+            ))}
+          </ol>
+
+          <ContactLinks
+            className="mt-10 space-y-3 border-t border-white/15 pt-8 text-sm text-white/85"
+            linkClassName="hover:text-white"
+            iconClassName="text-site-gold"
+          />
         </div>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6 bg-card p-8 rounded-b-xl border border-t-0"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6 p-8 sm:p-10">
+            <div>
+              <h3 className="font-serif text-2xl font-semibold text-site-navy">Request a free review</h3>
+              <p className="mt-1 text-sm text-site-slate">Fields marked * are required.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="ProspectName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700 font-medium">
-                      Your Name
-                    </FormLabel>
-                    <Input
-                      placeholder="Enter Your Name"
-                      {...field}
-                      className="border-gray-300 focus:ring-2 focus:ring-blue-400 transition"
-                    />
+                    <FormLabel className="font-semibold text-site-ink">Your name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Jane Smith" autoComplete="name" {...field} className={inputClass} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -137,34 +138,35 @@ const Contact = () => {
                 name="Email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700 font-medium">
-                      Email
-                    </FormLabel>
-                    <Input
-                      placeholder="Enter Email"
-                      type="email"
-                      {...field}
-                      className="border-gray-300 focus:ring-2 focus:ring-blue-400 transition"
-                    />
+                    <FormLabel className="font-semibold text-site-ink">Email *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="you@example.com"
+                        type="email"
+                        autoComplete="email"
+                        {...field}
+                        className={inputClass}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="PHONENUMBER"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700 font-medium">
-                      Phone Number
-                    </FormLabel>
-                    <Input
-                      placeholder="Enter Phone Number"
-                      {...field}
-                      className="border-gray-300 focus:ring-2 focus:ring-blue-400 transition"
-                    />
+                    <FormLabel className="font-semibold text-site-ink">Phone number</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="(555) 555-5555"
+                        type="tel"
+                        autoComplete="tel"
+                        {...field}
+                        className={inputClass}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -174,42 +176,46 @@ const Contact = () => {
                 name="MAILINGADDRESS"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700 font-medium">
-                      Property Address
-                    </FormLabel>
-                    <Input
-                      placeholder="Enter Property Address"
-                      {...field}
-                      className="border-gray-300 focus:ring-2 focus:ring-blue-400 transition"
-                    />
+                    <FormLabel className="font-semibold text-site-ink">Property address</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="123 Main St, Houston"
+                        autoComplete="street-address"
+                        {...field}
+                        className={inputClass}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="text-center text-sm text-gray-600 mt-4">
-              Get your free property tax assessment today!
-            </div>
-
             <Button
               disabled={loading}
               type="submit"
-              className="w-full"
+              className="h-12 rounded-full bg-site-navy text-sm font-bold text-white hover:bg-site-navy-2"
             >
               {loading ? (
                 <>
-                  <LoaderCircle className="animate-spin w-5 h-5 mr-2" />
+                  <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
                   Submitting...
                 </>
               ) : (
-                "Start Saving Taxes"
+                "Request my free review"
               )}
             </Button>
+            <p className="text-center text-xs text-site-slate">
+              See our{" "}
+              <Link to="/privacy" className="font-semibold text-site-navy underline underline-offset-2">
+                Privacy Policy
+              </Link>{" "}
+              for how we use your details.
+            </p>
           </form>
         </Form>
       </div>
-    </div>
+    </section>
   );
 };
 

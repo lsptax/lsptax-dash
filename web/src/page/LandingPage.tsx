@@ -1,35 +1,38 @@
-import Hero from "../components/Hero";
-import FeatureArray from "../components/FeatureArray";
-import About from "../components/About";
-import WorkProcess from "../components/WorkProcess";
-import Services from "../components/Services";
-import FeatureStrip from "../components/FeatureStrip";
-// import WhyUs from "../components/WhyUs";
-import KeyDates from "../components/KeyDates";
-import Testimonials from "../components/Testimonials";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Contact from "@/components/Contact";
+import Seo from "@/components/Seo";
+import HeroSection from "@/components/landing/HeroSection";
+import WhySection from "@/components/landing/WhySection";
+import AboutSection from "@/components/landing/AboutSection";
+import ProcessSection from "@/components/landing/ProcessSection";
+import ServicesSection from "@/components/landing/ServicesSection";
+import KeyDatesSection from "@/components/landing/KeyDatesSection";
+import TestimonialsSection from "@/components/landing/TestimonialsSection";
+import { useScrollToHash } from "@/components/landing/hooks";
 
 const LandingPage = () => {
+  useScrollToHash();
   return (
-    <>
+    <div className="bg-white font-sans text-site-ink">
+      <Seo
+        title="Texas Property Tax Professionals - Lone Star Property Tax"
+        description="Property tax protest and consulting for residential, commercial and business property owners across Texas. No savings, no fee."
+      />
       <Header />
       <main id="main">
-      <Hero />
-      <FeatureArray />
-      <About />
-      <WorkProcess />
-      <Services />
-      <FeatureStrip />
-      {/* <WhyUs /> */}
-      <KeyDates />
-      <Testimonials />
-      <Contact/>
-      <Footer />
+        <HeroSection />
+        <WhySection />
+        <AboutSection />
+        <ProcessSection />
+        <ServicesSection />
+        <KeyDatesSection />
+        <TestimonialsSection />
+        <Contact />
       </main>
-    </>
+      <Footer />
+    </div>
   );
-}
+};
 
-export default LandingPage
+export default LandingPage;
