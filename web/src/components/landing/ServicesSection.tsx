@@ -47,7 +47,7 @@ const ServicesSection = () => {
                     to="/#contact"
                     className="group mt-6 inline-flex items-center gap-2 self-start text-sm font-bold text-site-navy"
                   >
-                    Request a review
+                    Get started
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
                   </Link>
                 </div>

@@ -20,17 +20,15 @@ import { Link } from "react-router-dom";
 import { ContactLinks } from "@/components/landing/ContactLinks";
 
 const formSchema = z.object({
-  ProspectName: z.string().min(1, "Prospect name is required"),
+  ProspectName: z.string().min(1, "Full name is required"),
   Email: z.string().email("Invalid email address"),
   PHONENUMBER: z.string().optional(),
-  MAILINGADDRESS: z.string().optional(),
-  MAILINGADDRESSCITYTXZIP: z.string().optional(),
 });
 
 const NEXT_STEPS = [
-  "We review your property and appraisal details",
-  "We contact you to explain your options",
-  "You sign up and we handle the protest",
+  "Get in Touch",
+  "Share Your Property Details",
+  "Review & Sign Up",
 ];
 
 const inputClass =
@@ -45,8 +43,6 @@ const Contact = () => {
       ProspectName: "",
       Email: "",
       PHONENUMBER: "",
-      MAILINGADDRESS: "",
-      MAILINGADDRESSCITYTXZIP: "",
     },
   });
 
@@ -57,11 +53,9 @@ const Contact = () => {
         clientName: String(values.ProspectName ?? "").trim(),
         email: String(values.Email ?? "").trim(),
         phoneNumber: values.PHONENUMBER ? String(values.PHONENUMBER).trim() : "",
-        mailingAddress: values.MAILINGADDRESS ? String(values.MAILINGADDRESS).trim() : "",
-        mailingAddressCityTxZip: values.MAILINGADDRESSCITYTXZIP ? String(values.MAILINGADDRESSCITYTXZIP).trim() : "",
       });
       toast({
-        title: "Great! We'll be in touch soon to start your savings journey.",
+        title: "Thanks. Our team will reach out to help you get started.",
       });
       form.reset();
     } catch (error) {
@@ -86,13 +80,13 @@ const Contact = () => {
     <section id="contact" className="scroll-mt-20 bg-site-cream px-4 py-20 sm:px-6 sm:py-24 lg:px-8" aria-labelledby="contact-title">
       <div className="mx-auto grid max-w-[76rem] overflow-hidden rounded-3xl border border-site-line bg-white shadow-xl shadow-site-navy/5 lg:grid-cols-[1fr_1.3fr]">
         <div className="bg-site-navy p-8 text-white sm:p-10">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-site-gold">Get started</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-site-gold">How it works</p>
           <h2 id="contact-title" className="mt-3 font-serif text-3xl font-semibold leading-tight sm:text-4xl">
-            Find out if you're paying too much
+            What happens next
           </h2>
           <p className="mt-4 leading-relaxed text-white/75">
-            Tell us about your property and we'll get back to you with a free review. No savings,
-            no fee.
+            Send your name and email. Our team will reach out with the next steps for your
+            property tax protest.
           </p>
 
           <ol className="mt-8 space-y-4">
@@ -116,18 +110,21 @@ const Contact = () => {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6 p-8 sm:p-10">
             <div>
-              <h3 className="font-serif text-2xl font-semibold text-site-navy">Request a free review</h3>
-              <p className="mt-1 text-sm text-site-slate">Fields marked * are required.</p>
+              <h3 className="font-serif text-2xl font-semibold text-site-navy">Let's Get Started!</h3>
+              <p className="mt-1 text-sm text-site-slate">
+                Tell us a little about yourself. Our team will reach out to help you get started
+                with your property tax protest.
+              </p>
             </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6">
               <FormField
                 control={form.control}
                 name="ProspectName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold text-site-ink">Your name *</FormLabel>
+                    <FormLabel className="font-semibold text-site-ink">Full Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Jane Smith" autoComplete="name" {...field} className={inputClass} />
+                      <Input placeholder="Enter your full name" autoComplete="name" {...field} className={inputClass} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -138,10 +135,10 @@ const Contact = () => {
                 name="Email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold text-site-ink">Email *</FormLabel>
+                    <FormLabel className="font-semibold text-site-ink">Email Address *</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="you@example.com"
+                        placeholder="Enter your email address"
                         type="email"
                         autoComplete="email"
                         {...field}
@@ -157,30 +154,12 @@ const Contact = () => {
                 name="PHONENUMBER"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold text-site-ink">Phone number</FormLabel>
+                    <FormLabel className="font-semibold text-site-ink">Phone Number (Optional)</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="(555) 555-5555"
+                        placeholder="Enter your phone number"
                         type="tel"
                         autoComplete="tel"
-                        {...field}
-                        className={inputClass}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="MAILINGADDRESS"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-semibold text-site-ink">Property address</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="123 Main St, Houston"
-                        autoComplete="street-address"
                         {...field}
                         className={inputClass}
                       />
@@ -202,7 +181,7 @@ const Contact = () => {
                   Submitting...
                 </>
               ) : (
-                "Request my free review"
+                "Get Started"
               )}
             </Button>
             <p className="text-center text-xs text-site-slate">

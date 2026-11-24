@@ -61,26 +61,24 @@ export const ABOUT_POINTS = [
 
 export const PROCESS_STEPS = [
   {
-    key: "start",
-    title: "Get started",
-    desc: "Send us your details and property information. We set up your account and file the paperwork that lets us act for you.",
+    key: "contact",
+    title: "Get in Touch",
+    desc: "Submit your name and email address through our website. Our team will reach out with information about our services and the next steps.",
   },
   {
-    key: "review",
-    title: "We review",
-    desc: "We study your appraisal notice, market trends and comparable properties to find where your value is too high.",
+    key: "details",
+    title: "Share Your Property Details",
+    desc: "We'll send you a property information form where you can provide your property details and account numbers, and confirm which properties you'd like us to represent.",
   },
   {
-    key: "represent",
-    title: "We represent you",
-    desc: "We file your protest on time and negotiate with the appraisal district, including at your ARB hearing.",
-  },
-  {
-    key: "inform",
-    title: "Stay informed",
-    desc: "We tell you the result and keep you updated through the tax year. You pay only if we save you money.",
+    key: "signup",
+    title: "Review & Sign Up",
+    desc: "Our team will review your properties and prepare the necessary authorization and service agreements. Once you review and sign the documents, you're officially onboarded.",
   },
 ] as const;
+
+export const PROCESS_CLOSING =
+  "Our team will then handle the property tax protest process for your properties for the 2027 tax year.";
 
 export const SERVICES = [
   {

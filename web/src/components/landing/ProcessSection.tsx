@@ -1,12 +1,11 @@
-import { ClipboardList, Mail, Scale, Search } from "lucide-react";
-import { PROCESS_STEPS } from "./content";
+import { ClipboardList, Mail, PenLine } from "lucide-react";
+import { PROCESS_CLOSING, PROCESS_STEPS } from "./content";
 import { SectionHeading } from "./SectionHeading";
 
 const STEP_ICONS = {
-  start: ClipboardList,
-  review: Search,
-  represent: Scale,
-  inform: Mail,
+  contact: Mail,
+  details: ClipboardList,
+  signup: PenLine,
 } as const;
 
 const ProcessSection = () => {
@@ -17,15 +16,15 @@ const ProcessSection = () => {
           id="how-title"
           tone="dark"
           eyebrow="How it works"
-          title="Four simple steps, and we do the heavy lifting"
-          intro="Here is what to expect once you sign up with us."
+          title="Three steps to get started"
+          intro="Submit your details and our team will walk you through signup."
         />
         <div className="relative mt-14">
           <div
-            className="absolute left-[12.5%] right-[12.5%] top-6 hidden h-px bg-site-gold/40 lg:block"
+            className="absolute left-[16.67%] right-[16.67%] top-6 hidden h-px bg-site-gold/40 lg:block"
             aria-hidden
           />
-        <ol className="relative grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <ol className="relative grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {PROCESS_STEPS.map((step, index) => {
             const Icon = STEP_ICONS[step.key];
             return (
@@ -43,6 +42,9 @@ const ProcessSection = () => {
           })}
         </ol>
         </div>
+        <p className="mx-auto mt-12 max-w-3xl text-center text-base leading-relaxed text-white/75 sm:text-lg">
+          {PROCESS_CLOSING}
+        </p>
       </div>
     </section>
   );
